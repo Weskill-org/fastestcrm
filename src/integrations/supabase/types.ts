@@ -14,16 +14,227 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      leads: {
+        Row: {
+          batch_month: string | null
+          branch: string | null
+          ca_name: string | null
+          cgpa: number | null
+          college: string | null
+          company: string | null
+          created_at: string
+          created_by_id: string
+          domain: string | null
+          email: string | null
+          graduating_year: number | null
+          id: string
+          name: string
+          payment_link: string | null
+          phone: string | null
+          post_sales_owner_id: string | null
+          pre_sales_owner_id: string | null
+          preferred_language: string | null
+          product_purchased: string | null
+          revenue_projected: number | null
+          revenue_received: number | null
+          sales_owner_id: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          total_recovered: number | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          batch_month?: string | null
+          branch?: string | null
+          ca_name?: string | null
+          cgpa?: number | null
+          college?: string | null
+          company?: string | null
+          created_at?: string
+          created_by_id: string
+          domain?: string | null
+          email?: string | null
+          graduating_year?: number | null
+          id?: string
+          name: string
+          payment_link?: string | null
+          phone?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          preferred_language?: string | null
+          product_purchased?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          total_recovered?: number | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          batch_month?: string | null
+          branch?: string | null
+          ca_name?: string | null
+          cgpa?: number | null
+          college?: string | null
+          company?: string | null
+          created_at?: string
+          created_by_id?: string
+          domain?: string | null
+          email?: string | null
+          graduating_year?: number | null
+          id?: string
+          name?: string
+          payment_link?: string | null
+          phone?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          preferred_language?: string | null
+          product_purchased?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          total_recovered?: number | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_post_sales_owner_id_fkey"
+            columns: ["post_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_pre_sales_owner_id_fkey"
+            columns: ["pre_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_sales_owner_id_fkey"
+            columns: ["sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          manager_id: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          manager_id?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          manager_id?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_in_hierarchy: {
+        Args: { _manager_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "company"
+        | "company_subadmin"
+        | "cbo"
+        | "vp"
+        | "avp"
+        | "dgm"
+        | "agm"
+        | "sm"
+        | "tl"
+        | "bde"
+        | "intern"
+        | "ca"
+      lead_status:
+        | "new"
+        | "interested"
+        | "not_interested"
+        | "follow_up"
+        | "rnr"
+        | "dnd"
+        | "paid"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +361,30 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "company",
+        "company_subadmin",
+        "cbo",
+        "vp",
+        "avp",
+        "dgm",
+        "agm",
+        "sm",
+        "tl",
+        "bde",
+        "intern",
+        "ca",
+      ],
+      lead_status: [
+        "new",
+        "interested",
+        "not_interested",
+        "follow_up",
+        "rnr",
+        "dnd",
+        "paid",
+      ],
+    },
   },
 } as const
