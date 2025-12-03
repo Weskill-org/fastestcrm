@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,23 +18,24 @@ const stats = [
 ];
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', active: true },
-  { icon: BarChart3, label: 'LG Dashboard' },
-  { icon: Users, label: 'All Leads' },
-  { icon: UserCheck, label: 'Interested' },
-  { icon: CreditCard, label: 'Paid' },
-  { icon: Calendar, label: 'Pending Payments' },
-  { icon: Phone, label: 'Auto Dialer' },
-  { icon: Brain, label: 'AI Insights' },
-  { icon: Users, label: 'Team' },
-  { icon: Workflow, label: 'Automations' },
-  { icon: Link2, label: 'Integrations' },
-  { icon: Settings, label: 'Settings' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+  { icon: BarChart3, label: 'LG Dashboard', path: '/dashboard/lg' },
+  { icon: Users, label: 'All Leads', path: '/dashboard/leads' },
+  { icon: UserCheck, label: 'Interested', path: '/dashboard/interested' },
+  { icon: CreditCard, label: 'Paid', path: '/dashboard/paid' },
+  { icon: Calendar, label: 'Pending Payments', path: '/dashboard/pending' },
+  { icon: Phone, label: 'Auto Dialer', path: '/dashboard/dialer' },
+  { icon: Brain, label: 'AI Insights', path: '/dashboard/ai' },
+  { icon: Users, label: 'Team', path: '/dashboard/team' },
+  { icon: Workflow, label: 'Automations', path: '/dashboard/automations' },
+  { icon: Link2, label: 'Integrations', path: '/dashboard/integrations' },
+  { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
 ];
 
 export default function Dashboard() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -85,8 +86,9 @@ export default function Dashboard() {
           {navItems.map((item) => (
             <button
               key={item.label}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                item.active 
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
+                location.pathname === item.path 
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
               }`}
