@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   LayoutDashboard, Users, UserCheck, CreditCard, Settings,
-  LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar
+  LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText
 } from 'lucide-react';
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { icon: Calendar, label: 'Pending Payments', path: '/dashboard/pending' },
   { icon: Phone, label: 'Auto Dialer', path: '/dashboard/dialer' },
   { icon: Brain, label: 'AI Insights', path: '/dashboard/ai' },
+  { icon: FileText, label: 'Forms', path: '/dashboard/forms' },
   { icon: Users, label: 'Team', path: '/dashboard/team' },
   { icon: Workflow, label: 'Automations', path: '/dashboard/automations' },
   { icon: Link2, label: 'Integrations', path: '/dashboard/integrations' },
@@ -82,11 +83,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <button
               key={item.label}
               onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
-                location.pathname === item.path
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-              }`}
+                }`}
             >
               <item.icon className="h-4 w-4" />
               {item.label}

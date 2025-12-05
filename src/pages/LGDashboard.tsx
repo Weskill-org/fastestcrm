@@ -6,25 +6,47 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link2, Copy, Plus } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function LGDashboard() {
     const [caName, setCaName] = useState('');
+    const [selectedForm, setSelectedForm] = useState('');
     const { toast } = useToast();
+
+    // Mock forms
+    const forms = [
+        { id: '1', name: 'General Inquiry Form' },
+        { id: '2', name: 'Webinar Registration' },
+        { id: '3', name: 'Campus Ambassador Application' },
+    ];
 
     // Mock data for reporting
     const links = [
-        { id: 1, caName: 'Rahul Kumar', url: 'https://leadcubed.in/form/rahul-kumar', leads: 45, interested: 12, paid: 5, revenue: '₹25,000', projected: '₹60,000' },
-        { id: 2, caName: 'Priya Singh', url: 'https://leadcubed.in/form/priya-singh', leads: 32, interested: 8, paid: 3, revenue: '₹15,000', projected: '₹40,000' },
-        { id: 3, caName: 'Amit Patel', url: 'https://leadcubed.in/form/amit-patel', leads: 28, interested: 15, paid: 8, revenue: '₹40,000', projected: '₹75,000' },
+        { id: 1, caName: 'Rahul Kumar', form: 'General Inquiry', url: 'https://leadcubed.in/form/1?utm_source=Rahul%20Kumar', leads: 45, interested: 12, paid: 5, revenue: '₹25,000', projected: '₹60,000' },
+        { id: 2, caName: 'Priya Singh', form: 'Webinar Reg', url: 'https://leadcubed.in/form/2?utm_source=Priya%20Singh', leads: 32, interested: 8, paid: 3, revenue: '₹15,000', projected: '₹40,000' },
+        { id: 3, caName: 'Amit Patel', form: 'CA Application', url: 'https://leadcubed.in/form/3?utm_source=Amit%20Patel', leads: 28, interested: 15, paid: 8, revenue: '₹40,000', projected: '₹75,000' },
     ];
 
     const handleCreateLink = () => {
-        if (!caName) return;
+        if (!caName || !selectedForm) {
+            toast({
+                title: "Missing Information",
+                description: "Please select a form and enter a CA Name.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        const generatedLink = `https://leadcubed.in/form/${selectedForm}?utm_source=${encodeURIComponent(caName)}`;
+
         toast({
             title: "Link Created",
-            description: `Public form link created for ${caName}`,
+            description: `Link generated: ${generatedLink}`,
         });
+
+        // In a real app, we would save this link to the database
         setCaName('');
+        setSelectedForm('');
     };
 
     const copyLink = (url: string) => {
@@ -50,15 +72,29 @@ export default function LGDashboard() {
                             <Link2 className="h-5 w-5 text-primary" />
                             Create Public Link
                         </CardTitle>
-                        <CardDescription>Generate a unique lead form link for a Campus Ambassador (CA).</CardDescription>
+                        <CardDescription>Generate a unique lead form link with UTM tracking.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex gap-4 max-w-md">
-                            <Input
-                                placeholder="Enter CA Name"
-                                value={caName}
-                                onChange={(e) => setCaName(e.target.value)}
-                            />
+                        <div className="flex flex-col md:flex-row gap-4 max-w-2xl">
+                            <div className="flex-1">
+                                <Select value={selectedForm} onValueChange={setSelectedForm}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Form" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {forms.map(form => (
+                                            <SelectItem key={form.id} value={form.id}>{form.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex-1">
+                                <Input
+                                    placeholder="Enter CA Name (Source)"
+                                    value={caName}
+                                    onChange={(e) => setCaName(e.target.value)}
+                                />
+                            </div>
                             <Button onClick={handleCreateLink} className="gradient-primary">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Generate Link
@@ -78,6 +114,7 @@ export default function LGDashboard() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>CA Name</TableHead>
+                                    <TableHead>Form</TableHead>
                                     <TableHead>Link URL</TableHead>
                                     <TableHead className="text-right">Total Leads</TableHead>
                                     <TableHead className="text-right">Interested</TableHead>
@@ -90,6 +127,7 @@ export default function LGDashboard() {
                                 {links.map((link) => (
                                     <TableRow key={link.id}>
                                         <TableCell className="font-medium">{link.caName}</TableCell>
+                                        <TableCell>{link.form}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm text-muted-foreground truncate max-w-[200px]">{link.url}</span>

@@ -18,6 +18,8 @@ import Team from "./pages/Team";
 import Automations from "./pages/Automations";
 import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
+import Forms from "./pages/Forms";
+import FormBuilder from "./pages/FormBuilder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +46,9 @@ const App = () => (
             <Route path="/dashboard/automations" element={<Automations />} />
             <Route path="/dashboard/integrations" element={<Integrations />} />
             <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/dashboard/forms" element={<Forms />} />
+            <Route path="/dashboard/forms/new" element={<FormBuilder />} />
+            <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
