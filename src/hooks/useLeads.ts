@@ -3,7 +3,11 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Database } from '@/integrations/supabase/types';
 
-type Lead = Tables<'leads'>;
+type Lead = Tables<'leads'> & {
+  sales_owner?: {
+    full_name: string | null;
+  } | null;
+};
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 interface UseLeadsOptions {
@@ -43,7 +47,7 @@ export function useLeads({ search, statusFilter }: UseLeadsOptions = {}) {
     queryFn: async (): Promise<Lead[]> => {
       let query = supabase
         .from('leads')
-        .select('*')
+        .select('*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)')
         .order('created_at', { ascending: false });
 
       if (statusFilter && statusFilter !== 'all') {

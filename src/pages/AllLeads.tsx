@@ -169,7 +169,7 @@ export default function AllLeads() {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        {lead.sales_owner_id === user?.id ? 'You' : 'Unknown'}
+                        {lead.sales_owner?.full_name || 'Unknown'}
                       </TableCell>
                       <TableCell>
                         {format(new Date(lead.created_at), 'MMM d, yyyy')}
