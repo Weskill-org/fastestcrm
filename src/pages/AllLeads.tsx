@@ -24,6 +24,7 @@ import {
 import { useLeads, useUpdateLead } from '@/hooks/useLeads';
 import { usePrograms } from '@/hooks/usePrograms';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
 import { Constants } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -46,6 +47,7 @@ export default function AllLeads() {
   const { data: programs } = usePrograms();
   const updateLead = useUpdateLead();
   const { user } = useAuth();
+  const { data: userRole } = useUserRole();
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     try {
@@ -161,7 +163,12 @@ export default function AllLeads() {
                           </SelectTrigger>
                           <SelectContent>
                             {Constants.public.Enums.lead_status.map((status) => (
-                              <SelectItem key={status} value={status} className="capitalize">
+                              <SelectItem
+                                key={status}
+                                value={status}
+                                className="capitalize"
+                                disabled={status === 'paid' && !isRoleAllowedToMarkPaid(userRole)}
+                              >
                                 {status.replace('_', ' ')}
                               </SelectItem>
                             ))}
@@ -194,9 +201,9 @@ export default function AllLeads() {
                       <TableCell>
                         {lead.payment_link ? (
                           <Button
-                            variant="outline"
+                            variant={lead.status === 'paid' ? 'default' : 'outline'}
                             size="sm"
-                            className="h-8"
+                            className={`h-8 ${lead.status === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                             onClick={async () => {
                               try {
                                 await navigator.clipboard.writeText(lead.payment_link!);
@@ -207,7 +214,7 @@ export default function AllLeads() {
                               }
                             }}
                           >
-                            Copy Link
+                            {lead.status === 'paid' ? 'Paid' : 'Copy Link'}
                           </Button>
                         ) : (
                           <Button
