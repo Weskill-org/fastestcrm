@@ -261,7 +261,8 @@ export default function Interested() {
 
                                                                 await updateLead.mutateAsync({
                                                                     id: lead.id,
-                                                                    payment_link: data.short_url
+                                                                    payment_link: data.short_url,
+                                                                    revenue_projected: selectedProgram.price
                                                                 });
 
                                                                 toast.dismiss();

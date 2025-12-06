@@ -33,7 +33,8 @@ serve(async (req) => {
             body: JSON.stringify({
                 amount: amount, // Amount in paise
                 currency: "INR",
-                accept_partial: false,
+                accept_partial: true,
+                first_min_partial_amount: 100, // Minimum 1 INR
                 description: description,
                 customer: {
                     name: customer.name,
