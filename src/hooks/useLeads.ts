@@ -78,6 +78,8 @@ export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseL
   });
 }
 
+import { automationService } from '@/services/automationService';
+
 export function useUpdateLead() {
   const queryClient = useQueryClient();
 
@@ -93,8 +95,12 @@ export function useUpdateLead() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      // Trigger Automation: Status Changed
+      if (data.status) {
+        automationService.checkAndRunAutomations('status_changed', data);
+      }
     },
   });
 }
@@ -113,8 +119,10 @@ export function useCreateLead() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      // Trigger Automation: Lead Created
+      automationService.checkAndRunAutomations('lead_created', data);
     },
   });
 }
@@ -132,8 +140,12 @@ export function useCreateLeads() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      // Trigger Automation for each new lead
+      if (data && Array.isArray(data)) {
+        data.forEach(lead => automationService.checkAndRunAutomations('lead_created', lead));
+      }
     },
   });
 }

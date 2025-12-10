@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
 import {
   Users, Brain, TrendingUp, DollarSign, Target, BarChart3, CreditCard, Loader2
 } from 'lucide-react';
@@ -81,10 +81,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Welcome back! Here's your sales overview.</p>
           </div>
-          <Button className="gradient-primary">
-            <Users className="h-4 w-4 mr-2" />
-            Add Lead
-          </Button>
+
         </div>
       </header>
 
