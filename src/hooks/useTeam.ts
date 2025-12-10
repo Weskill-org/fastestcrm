@@ -63,59 +63,113 @@ export function useTeam() {
     }
 
     try {
-      // Get current user's role
+      // 1. Fetch current user's role
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
-      
-      if (roleData) {
-        setCurrentUserRole(roleData.role as AppRole);
+
+      const myRole = (roleData?.role as AppRole) || null;
+      if (myRole) {
+        setCurrentUserRole(myRole);
       }
 
-      // Fetch profiles
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: true });
+      // 2. Fetch ALL profiles and ALL roles in parallel
+      const [profilesResult, rolesResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name, email, phone, avatar_url, manager_id, created_at')
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('user_roles')
+          .select('user_id, role')
+      ]);
 
-      if (error) {
-        console.error('Error fetching team:', error);
-        setLoading(false);
-        return;
-      }
+      if (profilesResult.error) throw profilesResult.error;
+      if (rolesResult.error) throw rolesResult.error;
 
-      // Fetch roles and manager info for each profile
-      const membersWithRoles = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', profile.id)
-            .single();
-          
-          let manager = undefined;
-          if (profile.manager_id) {
-            const { data: managerData } = await supabase
-              .from('profiles')
-              .select('id, full_name')
-              .eq('id', profile.manager_id)
-              .single();
-            if (managerData) {
-              manager = managerData;
+      // 3. Map roles for easy lookup
+      const roleMap = new Map<string, AppRole>();
+      rolesResult.data?.forEach(r => {
+        if (r.user_id && r.role) {
+          roleMap.set(r.user_id, r.role as AppRole);
+        }
+      });
+
+      // 4. Build initial TeamMember list (unfiltered)
+      //    We need a map to easily look up managers for the UI
+      const allMembersMap = new Map<string, TeamMember>();
+
+      const allMembers: TeamMember[] = (profilesResult.data || []).map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        avatar_url: profile.avatar_url,
+        manager_id: profile.manager_id,
+        created_at: profile.created_at,
+        role: roleMap.get(profile.id) || 'bde',
+      }));
+
+      // Populate valid manager objects
+      allMembers.forEach(m => {
+        allMembersMap.set(m.id, m);
+      });
+
+      allMembers.forEach(m => {
+        if (m.manager_id && allMembersMap.has(m.manager_id)) {
+          const mgr = allMembersMap.get(m.manager_id)!;
+          m.manager = {
+            id: mgr.id,
+            full_name: mgr.full_name
+          };
+        }
+      });
+
+      // 5. Filter based on Hierarchy
+      //    If Company Admin => See everyone
+      //    Else => See self + all descendants
+      let visibleMembers: TeamMember[] = [];
+
+      if (myRole === 'company') {
+        visibleMembers = allMembers;
+      } else {
+        // Build adjacency list for the tree: manager_id -> [direct_reports]
+        const reportsMap = new Map<string, string[]>();
+        allMembers.forEach(m => {
+          if (m.manager_id) {
+            if (!reportsMap.has(m.manager_id)) {
+              reportsMap.set(m.manager_id, []);
+            }
+            reportsMap.get(m.manager_id)?.push(m.id);
+          }
+        });
+
+        // DFS to find all descendants
+        const descendants = new Set<string>();
+        const queue = [user.id];
+
+        // Also include self
+        descendants.add(user.id);
+
+        while (queue.length > 0) {
+          const currentId = queue.shift()!;
+          const directReports = reportsMap.get(currentId) || [];
+
+          for (const reportId of directReports) {
+            if (!descendants.has(reportId)) {
+              descendants.add(reportId);
+              queue.push(reportId);
             }
           }
-          
-          return {
-            ...profile,
-            role: (roleData?.role as AppRole) || 'bde',
-            manager,
-          };
-        })
-      );
+        }
 
-      setMembers(membersWithRoles as TeamMember[]);
+        visibleMembers = allMembers.filter(m => descendants.has(m.id));
+      }
+
+      setMembers(visibleMembers);
+
     } catch (err) {
       console.error('Error fetching team:', err);
     }
@@ -141,7 +195,7 @@ export function useTeam() {
       .eq('user_id', targetUserId);
 
     if (!error) {
-      setMembers(prev => prev.map(m => 
+      setMembers(prev => prev.map(m =>
         m.id === targetUserId ? { ...m, role: newRole } : m
       ));
     }
@@ -163,7 +217,7 @@ export function useTeam() {
   };
 
   const getRoleLabel = (role: AppRole) => ROLE_LABELS[role] || role;
-  
+
   const getAssignableRoles = (): AppRole[] => {
     if (!currentUserRole) return [];
     const currentLevel = ROLE_LEVELS[currentUserRole];
@@ -176,14 +230,14 @@ export function useTeam() {
     fetchTeam();
   }, [fetchTeam]);
 
-  return { 
-    members, 
-    loading, 
+  return {
+    members,
+    loading,
     currentUserRole,
-    promoteUser, 
+    promoteUser,
     setManager,
     getRoleLabel,
     getAssignableRoles,
-    refetch: fetchTeam 
+    refetch: fetchTeam
   };
 }

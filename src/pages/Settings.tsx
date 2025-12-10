@@ -21,6 +21,10 @@ export default function Settings() {
         email: '',
         phone: ''
     });
+    const [passwordData, setPasswordData] = useState({
+        password: '',
+        confirmPassword: ''
+    });
 
     const { data: profile, isLoading } = useQuery({
         queryKey: ['profile', user?.id],
@@ -79,9 +83,57 @@ export default function Settings() {
         }
     });
 
+    const updatePasswordMutation = useMutation({
+        mutationFn: async (password: string) => {
+            const { error } = await supabase.auth.updateUser({
+                password: password
+            });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            setPasswordData({ password: '', confirmPassword: '' });
+            toast({
+                title: "Password updated",
+                description: "Your password has been changed successfully.",
+            });
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to update password",
+                variant: "destructive"
+            });
+        }
+    });
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setPasswordData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handlePasswordSave = () => {
+        if (passwordData.password !== passwordData.confirmPassword) {
+            toast({
+                title: "Error",
+                description: "Passwords do not match",
+                variant: "destructive"
+            });
+            return;
+        }
+        if (passwordData.password.length < 6) {
+            toast({
+                title: "Error",
+                description: "Password must be at least 6 characters",
+                variant: "destructive"
+            });
+            return;
+        }
+        updatePasswordMutation.mutate(passwordData.password);
     };
 
     const handleSave = () => {
@@ -198,6 +250,59 @@ export default function Settings() {
                                     </div>
                                     <Switch />
                                 </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="security">
+                        <Card className="glass max-w-2xl">
+                            <CardHeader>
+                                <CardTitle>Security Settings</CardTitle>
+                                <CardDescription>Manage your password and security preferences.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="password">New Password</Label>
+                                        <Input
+                                            id="password"
+                                            type="password"
+                                            value={passwordData.password}
+                                            onChange={handlePasswordChange}
+                                            placeholder="Enter new password"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                                        <Input
+                                            id="confirmPassword"
+                                            type="password"
+                                            value={passwordData.confirmPassword}
+                                            onChange={handlePasswordChange}
+                                            placeholder="Confirm new password"
+                                        />
+                                    </div>
+                                </div>
+                                <Button
+                                    className="gradient-primary"
+                                    onClick={handlePasswordSave}
+                                    disabled={updatePasswordMutation.isPending}
+                                >
+                                    {updatePasswordMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Update Password
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="general">
+                        <Card className="glass max-w-2xl">
+                            <CardHeader>
+                                <CardTitle>General Settings</CardTitle>
+                                <CardDescription>Manage general application settings.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground text-sm">General settings configuration coming soon.</p>
                             </CardContent>
                         </Card>
                     </TabsContent>
