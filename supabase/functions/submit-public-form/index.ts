@@ -33,14 +33,14 @@ serve(async (req) => {
 
   try {
     // Get client IP for rate limiting
-    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("cf-connecting-ip") || 
-                     "unknown";
+    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      "unknown";
 
     // Check rate limit
     const now = Date.now();
     const rateData = rateLimitMap.get(clientIP);
-    
+
     if (rateData) {
       if (now < rateData.resetTime) {
         if (rateData.count >= RATE_LIMIT) {
@@ -101,7 +101,7 @@ serve(async (req) => {
     }
 
     // Check form is published
-    if (form.status !== "published") {
+    if (form.status !== "published" && form.status !== "active") {
       return new Response(
         JSON.stringify({ error: "This form is not accepting submissions" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
