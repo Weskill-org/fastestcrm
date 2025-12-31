@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useForm } from '@/hooks/useForms';
+import { usePublicForm } from '@/hooks/useForms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export default function PublicForm() {
     const { id } = useParams();
     const [searchParams] = useSearchParams();
-    const { data: form, isLoading } = useForm(id);
+    const { data: form, isLoading } = usePublicForm(id);
     const [formData, setFormData] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);

@@ -39,6 +39,39 @@ export function useForm(id: string | undefined) {
   });
 }
 
+export function usePublicForm(id: string | undefined) {
+  return useQuery({
+    queryKey: ['public-form', id],
+    queryFn: async () => {
+      if (!id) return null;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('get-public-form', {
+          body: { formId: id }
+        });
+
+        if (error) throw error;
+
+        return data as Form;
+      } catch (e) {
+        console.warn('Edge function failed, falling back to direct DB query:', e);
+
+        const { data: dbData, error: dbError } = await supabase
+          .from('forms')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (dbError) throw dbError;
+
+        return dbData;
+      }
+    },
+    enabled: !!id,
+    retry: 1
+  });
+}
+
 export function useCreateForm() {
   const queryClient = useQueryClient();
 
