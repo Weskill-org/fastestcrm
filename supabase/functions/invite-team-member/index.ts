@@ -62,6 +62,68 @@ serve(async (req) => {
       );
     }
 
+    // Ensure requester has a profile row (required because profiles.manager_id FK references profiles.id)
+    const { data: requesterProfile, error: requesterProfileError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, company_id, full_name, email, manager_id")
+      .eq("id", requester.id)
+      .maybeSingle();
+
+    if (requesterProfileError) {
+      console.error("Requester profile fetch error:", requesterProfileError);
+      return new Response(
+        JSON.stringify({ error: "Could not verify your profile" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let requesterCompanyId: string | null = requesterProfile?.company_id ?? null;
+
+    // Fallback for Company Admins where profile might not exist yet
+    if (!requesterCompanyId) {
+      const { data: companyRow, error: companyError } = await supabaseAdmin
+        .from("companies")
+        .select("id")
+        .eq("admin_id", requester.id)
+        .maybeSingle();
+
+      if (companyError) {
+        console.error("Company lookup error:", companyError);
+      }
+
+      requesterCompanyId = companyRow?.id ?? null;
+    }
+
+    if (!requesterCompanyId) {
+      return new Response(
+        JSON.stringify({ error: "Your account is not linked to a company." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create the requester's profile row if missing (prevents FK failure when inviting someone)
+    if (!requesterProfile) {
+      const requesterFullName = (requester.user_metadata as Record<string, unknown> | null)?.["full_name"];
+
+      const { error: ensureRequesterProfileError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          id: requester.id,
+          email: requester.email,
+          full_name: typeof requesterFullName === "string" ? requesterFullName : null,
+          manager_id: null,
+          company_id: requesterCompanyId,
+        });
+
+      if (ensureRequesterProfileError) {
+        console.error("Ensure requester profile error:", ensureRequesterProfileError);
+        return new Response(
+          JSON.stringify({ error: "Could not create your profile record" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Parse and validate request body
     const body: InviteRequest = await req.json();
     const { email, fullName, password, role } = body;
@@ -161,17 +223,56 @@ serve(async (req) => {
       );
     }
 
-    // Update the role if not the default 'bde'
-    if (role !== "bde") {
-      const { error: updateError } = await supabaseAdmin
-        .from("user_roles")
-        .update({ role })
-        .eq("user_id", newUserId);
+    // Ensure the new user is added to profiles with correct manager_id + company_id
+    const { error: upsertProfileError } = await supabaseAdmin
+      .from("profiles")
+      .upsert(
+        {
+          id: newUserId,
+          email,
+          full_name: fullName,
+          manager_id: requester.id,
+          company_id: requesterCompanyId,
+        },
+        { onConflict: "id" }
+      );
 
-      if (updateError) {
-        console.error("Role update error:", updateError);
-        // User was created but role wasn't set - log but don't fail
-      }
+    if (upsertProfileError) {
+      console.error("Profile upsert error:", upsertProfileError);
+      // Rollback user creation to avoid orphaned auth users
+      await supabaseAdmin.auth.admin.deleteUser(newUserId);
+      return new Response(
+        JSON.stringify({ error: "Failed to create profile for new user" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Set role (keep a single role row per user)
+    const { error: deleteRolesError } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", newUserId);
+
+    if (deleteRolesError) {
+      console.error("Role cleanup error:", deleteRolesError);
+      await supabaseAdmin.auth.admin.deleteUser(newUserId);
+      return new Response(
+        JSON.stringify({ error: "Failed to set role for new user" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { error: insertRoleError } = await supabaseAdmin
+      .from("user_roles")
+      .insert({ user_id: newUserId, role });
+
+    if (insertRoleError) {
+      console.error("Role insert error:", insertRoleError);
+      await supabaseAdmin.auth.admin.deleteUser(newUserId);
+      return new Response(
+        JSON.stringify({ error: "Failed to set role for new user" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     console.log(`Successfully invited ${email} as ${role} by ${requester.email}`);
