@@ -104,7 +104,7 @@ serve(async (req) => {
       body: JSON.stringify({
         amount: amount,
         currency: 'INR',
-        receipt: `license_${company.id}_${Date.now()}`,
+        receipt: `lic_${Date.now()}`,
         notes: {
           company_id: company.id,
           quantity: quantity.toString(),
