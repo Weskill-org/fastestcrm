@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Search, Filter, MoreHorizontal, Phone, Mail, X, ChevronLeft, ChevronRight, Users
+  Search, Filter, MoreHorizontal, Phone, Mail, X, ChevronLeft, ChevronRight, Users, Trash2
 } from 'lucide-react';
 
 import { useLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
+import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -60,7 +62,7 @@ export default function AllLeads() {
     }
   });
 
-  const { data: leadsData, isLoading } = useLeads({
+  const { data: leadsData, isLoading, refetch } = useLeads({
     search: debouncedSearchQuery,
     statusFilter: selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : undefined,
     page,
@@ -68,8 +70,32 @@ export default function AllLeads() {
   });
   const leads = leadsData?.leads || [];
   const totalCount = leadsData?.count || 0;
+
   const totalPages = Math.ceil(totalCount / pageSize);
   const { user } = useAuth();
+  const { data: userRole } = useUserRole();
+
+  const handleDeleteLeads = async () => {
+    if (!confirm('Are you sure you want to delete the selected leads? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .in('id', Array.from(selectedLeads));
+
+      if (error) throw error;
+
+      toast.success(`Successfully deleted ${selectedLeads.size} leads`);
+      setSelectedLeads(new Set());
+      await refetch();
+    } catch (error) {
+      console.error('Error deleting leads:', error);
+      toast.error('Failed to delete leads');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -88,10 +114,21 @@ export default function AllLeads() {
           <h1 className="text-3xl font-bold">All Leads</h1>
           <div className="flex gap-2">
             {selectedLeads.size > 0 && (
-              <Button onClick={() => setAssignDialogOpen(true)} variant="secondary">
-                <Users className="mr-2 h-4 w-4" />
-                Assign {selectedLeads.size} to...
-              </Button>
+              <>
+                {(userRole === 'company' || userRole === 'company_subadmin') && (
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteLeads}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete {selectedLeads.size}
+                  </Button>
+                )}
+                <Button onClick={() => setAssignDialogOpen(true)} variant="secondary">
+                  <Users className="mr-2 h-4 w-4" />
+                  Assign {selectedLeads.size} to...
+                </Button>
+              </>
             )}
             <UploadLeadsDialog />
             <AddLeadDialog />
