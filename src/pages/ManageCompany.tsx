@@ -11,7 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Building2, Users, CreditCard, Globe, Palette,
-  Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle, Upload
+  Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle, Upload,
+  RefreshCw, Trash2, Link2
 } from 'lucide-react';
 
 interface Company {
@@ -33,6 +34,12 @@ interface LicensePurchase {
   amount_paid: number;
   status: string;
   created_at: string;
+}
+
+interface DnsRecord {
+  type: string;
+  name: string;
+  data: string;
 }
 
 declare global {
@@ -60,6 +67,12 @@ export default function ManageCompany() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingSlug, setSavingSlug] = useState(false);
   const [slugError, setSlugError] = useState('');
+  
+  // Custom domain states
+  const [savingDomain, setSavingDomain] = useState(false);
+  const [verifyingDomain, setVerifyingDomain] = useState(false);
+  const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
+  const [domainError, setDomainError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -297,7 +310,122 @@ export default function ManageCompany() {
     }
   };
 
-  if (loading) {
+  const handleVerifyDomain = async () => {
+    if (!company?.custom_domain) return;
+
+    setVerifyingDomain(true);
+    setDomainError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-domain', {
+        body: {
+          action: 'check',
+          domain: company.custom_domain,
+          company_id: company.id,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setDnsRecords(data.records || []);
+
+      if (data.valid) {
+        toast({
+          title: 'Domain Verified!',
+          description: 'Your custom domain is properly configured and active.',
+        });
+        fetchCompanyData();
+      } else {
+        toast({
+          title: 'DNS Not Ready',
+          description: 'Please ensure your CNAME record points to cname.vercel-dns.com',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      setDomainError(err.message || 'Failed to verify domain');
+      toast({
+        title: 'Verification Failed',
+        description: err.message || 'Failed to verify domain',
+        variant: 'destructive',
+      });
+    } finally {
+      setVerifyingDomain(false);
+    }
+  };
+
+  const handleSaveDomain = async () => {
+    if (!company) return;
+
+    setSavingDomain(true);
+    setDomainError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-domain', {
+        body: {
+          action: 'save',
+          domain: customDomain || null,
+          company_id: company.id,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setDnsRecords(data.records || []);
+
+      toast({
+        title: data.dnsValid ? 'Domain Activated!' : 'Domain Saved',
+        description: data.message,
+      });
+
+      fetchCompanyData();
+    } catch (err: any) {
+      setDomainError(err.message || 'Failed to save domain');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to save domain',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDomain(false);
+    }
+  };
+
+  const handleRemoveDomain = async () => {
+    if (!company) return;
+
+    setSavingDomain(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-domain', {
+        body: {
+          action: 'remove',
+          company_id: company.id,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setCustomDomain('');
+      setDnsRecords([]);
+      toast({
+        title: 'Domain Removed',
+        description: 'Your custom domain has been disconnected.',
+      });
+
+      fetchCompanyData();
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to remove domain',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDomain(false);
+    }
+  };
+
+
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-16">
@@ -522,47 +650,153 @@ export default function ManageCompany() {
               <Separator />
 
               {/* Custom Domain */}
-              <div className="space-y-3">
-                <Label htmlFor="customDomain">Custom Domain (Optional)</Label>
-                <Input
-                  id="customDomain"
-                  value={customDomain}
-                  onChange={(e) => setCustomDomain(e.target.value)}
-                  placeholder="crm.yourcompany.com"
-                />
-                {customDomain && (
-                  <div className="flex items-center gap-2 mt-2">
-                    {company.domain_status === 'active' ? (
-                      <Badge className="bg-success/20 text-success">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Pending Verification
-                      </Badge>
-                    )}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="customDomain">Custom Domain</Label>
+                  {company.custom_domain && (
+                    <Badge 
+                      variant={company.domain_status === 'active' ? 'default' : 'outline'}
+                      className={company.domain_status === 'active' ? 'bg-success/20 text-success border-success/30' : ''}
+                    >
+                      {company.domain_status === 'active' ? (
+                        <>
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Verified
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          Pending
+                        </>
+                      )}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="customDomain"
+                    value={customDomain}
+                    onChange={(e) => {
+                      setCustomDomain(e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ''));
+                      setDomainError('');
+                    }}
+                    placeholder="crm.yourcompany.com"
+                    className="flex-1"
+                  />
+                  {company.custom_domain && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleVerifyDomain}
+                        disabled={verifyingDomain}
+                        title="Verify DNS"
+                      >
+                        {verifyingDomain ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => window.open(`https://${company.custom_domain}`, '_blank')}
+                        title="Open domain"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {domainError && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {domainError}
+                  </p>
+                )}
+
+                {/* DNS Records found */}
+                {dnsRecords.length > 0 && (
+                  <div className="p-3 bg-muted/50 rounded-md text-xs space-y-2">
+                    <p className="font-medium">DNS Records Found:</p>
+                    <div className="space-y-1">
+                      {dnsRecords.map((record, i) => (
+                        <div key={i} className="flex items-center gap-2 text-muted-foreground font-mono">
+                          <Badge variant="outline" className="text-[10px]">{record.type}</Badge>
+                          <span className="truncate">{record.data}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-                <div className="p-3 bg-muted/50 rounded-md text-xs space-y-2">
-                  <p className="font-medium">To connect your custom domain:</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Add a CNAME record pointing to: <code className="px-1 py-0.5 bg-background rounded">fastestcrm.com</code></li>
-                    <li>Save the domain settings below</li>
-                    <li>Wait for DNS propagation (up to 48 hours)</li>
-                  </ol>
+
+                {/* DNS Setup Instructions */}
+                <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-3">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Link2 className="h-4 w-4" />
+                    DNS Configuration
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    To connect your custom domain, add these DNS records at your domain registrar:
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-background rounded border text-xs font-mono">
+                      <div>
+                        <span className="text-muted-foreground">Type:</span> CNAME
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Name:</span> @
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Target:</span>
+                        <code className="px-1 py-0.5 bg-muted rounded">cname.vercel-dns.com</code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => copyToClipboard('cname.vercel-dns.com')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    DNS changes can take up to 48 hours to propagate. Click the refresh button to check status.
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  {customDomain !== (company.custom_domain || '') && (
+                    <Button 
+                      onClick={handleSaveDomain} 
+                      disabled={savingDomain}
+                      className="flex-1"
+                    >
+                      {savingDomain ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {customDomain ? 'Save Domain' : 'Remove Domain'}
+                    </Button>
+                  )}
+                  {company.custom_domain && customDomain === company.custom_domain && (
+                    <Button 
+                      variant="destructive"
+                      onClick={handleRemoveDomain}
+                      disabled={savingDomain}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove
+                    </Button>
+                  )}
                 </div>
               </div>
-
-              <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
-                {saving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Save Domain Settings
-              </Button>
             </CardContent>
           </Card>
 
