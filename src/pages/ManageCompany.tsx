@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Building2, Users, CreditCard, Globe, Palette,
-  Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle
+  Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle, Upload
 } from 'lucide-react';
 
 interface Company {
@@ -55,6 +55,8 @@ export default function ManageCompany() {
   const [customDomain, setCustomDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#8B5CF6');
   const [seatsToBuy, setSeatsToBuy] = useState(1);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -89,6 +91,7 @@ export default function ManageCompany() {
       setCompanyName(companyData.name);
       setCustomDomain(companyData.custom_domain || '');
       setPrimaryColor(companyData.primary_color || '#8B5CF6');
+      setLogoUrl(companyData.logo_url);
 
       // Get license purchase history
       const { data: licenseData } = await supabase
@@ -120,6 +123,7 @@ export default function ManageCompany() {
           name: companyName,
           custom_domain: customDomain || null,
           primary_color: primaryColor,
+          logo_url: logoUrl,
         })
         .eq('id', company.id);
 
@@ -248,6 +252,79 @@ export default function ManageCompany() {
               <CardDescription>Customize your company appearance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Company Logo</Label>
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-lg border border-border flex items-center justify-center overflow-hidden bg-muted/50 relative group">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Company Logo" className="h-full w-full object-cover" />
+                    ) : (
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
+                    )}
+                    <div
+                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                    >
+                      <Upload className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !company) return;
+
+                        setUploadingLogo(true);
+                        try {
+                          const fileExt = file.name.split('.').pop();
+                          const filePath = `${company.id}/${crypto.randomUUID()}.${fileExt}`;
+
+                          const { error: uploadError } = await supabase.storage
+                            .from('company_assets')
+                            .upload(filePath, file);
+
+                          if (uploadError) throw uploadError;
+
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('company_assets')
+                            .getPublicUrl(filePath);
+
+                          setLogoUrl(publicUrl);
+                          toast({
+                            title: "Logo uploaded",
+                            description: "Don't forget to save your changes.",
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "Error uploading logo",
+                            description: error.message,
+                            variant: "destructive"
+                          });
+                        } finally {
+                          setUploadingLogo(false);
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                      disabled={uploadingLogo}
+                    >
+                      {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                      Upload Logo
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Recommended: 512x512px, PNG or JPG (Max 2MB)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="companyName">Company Name</Label>
                 <Input

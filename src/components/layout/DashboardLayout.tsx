@@ -120,11 +120,19 @@ export default function DashboardLayout({
     {!isMobile && <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-            <span className="text-lg font-bold text-primary-foreground">
-              {company?.name?.[0] || 'L³'}
-            </span>
-          </div>
+          {company?.logo_url ? (
+            <img
+              src={company.logo_url}
+              alt={company.name}
+              className="w-10 h-10 rounded-lg object-cover bg-white"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+              <span className="text-lg font-bold text-primary-foreground">
+                {company?.name?.[0] || 'L³'}
+              </span>
+            </div>
+          )}
           <div>
             <h1 className="font-semibold text-sidebar-foreground">
               {company?.name || 'Fastest CRM'}
