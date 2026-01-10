@@ -235,7 +235,7 @@ export default function RegisterCompany() {
         </p>
 
         <footer className="mt-8 text-center text-sm text-muted-foreground">
-          © 2025 Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+          © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
         </footer>
 
       </div>

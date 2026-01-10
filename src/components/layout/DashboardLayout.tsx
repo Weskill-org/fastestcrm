@@ -129,7 +129,7 @@ export default function DashboardLayout({
           ) : (
             <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-lg font-bold text-primary-foreground">
-                {company?.name?.[0] || 'F'}
+                {company?.name?.[0] || 'Up'}
               </span>
             </div>
           )}
@@ -177,7 +177,7 @@ export default function DashboardLayout({
           {children}
         </div>
         <footer className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
-          © 2025 Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+          © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
         </footer>
       </div>
     </main>

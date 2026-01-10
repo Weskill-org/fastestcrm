@@ -308,11 +308,19 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
+          By continuing, you agree to our{' '}
+          <Link to="/terms" className="underline hover:text-primary">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy" className="underline hover:text-primary">
+            Privacy Policy
+          </Link>
+          .
         </p>
 
         <footer className="mt-8 text-center text-sm text-muted-foreground">
-          © 2025 Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+          © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
         </footer>
 
       </div>

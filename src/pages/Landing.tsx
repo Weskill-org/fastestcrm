@@ -84,8 +84,10 @@ export default function Landing() {
           </h1>
 
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            Built for Indian sales teams, training companies, and enrollment teams.
+            Built for Fastest sales teams, training companies, and enrollment teams.
             Manage your entire pipeline with AI-powered insights.
+            <br /><br />
+            <span className="font-semibold text-primary">Register now and get Free 1 seat. Startup Plan Starts as low as Rs.10/day/employee. If you can afford a tea, you can afford a CRM!</span>
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
@@ -170,7 +172,7 @@ export default function Landing() {
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
               Join thousands of sales teams already using Fastest CRM to close more deals.
             </p>
-            <Link to="/auth?mode=signup">
+            <Link to="/register-company">
               <Button size="lg" className="gradient-primary px-10 text-lg">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -188,7 +190,7 @@ export default function Landing() {
             <span className="font-semibold">Fastest CRM</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2025 Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+            © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
           </p>
         </div>
       </footer>
