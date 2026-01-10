@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.get-public-form]
 verify_jwt = false
+
+[functions.delete-team-member]
+verify_jwt = true
+
+[functions.verify-domain]
+verify_jwt = false

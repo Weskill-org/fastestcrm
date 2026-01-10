@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { SubdomainProvider } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
+import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import RegisterCompany from "./pages/RegisterCompany";
@@ -96,15 +97,17 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <SubdomainProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <SubdomainGate mainDomainContent={<MainDomainRoutes />}>
-              <SubdomainRoutes />
-            </SubdomainGate>
-          </BrowserRouter>
-        </AuthProvider>
+        <CompanyBrandingProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <SubdomainGate mainDomainContent={<MainDomainRoutes />}>
+                <SubdomainRoutes />
+              </SubdomainGate>
+            </BrowserRouter>
+          </AuthProvider>
+        </CompanyBrandingProvider>
       </SubdomainProvider>
     </TooltipProvider>
   </QueryClientProvider>
