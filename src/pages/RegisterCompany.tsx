@@ -24,7 +24,7 @@ export default function RegisterCompany() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -49,11 +49,11 @@ export default function RegisterCompany() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
-    
+
     try {
       const { data, error } = await supabase.functions.invoke('register-company', {
         body: {
@@ -120,13 +120,13 @@ export default function RegisterCompany() {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       </div>
-      
+
       <div className="w-full max-w-md relative">
         <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
-        
+
         <Card className="glass border-border/50">
           <CardHeader className="text-center">
             <div className="mx-auto w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
@@ -137,7 +137,7 @@ export default function RegisterCompany() {
               Start managing leads with your own team workspace
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -169,7 +169,7 @@ export default function RegisterCompany() {
                   <p className="text-sm text-destructive">{errors.adminFullName}</p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="adminEmail">Admin Email</Label>
                 <Input
@@ -185,7 +185,7 @@ export default function RegisterCompany() {
                   <p className="text-sm text-destructive">{errors.adminEmail}</p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="adminPassword">Password</Label>
                 <Input
@@ -201,9 +201,9 @@ export default function RegisterCompany() {
                   <p className="text-sm text-destructive">{errors.adminPassword}</p>
                 )}
               </div>
-              
-              <Button 
-                type="submit" 
+
+              <Button
+                type="submit"
                 className="w-full gradient-primary"
                 disabled={loading}
               >
@@ -215,7 +215,7 @@ export default function RegisterCompany() {
                 First seat is free. Additional seats at ₹500/month each.
               </p>
             </form>
-            
+
             <div className="mt-6 text-center text-sm">
               <span className="text-muted-foreground">
                 Already have an account?
@@ -229,10 +229,15 @@ export default function RegisterCompany() {
             </div>
           </CardContent>
         </Card>
-        
+
         <p className="text-center text-xs text-muted-foreground mt-6">
           By registering, you agree to our Terms of Service and Privacy Policy.
         </p>
+
+        <footer className="mt-8 text-center text-sm text-muted-foreground">
+          © 2025 Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+        </footer>
+
       </div>
     </div>
   );

@@ -54,7 +54,7 @@ export default function Integrations() {
             <div className="p-8 space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold">Integrations</h1>
-                    <p className="text-muted-foreground">Connect Lead Cubed with your favorite tools.</p>
+                    <p className="text-muted-foreground">Connect Fastest CRM with your favorite tools.</p>
                 </div>
 
                 {isLoading ? (

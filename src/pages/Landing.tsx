@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { 
-  Users, Phone, CreditCard, Workflow, 
+import {
+  Users, Phone, CreditCard, Workflow,
   Brain, ArrowRight, Zap, Target, TrendingUp
 } from 'lucide-react';
 
@@ -54,7 +54,7 @@ export default function Landing() {
             <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-xl font-bold text-primary-foreground">L³</span>
             </div>
-            <span className="text-xl font-bold">Lead Cubed</span>
+            <span className="text-xl font-bold">Fastest CRM</span>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/auth">
@@ -79,17 +79,17 @@ export default function Landing() {
             </span>
             <span className="text-sm text-muted-foreground">India's First AI-Powered CRM</span>
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             AI CRM for{' '}
             <span className="gradient-text">Leads → Calls → Payments → Analytics</span>
           </h1>
-          
+
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            Built for Indian sales teams, training companies, and enrollment teams. 
+            Built for Indian sales teams, training companies, and enrollment teams.
             Manage your entire pipeline with AI-powered insights.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <Link to="/auth?mode=signup">
               <Button size="lg" className="gradient-primary glow px-8 text-lg">
@@ -114,13 +114,13 @@ export default function Landing() {
               Everything You Need to <span className="gradient-text">Scale Sales</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              From lead capture to payment collection, Lead Cubed handles your entire sales workflow.
+              From lead capture to payment collection, Fastest CRM handles your entire sales workflow.
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
-              <div 
+              <div
                 key={feature.title}
                 className="glass p-6 rounded-xl hover:glow transition-all duration-300 animate-fade-in"
                 style={{ animationDelay: `${0.1 * index}s` }}
@@ -141,12 +141,12 @@ export default function Landing() {
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold mb-12 text-center">
-              Why Teams Love <span className="gradient-text">Lead Cubed</span>
+              Why Teams Love <span className="gradient-text">Fastest CRM</span>
             </h2>
-            
+
             <div className="grid md:grid-cols-3 gap-8">
               {benefits.map((benefit, index) => (
-                <div 
+                <div
                   key={benefit.text}
                   className="flex flex-col items-center text-center p-6 animate-fade-in"
                   style={{ animationDelay: `${0.1 * index}s` }}
@@ -170,7 +170,7 @@ export default function Landing() {
               Ready to Transform Your Sales?
             </h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Join thousands of sales teams already using Lead Cubed to close more deals.
+              Join thousands of sales teams already using Fastest CRM to close more deals.
             </p>
             <Link to="/auth?mode=signup">
               <Button size="lg" className="gradient-primary px-10 text-lg">
@@ -189,10 +189,10 @@ export default function Landing() {
             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-sm font-bold text-primary-foreground">L³</span>
             </div>
-            <span className="font-semibold">Lead Cubed</span>
+            <span className="font-semibold">Fastest CRM</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2024 Lead Cubed. Built for Indian Sales Teams.
+            © 2025 Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
           </p>
         </div>
       </footer>

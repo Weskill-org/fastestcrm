@@ -28,7 +28,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -65,7 +65,7 @@ export default function Auth() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-    
+
     try {
       z.string().email('Please enter a valid email').parse(email);
     } catch (err) {
@@ -74,15 +74,15 @@ export default function Auth() {
       }
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const redirectUrl = `${window.location.origin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
-      
+
       if (error) {
         toast({
           title: 'Error',
@@ -103,11 +103,11 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
-    
+
     try {
       if (isSignUp) {
         const { error } = await signUp(email, password, fullName);
@@ -152,34 +152,34 @@ export default function Auth() {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       </div>
-      
+
       <div className="w-full max-w-md relative">
         <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
-        
+
         <Card className="glass border-border/50">
           <CardHeader className="text-center">
             <div className="mx-auto w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
               <span className="text-xl font-bold text-primary-foreground">L³</span>
             </div>
             <CardTitle className="text-2xl">
-              {isForgotPassword 
-                ? 'Reset your password' 
-                : isSignUp 
-                  ? 'Create your account' 
+              {isForgotPassword
+                ? 'Reset your password'
+                : isSignUp
+                  ? 'Create your account'
                   : 'Welcome back'}
             </CardTitle>
             <CardDescription>
               {isForgotPassword
                 ? 'Enter your email to receive a reset link'
-                : isSignUp 
-                  ? 'Start managing your leads with AI' 
+                : isSignUp
+                  ? 'Start managing your leads with AI'
                   : 'Sign in to access your CRM dashboard'}
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             {isForgotPassword ? (
               <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -198,16 +198,16 @@ export default function Auth() {
                     <p className="text-sm text-destructive">{errors.email}</p>
                   )}
                 </div>
-                
-                <Button 
-                  type="submit" 
+
+                <Button
+                  type="submit"
                   className="w-full gradient-primary"
                   disabled={loading}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Send Reset Link
                 </Button>
-                
+
                 <div className="text-center">
                   <button
                     type="button"
@@ -237,7 +237,7 @@ export default function Auth() {
                       )}
                     </div>
                   )}
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -253,7 +253,7 @@ export default function Auth() {
                       <p className="text-sm text-destructive">{errors.email}</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
@@ -280,9 +280,9 @@ export default function Auth() {
                       <p className="text-sm text-destructive">{errors.password}</p>
                     )}
                   </div>
-                  
-                  <Button 
-                    type="submit" 
+
+                  <Button
+                    type="submit"
                     className="w-full gradient-primary"
                     disabled={loading}
                   >
@@ -290,7 +290,7 @@ export default function Auth() {
                     {isSignUp ? 'Create Account' : 'Sign In'}
                   </Button>
                 </form>
-                
+
                 <div className="mt-6 text-center text-sm">
                   <span className="text-muted-foreground">
                     {isSignUp ? 'Already have an account?' : "Don't have an account?"}
@@ -306,10 +306,15 @@ export default function Auth() {
             )}
           </CardContent>
         </Card>
-        
+
         <p className="text-center text-xs text-muted-foreground mt-6">
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
+
+        <footer className="mt-8 text-center text-sm text-muted-foreground">
+          © 2025 Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+        </footer>
+
       </div>
     </div>
   );

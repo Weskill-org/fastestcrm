@@ -9,8 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  Building2, Users, CreditCard, Globe, Palette, 
+import {
+  Building2, Users, CreditCard, Globe, Palette,
   Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle
 } from 'lucide-react';
 
@@ -44,13 +44,13 @@ declare global {
 export default function ManageCompany() {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [company, setCompany] = useState<Company | null>(null);
   const [licenses, setLicenses] = useState<LicensePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  
+
   const [companyName, setCompanyName] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#8B5CF6');
@@ -111,7 +111,7 @@ export default function ManageCompany() {
 
   const handleSaveSettings = async () => {
     if (!company) return;
-    
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -144,7 +144,7 @@ export default function ManageCompany() {
 
   const handlePurchaseSeats = async () => {
     if (seatsToBuy < 1) return;
-    
+
     setPurchasing(true);
     try {
       const { data, error } = await supabase.functions.invoke('purchase-licenses', {
@@ -167,7 +167,7 @@ export default function ManageCompany() {
         key: data.key_id,
         amount: data.amount,
         currency: data.currency,
-        name: 'Lead Cubed',
+        name: 'Fastest CRM',
         description: `${data.quantity} Additional Seat${data.quantity > 1 ? 's' : ''}`,
         order_id: data.order_id,
         handler: function (response: any) {
@@ -304,8 +304,8 @@ export default function ManageCompany() {
                   <div className="flex-1 px-3 py-2 bg-muted rounded-md text-sm font-mono">
                     {company.slug}.leadcubed.in
                   </div>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
                     onClick={() => copyToClipboard(`${company.slug}.leadcubed.in`)}
                   >
@@ -373,8 +373,8 @@ export default function ManageCompany() {
                     </div>
                     <div className="text-sm text-muted-foreground">Seats Used</div>
                     <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary transition-all" 
+                      <div
+                        className="h-full bg-primary transition-all"
                         style={{ width: `${(company.used_licenses / company.total_licenses) * 100}%` }}
                       />
                     </div>
@@ -397,8 +397,8 @@ export default function ManageCompany() {
                         × ₹500 = ₹{(seatsToBuy * 500).toLocaleString()}
                       </span>
                     </div>
-                    <Button 
-                      onClick={handlePurchaseSeats} 
+                    <Button
+                      onClick={handlePurchaseSeats}
                       disabled={purchasing}
                       className="gradient-primary"
                     >
@@ -435,7 +435,7 @@ export default function ManageCompany() {
                           </div>
                           <div className="text-right">
                             <div className="font-medium">₹{license.amount_paid.toLocaleString()}</div>
-                            <Badge 
+                            <Badge
                               variant={license.status === 'completed' ? 'default' : 'outline'}
                               className={license.status === 'completed' ? 'bg-success/20 text-success' : ''}
                             >

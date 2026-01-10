@@ -71,7 +71,7 @@ export default function MobileBottomNav() {
                   <span className="text-lg font-bold text-primary-foreground">L³</span>
                 </div>
                 <div>
-                  <h1 className="font-semibold text-foreground">Lead Cubed</h1>
+                  <h1 className="font-semibold text-foreground">Fastest CRM</h1>
                   <p className="text-xs text-muted-foreground">AI-Powered CRM</p>
                 </div>
               </div>
