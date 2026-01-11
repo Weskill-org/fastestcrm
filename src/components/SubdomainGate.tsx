@@ -31,8 +31,8 @@ export function SubdomainGate({ children, mainDomainContent }: SubdomainGateProp
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Workspace Not Found</h1>
           <p className="text-muted-foreground mb-6">{error}</p>
-          <a 
-            href="https://fastestcrm.com" 
+          <a
+            href="https://fastestcrm.com"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Go to FastestCRM
@@ -47,8 +47,8 @@ export function SubdomainGate({ children, mainDomainContent }: SubdomainGateProp
     return <>{mainDomainContent}</>;
   }
 
-  // On a valid company subdomain - show full app
-  if (isSubdomain && company) {
+  // On a valid company workspace (subdomain or custom domain) - show full app
+  if (company && !isMainDomain) {
     return <>{children}</>;
   }
 
