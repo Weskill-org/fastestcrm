@@ -57,6 +57,29 @@ serve(async (req) => {
 
         console.log('Authenticated user:', user.id);
 
+        // Determine which table to query (leads or custom table)
+        let tableName = 'leads';
+
+        // Fetch user's company settings
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
+
+        if (profile?.company_id) {
+            const { data: company } = await supabase
+                .from('companies')
+                .select('custom_leads_table')
+                .eq('id', profile.company_id)
+                .single();
+
+            if (company?.custom_leads_table) {
+                tableName = company.custom_leads_table;
+                console.log(`Using custom leads table: ${tableName}`);
+            }
+        }
+
         // 2. Parse and validate input
         const body = await req.json();
         const { amount, description, customer, reference_id } = body;
@@ -112,7 +135,7 @@ serve(async (req) => {
 
         // 3. Verify the lead exists and user has access to it
         const { data: lead, error: leadError } = await supabase
-            .from('leads')
+            .from(tableName)
             .select('id, sales_owner_id')
             .eq('id', reference_id)
             .single();
@@ -165,7 +188,8 @@ serve(async (req) => {
                 reminder_enable: true,
                 notes: {
                     lead_id: reference_id,
-                    created_by: user.id
+                    created_by: user.id,
+                    table_name: tableName
                 },
                 reference_id: reference_id
             }),

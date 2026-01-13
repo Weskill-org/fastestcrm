@@ -76,9 +76,15 @@ serve(async (req) => {
       const amountPaise = payment?.amount || paymentLink.amount_paid
       amount = amountPaise / 100
       status = 'paid'
+      amount = amountPaise / 100
+      status = 'paid'
     }
 
-    console.log(`Extracted: leadId=${leadId}, amount=${amount}, status=${status}`)
+    const tableName = (payload.event === 'payment.captured'
+      ? payload.payload.payment.entity.notes?.table_name
+      : payload.payload.payment_link.entity.notes?.table_name) || 'leads';
+
+    console.log(`Extracted: leadId=${leadId}, amount=${amount}, status=${status}, tableName=${tableName}`)
 
     if (leadId && status === 'paid') {
       // Initialize Supabase client
@@ -88,7 +94,7 @@ serve(async (req) => {
 
       // Update lead status
       const { error } = await supabase
-        .from('leads')
+        .from(tableName)
         .update({
           status: 'paid',
           revenue_received: amount,

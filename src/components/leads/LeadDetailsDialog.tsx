@@ -19,9 +19,10 @@ interface LeadDetailsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     lead: Lead | null;
+    owners?: { label: string; value: string }[];
 }
 
-export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialogProps) {
+export function LeadDetailsDialog({ open, onOpenChange, lead, owners = [] }: LeadDetailsDialogProps) {
     if (!lead) return null;
 
     return (
@@ -63,7 +64,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                                 <User className="h-4 w-4" /> Owner
                             </h4>
-                            <p className="text-sm">{lead.sales_owner?.full_name || 'Unknown'}</p>
+                            <p className="text-sm">{lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'}</p>
                         </div>
                         <div className="space-y-1">
                             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">

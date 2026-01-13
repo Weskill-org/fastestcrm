@@ -193,6 +193,7 @@ export default function AllLeads() {
               loading={isLoading}
               selectedLeads={selectedLeads}
               onSelectionChange={setSelectedLeads}
+              owners={filterOptions?.owners || []}
             />
           </CardContent>
           <div className="flex items-center justify-between px-4 py-4 border-t">

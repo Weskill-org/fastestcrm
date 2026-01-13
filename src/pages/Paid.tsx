@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,17 @@ export default function Paid() {
         }
     };
 
+    const { data: owners } = useQuery({
+        queryKey: ['leadsFilterOptionsOwners'],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .not('full_name', 'is', null);
+            return data?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [];
+        }
+    });
+
 
 
     if (isLoading) {
@@ -114,7 +126,7 @@ export default function Paid() {
                                     <TableHead>Email</TableHead>
                                     <TableHead>Phone Number</TableHead>
                                     <TableHead>Owner</TableHead>
-                                    <TableHead>Program</TableHead>
+                                    <TableHead>Product</TableHead>
                                     <TableHead>Payment Link</TableHead>
                                     <TableHead>Revenue Received</TableHead>
                                     <TableHead>Revenue Projected</TableHead>
@@ -153,7 +165,7 @@ export default function Paid() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {lead.sales_owner?.full_name || 'Unknown'}
+                                                    {lead.sales_owner?.full_name || owners?.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">

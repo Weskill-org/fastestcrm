@@ -51,11 +51,30 @@ export function useLGLinks() {
 
       const rawLinks = (linksData as unknown as any[]) || [];
 
+      // Determine which table to query
+      let tableName = 'leads';
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.company_id) {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('custom_leads_table')
+          .eq('id', profile.company_id)
+          .single();
+        if (company?.custom_leads_table) {
+          tableName = company.custom_leads_table;
+        }
+      }
+
       // Fetch lead stats for each link
       const linksWithStats = await Promise.all(
         rawLinks.map(async (link) => {
           const { data: leadStats } = await supabase
-            .from('leads')
+            .from(tableName)
             .select('status, revenue_received, revenue_projected')
             .eq('lg_link_id', link.id);
 

@@ -1,18 +1,22 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-    Search, Filter, MoreHorizontal, Phone, Mail, Download
+    Search, Filter, MoreHorizontal, Phone, Mail, Download, ChevronDown
 } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
     Select,
@@ -58,6 +62,38 @@ export default function Interested() {
             toast.success('Status updated successfully');
         } catch (error) {
             toast.error('Failed to update status');
+        }
+    };
+
+    const { data: owners } = useQuery({
+        queryKey: ['leadsFilterOptionsOwners'],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .not('full_name', 'is', null);
+            return data?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [];
+        }
+    });
+
+    const handleProductChange = async (leadId: string, productName: string) => {
+        if (!productName || productName === 'none') return;
+
+        const product = products?.find(p => p.name === productName);
+        if (!product) {
+            toast.error('Product not found in catalog');
+            return;
+        }
+
+        try {
+            await updateLead.mutateAsync({
+                id: leadId,
+                product_category: product.category,
+                product_purchased: product.name
+            });
+            toast.success('Product updated successfully');
+        } catch (error) {
+            toast.error('Failed to update product');
         }
     };
 
@@ -117,7 +153,7 @@ export default function Interested() {
                                     <TableHead>Status</TableHead>
                                     <TableHead>Owner</TableHead>
                                     <TableHead>Date</TableHead>
-                                    <TableHead>Program</TableHead>
+                                    <TableHead>Product</TableHead>
                                     <TableHead>Payment Link</TableHead>
                                     <TableHead>Actions</TableHead>
                                 </TableRow>
@@ -171,18 +207,48 @@ export default function Interested() {
                                                 </Select>
                                             </TableCell>
                                             <TableCell>
-                                                {lead.sales_owner?.full_name || 'Unknown'}
+                                                {lead.sales_owner?.full_name || owners?.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'}
                                             </TableCell>
                                             <TableCell>
                                                 {format(new Date(lead.created_at), 'MMM d, yyyy')}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-sm">{(lead as any).product_category || '-'}</span>
-                                                    {lead.product_purchased && (
-                                                        <span className="text-xs text-muted-foreground">{lead.product_purchased}</span>
-                                                    )}
-                                                </div>
+
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="outline" className="w-[180px] h-8 justify-between px-3 text-sm font-normal text-muted-foreground">
+                                                            <span className="truncate text-foreground">
+                                                                {lead.product_purchased
+                                                                    ? `${(lead as any).product_category ? `${(lead as any).product_category} - ` : ''}${lead.product_purchased}`
+                                                                    : "Select Product"}
+                                                            </span>
+                                                            <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="start" className="w-[200px]">
+                                                        {Array.from(new Set((products || []).map(p => p.category))).sort().map(category => (
+                                                            <DropdownMenuSub key={category}>
+                                                                <DropdownMenuSubTrigger className="cursor-pointer">
+                                                                    {category}
+                                                                </DropdownMenuSubTrigger>
+                                                                <DropdownMenuSubContent className="w-[200px]">
+                                                                    {products
+                                                                        ?.filter(p => p.category === category)
+                                                                        .map(product => (
+                                                                            <DropdownMenuItem
+                                                                                key={product.id}
+                                                                                onClick={() => handleProductChange(lead.id, product.name)}
+                                                                                className="cursor-pointer"
+                                                                            >
+                                                                                {product.name}
+                                                                            </DropdownMenuItem>
+                                                                        ))
+                                                                    }
+                                                                </DropdownMenuSubContent>
+                                                            </DropdownMenuSub>
+                                                        ))}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </TableCell>
                                             <TableCell>
                                                 {lead.payment_link ? (

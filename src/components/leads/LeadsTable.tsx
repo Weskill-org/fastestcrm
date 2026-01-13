@@ -50,6 +50,7 @@ interface LeadsTableProps {
   loading: boolean;
   selectedLeads: Set<string>;
   onSelectionChange: (selected: Set<string>) => void;
+  owners?: { label: string; value: string }[];
 }
 
 const statusColors: Record<string, string> = {
@@ -62,7 +63,7 @@ const statusColors: Record<string, string> = {
   'rnr': 'bg-orange-500/10 text-orange-500',
 };
 
-export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }: LeadsTableProps) {
+export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, owners = [] }: LeadsTableProps) {
   const { products } = useProducts();
   const updateLead = useUpdateLead();
   const { data: userRole } = useUserRole();
@@ -298,7 +299,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
                   </Select>
                 </TableCell>
                 <TableCell>
-                  {lead.sales_owner?.full_name || 'Unknown'}
+                  {lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'}
                 </TableCell>
                 <TableCell>
                   {format(new Date(lead.created_at), 'MMM d, yyyy')}
@@ -422,6 +423,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
         open={!!viewingLead}
         onOpenChange={(open) => !open && setViewingLead(null)}
         lead={viewingLead}
+        owners={owners}
       />
     </>
   );

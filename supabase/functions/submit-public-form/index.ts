@@ -100,6 +100,27 @@ serve(async (req) => {
       );
     }
 
+    // Determine target table based on creator's company settings
+    let targetTable = 'leads';
+    const { data: creatorProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('company_id')
+      .eq('id', form.created_by_id)
+      .single();
+
+    if (creatorProfile?.company_id) {
+      const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('custom_leads_table')
+        .eq('id', creatorProfile.company_id)
+        .single();
+
+      if (company?.custom_leads_table) {
+        targetTable = company.custom_leads_table;
+        console.log(`Using custom table ${targetTable} for form submission`);
+      }
+    }
+
     // Check form is published
     if (form.status !== "published" && form.status !== "active") {
       return new Response(
@@ -183,7 +204,7 @@ serve(async (req) => {
 
     // Insert the lead
     const { data: lead, error: insertError } = await supabaseAdmin
-      .from("leads")
+      .from(targetTable)
       .insert(leadData)
       .select("id")
       .single();
