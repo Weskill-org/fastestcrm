@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useLeads, useUpdateLead } from '@/hooks/useLeads';
-import { usePrograms } from '@/hooks/usePrograms';
+import { useProducts } from '@/hooks/useProducts';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
 import { Constants } from '@/integrations/supabase/types';
@@ -44,7 +44,7 @@ export default function Paid() {
     // Filter for 'paid' status
     const { data: leadsData, isLoading } = useLeads({ search: searchQuery, statusFilter: 'paid' });
     const leads = leadsData?.leads || [];
-    const { data: programs } = usePrograms();
+    const { products } = useProducts();
     const updateLead = useUpdateLead();
     const { user } = useAuth();
     const { data: userRole } = useUserRole();
@@ -61,17 +61,7 @@ export default function Paid() {
         }
     };
 
-    const handleProgramChange = async (leadId: string, newProgram: string) => {
-        try {
-            await updateLead.mutateAsync({
-                id: leadId,
-                product_purchased: newProgram
-            });
-            toast.success('Program updated successfully');
-        } catch (error) {
-            toast.error('Failed to update program');
-        }
-    };
+
 
     if (isLoading) {
         return (
@@ -166,21 +156,12 @@ export default function Paid() {
                                                     {lead.sales_owner?.full_name || 'Unknown'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Select
-                                                        defaultValue={lead.product_purchased || undefined}
-                                                        onValueChange={(value) => handleProgramChange(lead.id, value)}
-                                                    >
-                                                        <SelectTrigger className="w-[140px] h-8">
-                                                            <SelectValue placeholder="Select Program" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {programs?.map((program) => (
-                                                                <SelectItem key={program.id} value={program.name}>
-                                                                    {program.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-sm">{(lead as any).product_category || '-'}</span>
+                                                        {lead.product_purchased && (
+                                                            <span className="text-xs text-muted-foreground">{lead.product_purchased}</span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     {lead.payment_link ? (

@@ -73,9 +73,12 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                         </div>
                         <div className="space-y-1">
                             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <CreditCard className="h-4 w-4" /> Program
+                                <CreditCard className="h-4 w-4" /> Product Details
                             </h4>
-                            <p className="text-sm">{lead.product_purchased || 'None'}</p>
+                            <div className="text-sm">
+                                <p><span className="text-muted-foreground">Category:</span> {(lead as any).product_category || 'N/A'}</p>
+                                <p><span className="text-muted-foreground">Product:</span> {lead.product_purchased || 'N/A'}</p>
+                            </div>
                         </div>
                         <div className="space-y-1">
                             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">

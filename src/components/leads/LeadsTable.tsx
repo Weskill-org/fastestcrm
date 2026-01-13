@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Phone, Mail, MoreHorizontal } from 'lucide-react';
+import { Phone, Mail, MoreHorizontal, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUpdateLead } from '@/hooks/useLeads';
-import { usePrograms } from '@/hooks/usePrograms';
+import { useProducts } from '@/hooks/useProducts';
 import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
 import { Constants } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
@@ -63,7 +63,7 @@ const statusColors: Record<string, string> = {
 };
 
 export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }: LeadsTableProps) {
-  const { data: programs } = usePrograms();
+  const { products } = useProducts();
   const updateLead = useUpdateLead();
   const { data: userRole } = useUserRole();
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -81,28 +81,44 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
     }
   };
 
-  const handleProgramChange = async (leadId: string, newProgram: string) => {
-    try {
-      await updateLead.mutateAsync({
-        id: leadId,
-        product_purchased: newProgram
-      });
-      toast.success('Program updated successfully');
-    } catch (error) {
-      toast.error('Failed to update program');
-    }
-  };
-
-  const handleCreatePaymentLink = async (lead: Lead) => {
-    console.log('handleCreatePaymentLink called for:', lead);
-    console.log('Programs available:', programs);
-
-    if (!lead.product_purchased) {
-      toast.error('Please select a program first');
+  const handleProductChange = async (leadId: string, productName: string) => {
+    // If clearing (if we support that)
+    if (!productName || productName === 'none') {
+      // logic to clear if needed, for now assuming selection mandatory or switch
       return;
     }
 
-    const selectedProgram = programs?.find(p => p.name === lead.product_purchased);
+    const product = products?.find(p => p.name === productName);
+    if (!product) {
+      toast.error('Product not found in catalog');
+      return;
+    }
+
+    try {
+      await updateLead.mutateAsync({
+        id: leadId,
+        product_category: product.category,
+        product_purchased: product.name
+      });
+      toast.success('Product updated successfully');
+    } catch (error) {
+      toast.error('Failed to update product');
+    }
+  };
+
+
+
+  const handleCreatePaymentLink = async (lead: Lead) => {
+    console.log('handleCreatePaymentLink called for:', lead);
+    console.log('Products available:', products);
+
+    if (!lead.product_purchased) {
+      toast.error('Please select a specific product to create a payment link');
+      return;
+    }
+
+    // Match by name. Ideally we should match by ID if we stored product_id
+    const selectedProgram = products?.find(p => p.name === lead.product_purchased && (!(lead as any).product_category || p.category === (lead as any).product_category));
     console.log('Selected program:', selectedProgram);
 
     if (!selectedProgram) {
@@ -226,7 +242,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold">Owner</TableHead>
               <TableHead className="font-semibold">Date</TableHead>
-              <TableHead className="font-semibold">Program</TableHead>
+              <TableHead className="font-semibold">Product</TableHead>
               <TableHead className="font-semibold">Payment Link</TableHead>
               <TableHead className="font-semibold">Actions</TableHead>
             </TableRow>
@@ -288,21 +304,41 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange }:
                   {format(new Date(lead.created_at), 'MMM d, yyyy')}
                 </TableCell>
                 <TableCell>
-                  <Select
-                    defaultValue={lead.product_purchased || undefined}
-                    onValueChange={(value) => handleProgramChange(lead.id, value)}
-                  >
-                    <SelectTrigger className="w-[140px] h-8">
-                      <SelectValue placeholder="Select Program" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {programs?.map((program) => (
-                        <SelectItem key={program.id} value={program.name}>
-                          {program.name}
-                        </SelectItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-[180px] h-8 justify-between px-3 text-sm font-normal text-muted-foreground">
+                        <span className="truncate text-foreground">
+                          {lead.product_purchased
+                            ? `${(lead as any).product_category ? `${(lead as any).product_category} - ` : ''}${lead.product_purchased}`
+                            : "Select Product"}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-[200px]">
+                      {Array.from(new Set((products || []).map(p => p.category))).sort().map(category => (
+                        <DropdownMenuSub key={category}>
+                          <DropdownMenuSubTrigger className="cursor-pointer">
+                            {category}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="w-[200px]">
+                            {products
+                              ?.filter(p => p.category === category)
+                              .map(product => (
+                                <DropdownMenuItem
+                                  key={product.id}
+                                  onClick={() => handleProductChange(lead.id, product.name)}
+                                  className="cursor-pointer"
+                                >
+                                  {product.name}
+                                </DropdownMenuItem>
+                              ))
+                            }
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
                 <TableCell>
                   {lead.payment_link ? (

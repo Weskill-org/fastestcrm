@@ -28,6 +28,7 @@ import FormBuilder from "./pages/FormBuilder";
 import PublicForm from "./pages/PublicForm";
 import ResetPassword from "./pages/ResetPassword";
 import ManageCompany from "./pages/ManageCompany";
+import ManageProducts from "./pages/ManageProducts";
 import PlatformAdmin from "./pages/PlatformAdmin";
 import NotFound from "./pages/NotFound";
 import TermsOfService from "./pages/TermsOfService";
@@ -59,7 +60,9 @@ const MainDomainRoutes = () => (
     <Route path="/dashboard/forms" element={<Forms />} />
     <Route path="/dashboard/forms/new" element={<FormBuilder />} />
     <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+    <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
     <Route path="/dashboard/company" element={<ManageCompany />} />
+    <Route path="/dashboard/products" element={<ManageProducts />} />
     <Route path="/platform" element={<PlatformAdmin />} />
     <Route path="/form/:id" element={<PublicForm />} />
     <Route path="*" element={<NotFound />} />
@@ -90,7 +93,9 @@ const SubdomainRoutes = () => (
       <Route path="/dashboard/forms" element={<Forms />} />
       <Route path="/dashboard/forms/new" element={<FormBuilder />} />
       <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+      <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
       <Route path="/dashboard/company" element={<ManageCompany />} />
+      <Route path="/dashboard/products" element={<ManageProducts />} />
       <Route path="/form/:id" element={<PublicForm />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

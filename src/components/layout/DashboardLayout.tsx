@@ -6,7 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
 const navItems = [{
   icon: LayoutDashboard,
@@ -57,6 +57,10 @@ const navItems = [{
   label: 'Integrations',
   path: '/dashboard/integrations'
 }, {
+  icon: Package,
+  label: 'Products',
+  path: '/dashboard/products'
+}, {
   icon: Building2,
   label: 'Manage Company',
   path: '/dashboard/company'
@@ -94,6 +98,9 @@ export default function DashboardLayout({
   const filteredNavItems = navItems.filter(item => {
     if (item.label === 'Integrations') {
       return role === 'company' || role === 'company_subadmin';
+    }
+    if (item.label === 'Products') {
+      return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
     }
     if (item.label === 'Manage Company') {
       return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;

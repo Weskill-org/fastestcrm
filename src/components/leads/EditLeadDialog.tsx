@@ -25,8 +25,11 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    SelectGroup,
+    SelectLabel,
 } from '@/components/ui/select';
 import { useUpdateLead } from '@/hooks/useLeads';
+import { useProducts } from '@/hooks/useProducts';
 import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
@@ -38,6 +41,8 @@ const formSchema = z.object({
     college: z.string().optional(),
     status: z.enum(Constants.public.Enums.lead_status as unknown as [string, ...string[]]),
     lead_source: z.string().optional(),
+    product_category: z.string().optional(),
+    product_purchased: z.string().optional(),
 });
 
 interface EditLeadDialogProps {
@@ -48,6 +53,13 @@ interface EditLeadDialogProps {
 
 export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps) {
     const updateLead = useUpdateLead();
+    const { products } = useProducts();
+
+    // Get unique categories
+    const categories = Array.from(new Set(products?.map(p => p.category) || [])).sort();
+
+    // Filter products based on selected category matches UI requirements
+    const selectedCategory = lead?.product_category; // Initial value helper if needed, but form controls it
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -58,8 +70,13 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
             college: '',
             status: 'new',
             lead_source: 'Others',
+            product_category: '',
+            product_purchased: '',
         },
     });
+
+    const watchedCategory = form.watch('product_category');
+    const filteredProducts = products?.filter(p => p.category === watchedCategory) || [];
 
     useEffect(() => {
         if (lead) {
@@ -70,6 +87,8 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 college: lead.college || '',
                 status: lead.status,
                 lead_source: lead.lead_source || 'Others',
+                product_category: (lead as any).product_category || '', // Cast because type might not be updated yet
+                product_purchased: lead.product_purchased || '',
             });
         }
     }, [lead, form]);
@@ -86,6 +105,8 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 college: values.college || null,
                 status: values.status as any,
                 lead_source: values.lead_source || null,
+                product_category: values.product_category || null,
+                product_purchased: values.product_purchased || null, // This stores the Product Name
             });
             toast.success('Lead updated successfully');
             onOpenChange(false);
@@ -195,6 +216,63 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                                 </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="product_category"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Product Category</FormLabel>
+                                    <Select
+                                        onValueChange={(val) => {
+                                            field.onChange(val);
+                                            form.setValue('product_purchased', ''); // Reset product when category changes
+                                        }}
+                                        value={field.value}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select Category" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {categories.map((cat) => (
+                                                <SelectItem key={cat} value={cat}>
+                                                    {cat}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        {watchedCategory && (
+                            <FormField
+                                control={form.control}
+                                name="product_purchased"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Product (Optional)</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Product" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none_selected_placeholder" className="hidden">Select Product</SelectItem>
+                                                {filteredProducts.map((prod) => (
+                                                    <SelectItem key={prod.id} value={prod.name}>
+                                                        {prod.name} (₹{prod.price})
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <Button type="submit" className="w-full" disabled={updateLead.isPending}>
                             {updateLead.isPending ? 'Updating...' : 'Update Lead'}
                         </Button>
