@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Building2, Users, CreditCard, Globe, Palette,
   Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle, Upload,
-  RefreshCw, Trash2, Link2
+  RefreshCw, Trash2, Link2, Wallet, Plus, Calendar, Gift, Tag
 } from 'lucide-react';
 
 interface Company {
@@ -26,21 +28,25 @@ interface Company {
   total_licenses: number;
   used_licenses: number;
   is_active: boolean;
+  subscription_valid_until: string | null;
+  subscription_status: string | null;
 }
 
-interface LicensePurchase {
+interface WalletData {
+  balance: number;
+  currency: string;
+}
+
+interface WalletTransaction {
   id: string;
-  quantity: number;
-  amount_paid: number;
+  amount: number;
+  type: string;
+  description: string;
   status: string;
   created_at: string;
 }
 
-interface DnsRecord {
-  type: string;
-  name: string;
-  data: string;
-}
+const PRICE_PER_SEAT = 500;
 
 declare global {
   interface Window {
@@ -53,27 +59,44 @@ export default function ManageCompany() {
   const { toast } = useToast();
 
   const [company, setCompany] = useState<Company | null>(null);
-  const [licenses, setLicenses] = useState<LicensePurchase[]>([]);
+  const [wallet, setWallet] = useState<WalletData>({ balance: 0, currency: 'INR' });
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
 
+  // Branding
   const [companyName, setCompanyName] = useState('');
   const [companySlug, setCompanySlug] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#8B5CF6');
-  const [seatsToBuy, setSeatsToBuy] = useState(1);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingSlug, setSavingSlug] = useState(false);
   const [slugError, setSlugError] = useState('');
 
-  // Custom domain states
+  // Domain
   const [savingDomain, setSavingDomain] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState(false);
-  const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
+  const [dnsRecords, setDnsRecords] = useState<any[]>([]);
   const [domainError, setDomainError] = useState('');
   const [vercelTxtRecord, setVercelTxtRecord] = useState<{ type: string; domain: string; value: string } | null>(null);
+
+  // Wallet & Licenses
+  const [addCreditOpen, setAddCreditOpen] = useState(false);
+  const [rechargeAmount, setRechargeAmount] = useState<string>('1000');
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountApplied, setDiscountApplied] = useState<{ code: string; amount: number } | null>(null);
+  const [processingRecharge, setProcessingRecharge] = useState(false);
+
+  const [giftCardCode, setGiftCardCode] = useState('');
+  const [redeemingGift, setRedeemingGift] = useState(false);
+
+  const [buySeatsOpen, setBuySeatsOpen] = useState(false);
+  const [extendSubOpen, setExtendSubOpen] = useState(false);
+  const [seatsToBuy, setSeatsToBuy] = useState(1);
+  const [extensionMonths, setExtensionMonths] = useState<string>('1');
+  const [processingSub, setProcessingSub] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -83,6 +106,7 @@ export default function ManageCompany() {
 
   const fetchCompanyData = async () => {
     try {
+      setLoading(true);
       // Get user's company
       const { data: profile } = await supabase
         .from('profiles')
@@ -111,16 +135,26 @@ export default function ManageCompany() {
       setPrimaryColor(companyData.primary_color || '#8B5CF6');
       setLogoUrl(companyData.logo_url);
 
-      // Get license purchase history
-      const { data: licenseData } = await supabase
-        .from('company_licenses')
-        .select('*')
+      // Get Wallet
+      const { data: walletData } = await supabase
+        .from('wallets')
+        .select('balance, currency')
         .eq('company_id', profile.company_id)
-        .order('created_at', { ascending: false });
+        .maybeSingle();
 
-      setLicenses(licenseData || []);
+      setWallet(walletData ? { balance: Number(walletData.balance), currency: walletData.currency } : { balance: 0, currency: 'INR' });
 
-      // Load TXT verification record if custom domain exists
+      // Get Transactions
+      const { data: txData } = await supabase
+        .from('wallet_transactions')
+        .select('*')
+        .eq('wallet_id', profile.company_id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setTransactions(txData || []);
+
+      // Load TXT verification (existing logic)
       if (companyData.custom_domain) {
         const { data: verificationData } = await (supabase
           .from('domain_verification' as any)
@@ -137,12 +171,14 @@ export default function ManageCompany() {
           });
         }
       }
+
     } catch (err: any) {
       toast({
         title: 'Error',
         description: 'Failed to load company data',
         variant: 'destructive',
       });
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -150,132 +186,36 @@ export default function ManageCompany() {
 
   const handleSaveSettings = async () => {
     if (!company) return;
-
     setSaving(true);
     try {
       const { error } = await supabase
         .from('companies')
         .update({
           name: companyName,
-          custom_domain: customDomain || null,
           primary_color: primaryColor,
           logo_url: logoUrl,
         })
         .eq('id', company.id);
 
       if (error) throw error;
-
-      toast({
-        title: 'Settings saved',
-        description: 'Your company settings have been updated.',
-      });
-
+      toast({ title: 'Settings saved', description: 'Company settings updated.' });
       fetchCompanyData();
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to save settings',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to save settings', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handlePurchaseSeats = async () => {
-    if (seatsToBuy < 1) return;
-
-    setPurchasing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('purchase-licenses', {
-        body: { quantity: seatsToBuy }
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      // Load Razorpay script if not loaded
-      if (!window.Razorpay) {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.async = true;
-        document.body.appendChild(script);
-        await new Promise(resolve => script.onload = resolve);
-      }
-
-      const options = {
-        key: data.key_id,
-        amount: data.amount,
-        currency: data.currency,
-        name: 'Fastest CRM',
-        description: `${data.quantity} Additional Seat${data.quantity > 1 ? 's' : ''}`,
-        order_id: data.order_id,
-        handler: function (response: any) {
-          toast({
-            title: 'Payment successful!',
-            description: `${data.quantity} seat(s) added to your account.`,
-          });
-          // Refresh data after payment
-          setTimeout(() => fetchCompanyData(), 2000);
-        },
-        prefill: {
-          email: user?.email,
-        },
-        theme: {
-          color: primaryColor,
-        },
-      };
-
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
-    } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to initiate purchase',
-        variant: 'destructive',
-      });
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: 'Copied!',
-      description: 'URL copied to clipboard',
-    });
-  };
-
   const validateSlug = (slug: string): boolean => {
-    // Only lowercase letters, numbers, and hyphens allowed
     const slugRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
-    if (!slug) {
-      setSlugError('Slug is required');
-      return false;
-    }
-    if (slug.length < 3) {
-      setSlugError('Slug must be at least 3 characters');
-      return false;
-    }
-    if (slug.length > 32) {
-      setSlugError('Slug must be 32 characters or less');
-      return false;
-    }
-    if (!slugRegex.test(slug)) {
-      setSlugError('Only lowercase letters, numbers, and hyphens allowed');
-      return false;
-    }
-    if (slug.includes('--')) {
-      setSlugError('No consecutive hyphens allowed');
-      return false;
-    }
-    // Reserved slugs
+    if (!slug) { setSlugError('Slug is required'); return false; }
+    if (slug.length < 3) { setSlugError('Slug must be at least 3 characters'); return false; }
+    if (slug.length > 32) { setSlugError('Slug must be 32 characters or less'); return false; }
+    if (!slugRegex.test(slug)) { setSlugError('Only lowercase letters, numbers, and hyphens allowed'); return false; }
+    if (slug.includes('--')) { setSlugError('No consecutive hyphens allowed'); return false; }
     const reserved = ['www', 'api', 'app', 'admin', 'dashboard', 'mail', 'smtp', 'ftp'];
-    if (reserved.includes(slug)) {
-      setSlugError('This slug is reserved');
-      return false;
-    }
+    if (reserved.includes(slug)) { setSlugError('This slug is reserved'); return false; }
     setSlugError('');
     return true;
   };
@@ -286,163 +226,163 @@ export default function ManageCompany() {
     if (normalized) validateSlug(normalized);
   };
 
-  const handleSaveSlug = async () => {
+  const handleSaveSlugAction = async () => {
     if (!company || !validateSlug(companySlug)) return;
-
     setSavingSlug(true);
     try {
-      // Check if slug is already taken
-      const { data: existing } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('slug', companySlug)
-        .neq('id', company.id)
-        .maybeSingle();
-
-      if (existing) {
-        setSlugError('This slug is already taken');
-        setSavingSlug(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('companies')
-        .update({ slug: companySlug })
-        .eq('id', company.id);
-
+      const { data: existing } = await supabase.from('companies').select('id').eq('slug', companySlug).neq('id', company.id).maybeSingle();
+      if (existing) { setSlugError('This slug is already taken'); setSavingSlug(false); return; }
+      const { error } = await supabase.from('companies').update({ slug: companySlug }).eq('id', company.id);
       if (error) throw error;
-
-      toast({
-        title: 'Workspace URL updated',
-        description: `Your new URL is ${companySlug}.fastestcrm.com`,
-      });
-
+      toast({ title: 'Workspace URL updated', description: `New URL: ${companySlug}.fastestcrm.com` });
       fetchCompanyData();
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to update slug',
-        variant: 'destructive',
-      });
-    } finally {
-      setSavingSlug(false);
-    }
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally { setSavingSlug(false); }
   };
 
   const handleVerifyDomain = async () => {
     if (!company?.custom_domain) return;
-
     setVerifyingDomain(true);
     setDomainError('');
     try {
-      const { data, error } = await supabase.functions.invoke('verify-domain', {
-        body: {
-          action: 'check',
-          domain: company.custom_domain,
-          company_id: company.id,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
+      const { data, error } = await supabase.functions.invoke('verify-domain', { body: { action: 'check', domain: company.custom_domain, company_id: company.id } });
+      if (error) throw error; if (data?.error) throw new Error(data.error);
       setDnsRecords(data.records || []);
-
-      if (data.valid) {
-        toast({
-          title: 'Domain Verified!',
-          description: 'Your custom domain is properly configured and active.',
-        });
-        fetchCompanyData();
-      } else {
-        toast({
-          title: 'DNS Not Ready',
-          description: 'Please ensure your CNAME record points to dns.fastestcrm.com',
-          variant: 'destructive',
-        });
-      }
-    } catch (err: any) {
-      setDomainError(err.message || 'Failed to verify domain');
-      toast({
-        title: 'Verification Failed',
-        description: err.message || 'Failed to verify domain',
-        variant: 'destructive',
-      });
-    } finally {
-      setVerifyingDomain(false);
-    }
+      if (data.valid) { toast({ title: 'Domain Verified!', description: 'Custom domain active.' }); fetchCompanyData(); }
+      else { toast({ title: 'DNS Not Ready', description: 'Check CNAME record.', variant: 'destructive' }); }
+    } catch (err: any) { setDomainError(err.message); toast({ title: 'Verification Failed', description: err.message, variant: 'destructive' }); }
+    finally { setVerifyingDomain(false); }
   };
 
   const handleSaveDomain = async () => {
     if (!company) return;
-
-    setSavingDomain(true);
-    setDomainError('');
+    setSavingDomain(true); setDomainError('');
     try {
-      const { data, error } = await supabase.functions.invoke('verify-domain', {
-        body: {
-          action: 'save',
-          domain: customDomain || null,
-          company_id: company.id,
-        },
+      const { data, error } = await supabase.functions.invoke('verify-domain', { body: { action: 'save', domain: customDomain || null, company_id: company.id } });
+      if (error) throw error; if (data?.error) throw new Error(data.error);
+      setDnsRecords(data.records || []); setVercelTxtRecord(data.vercelTxtRecord || null);
+      toast({ title: data.dnsValid ? 'Domain Activated!' : 'Domain Saved', description: data.message });
+      fetchCompanyData();
+    } catch (err: any) { setDomainError(err.message); toast({ title: 'Error', description: err.message, variant: 'destructive' }); }
+    finally { setSavingDomain(false); }
+  };
+
+  const handleWalletRecharge = async () => {
+    const amount = parseInt(rechargeAmount);
+    if (!amount || amount < 100) {
+      toast({ title: "Invalid Amount", description: "Minimum recharge is ₹100", variant: "destructive" });
+      return;
+    }
+
+    setProcessingRecharge(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('initiate-wallet-recharge', {
+        body: { amount, discount_code: discountCode || undefined }
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setDnsRecords(data.records || []);
-      setVercelTxtRecord(data.vercelTxtRecord || null); // Store TXT record from Vercel
+      // Open Razorpay
+      const options = {
+        key: data.key_id,
+        amount: data.amount * 100, // Make sure it matches order
+        currency: data.currency,
+        name: 'Fastest CRM',
+        description: 'Wallet Recharge',
+        order_id: data.order_id,
+        handler: async function (response: any) {
+          // Verify
+          try {
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-wallet-recharge', {
+              body: {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature
+              }
+            });
+            if (verifyError || verifyData?.error) throw new Error(verifyData?.error || 'Verification failed');
 
-      toast({
-        title: data.dnsValid ? 'Domain Activated!' : 'Domain Saved',
-        description: data.message,
-      });
+            toast({ title: 'Recharge Successful', description: `Wallet credited with ₹${data.credit_amount}` });
+            setAddCreditOpen(false);
+            fetchCompanyData();
+          } catch (vErr: any) {
+            toast({ title: 'Verification Failed', description: vErr.message, variant: 'destructive' });
+          }
+        },
+        prefill: { email: user?.email },
+        theme: { color: primaryColor }
+      };
 
-      fetchCompanyData();
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+
     } catch (err: any) {
-      setDomainError(err.message || 'Failed to save domain');
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to save domain',
-        variant: 'destructive',
-      });
+      toast({ title: 'Recharge Failed', description: err.message, variant: 'destructive' });
     } finally {
-      setSavingDomain(false);
+      setProcessingRecharge(false);
     }
   };
 
-  const handleRemoveDomain = async () => {
-    if (!company) return;
-
-    setSavingDomain(true);
+  const handleRedeemGiftCard = async () => {
+    if (!giftCardCode) return;
+    setRedeemingGift(true);
     try {
-      const { data, error } = await supabase.functions.invoke('verify-domain', {
-        body: {
-          action: 'remove',
-          company_id: company.id,
-        },
+      const { data, error } = await supabase.functions.invoke('redeem-gift-card', {
+        body: { code: giftCardCode }
       });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: 'Redeemed!', description: `₹${data.amount} added to wallet.` });
+      setGiftCardCode('');
+      fetchCompanyData();
+    } catch (err: any) {
+      toast({ title: 'Redemption Failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setRedeemingGift(false);
+    }
+  };
+
+  const handleManageSubscription = async (action: 'add_seats' | 'extend_subscription') => {
+    setProcessingSub(true);
+    try {
+      const body = action === 'add_seats'
+        ? { action, quantity: seatsToBuy }
+        : { action, months: parseInt(extensionMonths) };
+
+      const { data, error } = await supabase.functions.invoke('manage-subscription', { body });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setCustomDomain('');
-      setDnsRecords([]);
-      toast({
-        title: 'Domain Removed',
-        description: 'Your custom domain has been disconnected.',
-      });
-
+      toast({ title: 'Success', description: 'Subscription updated successfully.' });
+      setBuySeatsOpen(false);
+      setExtendSubOpen(false);
       fetchCompanyData();
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to remove domain',
-        variant: 'destructive',
-      });
+      toast({ title: 'Transaction Failed', description: err.message, variant: 'destructive' });
     } finally {
-      setSavingDomain(false);
+      setProcessingSub(false);
     }
+  };
+
+  const calculateExtensionCost = () => {
+    if (!company) return 0;
+    const months = parseInt(extensionMonths);
+    const totalSeats = company.total_licenses || 0;
+    const baseCost = totalSeats * PRICE_PER_SEAT * months;
+    let discount = 0;
+    if (months === 3) discount = 0.10;
+    else if (months === 6) discount = 0.20;
+    else if (months === 12) discount = 0.40;
+    return Math.ceil(baseCost * (1 - discount));
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied!', description: 'Copied to clipboard' });
   };
 
   if (loading) {
@@ -455,34 +395,266 @@ export default function ManageCompany() {
     );
   }
 
-  if (!company) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center py-16">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold">No Company Found</h2>
-          <p className="text-muted-foreground">You are not associated with any company.</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  if (!company) return null;
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 pb-10">
         <div>
           <h1 className="text-2xl font-bold">Manage Company</h1>
-          <p className="text-muted-foreground">Configure your company settings, branding, and licenses.</p>
+          <p className="text-muted-foreground">Configure your company settings, wallet, and subscription.</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Company Branding */}
+
+          <Card className="glass relative overflow-hidden border-primary/20">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <Wallet className="h-24 w-24" />
+            </div>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-primary" />
+                Wallet Balance
+              </CardTitle>
+              <CardDescription>Manage your credits and payments</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 relative z-10">
+              <div>
+                <div className="text-4xl font-bold font-mono tracking-tight text-primary">
+                  ₹{wallet.balance.toLocaleString('en-IN')}
+                </div>
+                {wallet.balance < 1500 && (
+                  <p className="text-sm text-destructive mt-1 flex items-center gap-1 font-medium">
+                    <AlertCircle className="h-3 w-3" />
+                    Low Balance: Renewals may fail.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Dialog open={addCreditOpen} onOpenChange={setAddCreditOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="flex-1">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Credits
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Credits to Wallet</DialogTitle>
+                      <DialogDescription>
+                        Credits can be used for subscriptions and add-ons.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Amount (₹)</Label>
+                        <Input
+                          type="number"
+                          value={rechargeAmount}
+                          onChange={e => setRechargeAmount(e.target.value)}
+                          min="100"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Discount Code</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={discountCode}
+                            onChange={e => setDiscountCode(e.target.value)}
+                            placeholder="Enter code"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleWalletRecharge} disabled={processingRecharge}>
+                        {processingRecharge && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Pay & Recharge
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex-1">
+                      <Gift className="h-4 w-4 mr-2" />
+                      Redeem Gift Card
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Redeem Gift Card</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Gift Card Code</Label>
+                        <Input
+                          value={giftCardCode}
+                          onChange={e => setGiftCardCode(e.target.value)}
+                          placeholder="XXXX-XXXX-XXXX"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleRedeemGiftCard} disabled={redeemingGift}>
+                        {redeemingGift && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Redeem
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <p className="text-sm font-medium text-muted-foreground">Recent Transactions</p>
+                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                  {transactions.map(tx => (
+                    <div key={tx.id} className="flex justify-between items-center text-sm p-2 bg-muted/40 rounded border">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{tx.description}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className={`font-mono font-medium ${tx.type.startsWith('credit') ? 'text-green-600' : 'text-red-600'}`}>
+                        {tx.type.startsWith('credit') ? '+' : '-'}₹{tx.amount}
+                      </div>
+                    </div>
+                  ))}
+                  {transactions.length === 0 && <p className="text-xs text-muted-foreground">No transactions yet.</p>}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="glass">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Branding
+                <Users className="h-5 w-5" />
+                Subscription & Licenses
               </CardTitle>
+              <CardDescription>₹{PRICE_PER_SEAT}/seat/month</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total Seats</span>
+                  <div className="text-2xl font-bold mt-1">{company.total_licenses}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {company.used_licenses} used
+                  </div>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg border">
+                  <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Status</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant={company.subscription_status === 'active' ? 'default' : 'destructive'}>
+                      {company.subscription_status?.toUpperCase() || 'INACTIVE'}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Expires: {company.subscription_valid_until ? new Date(company.subscription_valid_until).toLocaleDateString() : 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Dialog open={buySeatsOpen} onOpenChange={setBuySeatsOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span>Add More Seats</span>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Seats</DialogTitle>
+                      <DialogDescription>
+                        Seats will be prorated until your next renewal date.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center gap-4">
+                        <Button variant="outline" size="icon" onClick={() => setSeatsToBuy(Math.max(1, seatsToBuy - 1))}>-</Button>
+                        <div className="text-xl font-bold w-12 text-center">{seatsToBuy}</div>
+                        <Button variant="outline" size="icon" onClick={() => setSeatsToBuy(seatsToBuy + 1)}>+</Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Estimated Cost: Calculation handled by server based on remaining days.
+                        Ensure you have at least <span className="text-foreground font-medium">₹{seatsToBuy * PRICE_PER_SEAT}</span> in your wallet.
+                      </p>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => handleManageSubscription('add_seats')} disabled={processingSub}>
+                        {processingSub && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Confirm & Buy
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={extendSubOpen} onOpenChange={setExtendSubOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="secondary" className="w-full justify-between">
+                      <span>Extend Subscription</span>
+                      <Calendar className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Extend Subscription</DialogTitle>
+                      <DialogDescription>
+                        Pre-pay and save on your subscription.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <Label>Duration</Label>
+                      <Select value={extensionMonths} onValueChange={setExtensionMonths}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 Month (No Discount)</SelectItem>
+                          <SelectItem value="3">3 Months (10% Off)</SelectItem>
+                          <SelectItem value="6">6 Months (20% Off)</SelectItem>
+                          <SelectItem value="12">12 Months (40% Off)</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <div className="bg-muted p-4 rounded-lg flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Total Cost</span>
+                        <span className="text-xl font-bold text-primary">₹{calculateExtensionCost().toLocaleString('en-IN')}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Current Wallet Balance: ₹{wallet.balance.toLocaleString('en-IN')}
+                      </p>
+                      {wallet.balance < calculateExtensionCost() && (
+                        <p className="text-xs text-destructive font-medium">
+                          Insufficient funds. Please add credits first.
+                        </p>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={() => handleManageSubscription('extend_subscription')}
+                        disabled={processingSub || wallet.balance < calculateExtensionCost()}
+                      >
+                        {processingSub && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Pay & Extend
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" />Branding</CardTitle>
               <CardDescription>Customize your company appearance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -490,484 +662,137 @@ export default function ManageCompany() {
                 <Label>Company Logo</Label>
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 rounded-lg border border-border flex items-center justify-center overflow-hidden bg-muted/50 relative group">
-                    {logoUrl ? (
-                      <img src={logoUrl} alt="Company Logo" className="h-full w-full object-cover" />
-                    ) : (
-                      <Building2 className="h-8 w-8 text-muted-foreground" />
-                    )}
-                    <div
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      onClick={() => document.getElementById('logo-upload')?.click()}
-                    >
+                    {logoUrl ? <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" /> : <Building2 className="h-8 w-8 text-muted-foreground" />}
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => document.getElementById('logo-upload')?.click()}>
                       <Upload className="h-4 w-4 text-white" />
                     </div>
                   </div>
                   <div className="flex-1">
-                    <Input
-                      id="logo-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
+                    <Input id="logo-upload" type="file" accept="image/*" className="hidden"
                       onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file || !company) return;
-
+                        const file = e.target.files?.[0]; if (!file || !company) return;
                         setUploadingLogo(true);
                         try {
                           const fileExt = file.name.split('.').pop();
                           const filePath = `${company.id}/${crypto.randomUUID()}.${fileExt}`;
-
-                          const { error: uploadError } = await supabase.storage
-                            .from('company_assets')
-                            .upload(filePath, file);
-
-                          if (uploadError) throw uploadError;
-
-                          const { data: { publicUrl } } = supabase.storage
-                            .from('company_assets')
-                            .getPublicUrl(filePath);
-
+                          const { error } = await supabase.storage.from('company_assets').upload(filePath, file);
+                          if (error) throw error;
+                          const { data: { publicUrl } } = supabase.storage.from('company_assets').getPublicUrl(filePath);
                           setLogoUrl(publicUrl);
-                          toast({
-                            title: "Logo uploaded",
-                            description: "Don't forget to save your changes.",
-                          });
-                        } catch (error: any) {
-                          toast({
-                            title: "Error uploading logo",
-                            description: error.message,
-                            variant: "destructive"
-                          });
-                        } finally {
-                          setUploadingLogo(false);
-                        }
+                          toast({ title: "Logo uploaded", description: "Remember to save." });
+                        } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
+                        finally { setUploadingLogo(false); }
                       }}
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById('logo-upload')?.click()}
-                      disabled={uploadingLogo}
-                    >
-                      {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                      Upload Logo
+                    <Button variant="outline" size="sm" onClick={() => document.getElementById('logo-upload')?.click()} disabled={uploadingLogo}>
+                      {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />} Upload Logo
                     </Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Recommended: 512x512px, PNG or JPG (Max 2MB)
-                    </p>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
-                <Input
-                  id="companyName"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Your Company Name"
-                />
+                <Label>Company Name</Label>
+                <Input value={companyName} onChange={e => setCompanyName(e.target.value)} />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="primaryColor">Primary Color</Label>
+                <Label>Primary Color</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="primaryColor"
-                    type="color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="w-16 h-10 p-1 cursor-pointer"
-                  />
-                  <Input
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="flex-1"
-                    placeholder="#8B5CF6"
-                  />
+                  <Input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-16 h-10 p-1 cursor-pointer" />
+                  <Input value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="flex-1" />
                 </div>
               </div>
-
               <Button onClick={handleSaveSettings} disabled={saving} className="w-full">
-                {saving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Save Branding
+                {saving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save Branding
               </Button>
             </CardContent>
           </Card>
 
-          {/* Domain Settings */}
           <Card className="glass">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Domain
-              </CardTitle>
-              <CardDescription>Your workspace URL and custom domain</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" /> Domain</CardTitle>
+              <CardDescription>Workspace URL & Custom Domain</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Default Workspace URL with Editable Slug */}
               <div className="space-y-3">
                 <Label>Default Workspace URL</Label>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center flex-1 bg-muted rounded-md overflow-hidden">
-                    <Input
-                      value={companySlug}
-                      onChange={(e) => handleSlugChange(e.target.value)}
-                      className="border-0 bg-transparent font-mono text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
-                      placeholder="your-company"
-                    />
-                    <span className="px-3 py-2 text-sm text-muted-foreground font-mono whitespace-nowrap border-l border-border bg-muted/50">
-                      .fastestcrm.com
-                    </span>
+                    <Input value={companySlug} onChange={e => handleSlugChange(e.target.value)} className="border-0 bg-transparent font-mono text-sm focus-visible:ring-0" />
+                    <span className="px-3 py-2 text-sm text-muted-foreground border-l border-border bg-muted/50">.fastestcrm.com</span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => copyToClipboard(`https://${companySlug}.fastestcrm.com`)}
-                    title="Copy URL"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => window.open(`https://${companySlug}.fastestcrm.com`, '_blank')}
-                    title="Open in new tab"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
+                  <Button variant="outline" size="icon" onClick={() => copyToClipboard(`https://${companySlug}.fastestcrm.com`)}><Copy className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" onClick={() => window.open(`https://${companySlug}.fastestcrm.com`, '_blank')}><ExternalLink className="h-4 w-4" /></Button>
                 </div>
-                {slugError && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {slugError}
-                  </p>
-                )}
+                {slugError && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{slugError}</p>}
                 {companySlug !== company.slug && !slugError && (
-                  <Button
-                    onClick={handleSaveSlug}
-                    disabled={savingSlug}
-                    size="sm"
-                    className="mt-2"
-                  >
-                    {savingSlug ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-2" />
-                    )}
-                    Save New Slug
+                  <Button onClick={handleSaveSlugAction} disabled={savingSlug} size="sm" className="mt-2">
+                    {savingSlug ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save New Slug
                   </Button>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  This is your team's default workspace URL. Only lowercase letters, numbers, and hyphens allowed.
-                </p>
               </div>
 
               <Separator />
 
-              {/* Custom Domain */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="customDomain">Custom Domain</Label>
+                  <Label>Custom Domain</Label>
                   {company.custom_domain && (
-                    <Badge
-                      variant={company.domain_status === 'active' ? 'default' : 'outline'}
-                      className={company.domain_status === 'active' ? 'bg-success/20 text-success border-success/30' : ''}
-                    >
-                      {company.domain_status === 'active' ? (
-                        <>
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Verified
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          Pending
-                        </>
-                      )}
+                    <Badge variant={company.domain_status === 'active' ? 'default' : 'outline'} className={company.domain_status === 'active' ? 'bg-green-500/20 text-green-600 border-green-500/30' : ''}>
+                      {company.domain_status === 'active' ? 'Verified' : 'Pending'}
                     </Badge>
                   )}
                 </div>
-
                 <div className="flex items-center gap-2">
-                  <Input
-                    id="customDomain"
-                    value={customDomain}
-                    onChange={(e) => {
-                      setCustomDomain(e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ''));
-                      setDomainError('');
-                    }}
-                    placeholder="crm.yourcompany.com"
-                    className="flex-1"
-                  />
+                  <Input value={customDomain} onChange={e => setCustomDomain(e.target.value.toLowerCase())} placeholder="crm.acme.com" className="flex-1" />
                   {company.custom_domain && (
                     <>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleVerifyDomain}
-                        disabled={verifyingDomain}
-                        title="Verify DNS"
-                      >
-                        {verifyingDomain ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => window.open(`https://${company.custom_domain}`, '_blank')}
-                        title="Open domain"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <Button variant="outline" size="icon" onClick={handleVerifyDomain} disabled={verifyingDomain}><RefreshCw className={`h-4 w-4 ${verifyingDomain ? 'animate-spin' : ''}`} /></Button>
+                      <Button variant="outline" size="icon" onClick={() => window.open(`https://${company.custom_domain}`, '_blank')}><ExternalLink className="h-4 w-4" /></Button>
                     </>
                   )}
                 </div>
+                {domainError && <p className="text-xs text-destructive">{domainError}</p>}
 
-                {domainError && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {domainError}
-                  </p>
-                )}
-
-                {/* DNS Records found */}
-                {dnsRecords.length > 0 && (
-                  <div className="p-3 bg-muted/50 rounded-md text-xs space-y-2">
-                    <p className="font-medium">DNS Records Found:</p>
-                    <div className="space-y-1">
-                      {dnsRecords.map((record, i) => (
-                        <div key={i} className="flex items-center gap-2 text-muted-foreground font-mono">
-                          <Badge variant="outline" className="text-[10px]">{record.type}</Badge>
-                          <span className="truncate">{record.data}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* DNS Setup Instructions */}
-                <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-3">
-                  <div className="flex items-center gap-2 font-medium">
-                    <Link2 className="h-4 w-4" />
-                    DNS Configuration
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    To connect your custom domain, add these DNS records at your domain registrar:
-                  </p>
-
-                  {/* CNAME Record */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium">1. CNAME Record (Required)</p>
-                    <div className="grid grid-cols-3 gap-2 p-3 bg-background rounded border text-xs font-mono">
-                      <div>
-                        <span className="text-muted-foreground block mb-1">Type</span>
-                        <span className="font-semibold">CNAME</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground block mb-1">Name/Host</span>
-                        <span className="font-semibold">@ or subdomain</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground block mb-1">Target/Value</span>
-                        <div className="flex items-center gap-1">
-                          <code className="px-1 py-0.5 bg-muted rounded font-semibold">dns.fastestcrm.com</code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={() => copyToClipboard('dns.fastestcrm.com')}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* TXT Record - Only show if we have verification data */}
-                  {vercelTxtRecord && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium">2. TXT Record (Required for domain verification)</p>
-                      <div className="grid grid-cols-3 gap-2 p-3 bg-background rounded border text-xs font-mono">
-                        <div>
-                          <span className="text-muted-foreground block mb-1">Type</span>
-                          <span className="font-semibold">TXT</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground block mb-1">Name/Host</span>
-                          <div className="flex items-center gap-1">
-                            <code className="px-1 py-0.5 bg-muted rounded font-semibold">
-                              {vercelTxtRecord.domain}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5"
-                              onClick={() => copyToClipboard(vercelTxtRecord.domain)}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground block mb-1">Value</span>
-                          <div className="flex items-center gap-1">
-                            <code className="px-1 py-0.5 bg-muted rounded font-semibold text-[10px] truncate max-w-[150px]">
-                              {vercelTxtRecord.value}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5"
-                              onClick={() => copyToClipboard(vercelTxtRecord.value)}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="text-[10px] text-muted-foreground space-y-1">
-                    <p>• DNS changes can take up to 48 hours to propagate</p>
-                    <p>• Click the refresh button to check verification status</p>
-                    <p>• For subdomains like <code className="px-1 bg-muted rounded">crm.yourcompany.com</code>, use "crm" as the Name</p>
-                    {vercelTxtRecord && <p>• Both CNAME and TXT records must be configured for full domain verification</p>}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
                 <div className="flex gap-2">
-                  {customDomain !== (company.custom_domain || '') && (
-                    <Button
-                      onClick={handleSaveDomain}
-                      disabled={savingDomain}
-                      className="flex-1"
-                    >
-                      {savingDomain ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      {customDomain ? 'Save Domain' : 'Remove Domain'}
+                  {customDomain !== company.custom_domain && (
+                    <Button size="sm" onClick={handleSaveDomain} disabled={savingDomain} className="flex-1">
+                      {savingDomain ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save Domain
                     </Button>
                   )}
-                  {company.custom_domain && customDomain === company.custom_domain && (
-                    <Button
-                      variant="destructive"
-                      onClick={handleRemoveDomain}
-                      disabled={savingDomain}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove
+                  {company.custom_domain && (
+                    <Button size="sm" variant="destructive" onClick={async () => {
+                      if (!confirm("Remove domain?")) return;
+                      setSavingDomain(true);
+                      try {
+                        const { error } = await supabase.functions.invoke('verify-domain', { body: { action: 'remove', company_id: company.id } });
+                        if (error) throw error;
+                        setCustomDomain(''); setDnsRecords([]);
+                        toast({ title: "Removed", description: "Domain removed." }); fetchCompanyData();
+                      } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
+                      finally { setSavingDomain(false); }
+                    }} disabled={savingDomain} className="flex-1">
+                      <Trash2 className="mr-2 h-4 w-4" /> Remove
                     </Button>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* License Management */}
-          <Card className="glass md:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Licenses
-              </CardTitle>
-              <CardDescription>Manage your team seats</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                    <div className="text-3xl font-bold text-primary">
-                      {company.used_licenses} / {company.total_licenses}
+                {dnsRecords.length > 0 && (
+                  <div className="p-3 bg-muted/50 rounded-md text-xs space-y-2 font-mono">
+                    <p className="font-sans font-medium">Configuration Required:</p>
+                    <div className="grid grid-cols-3 gap-2 border-b pb-2">
+                      <span className="font-semibold">Type</span><span className="font-semibold">Host</span><span className="font-semibold">Value</span>
                     </div>
-                    <div className="text-sm text-muted-foreground">Seats Used</div>
-                    <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${(company.used_licenses / company.total_licenses) * 100}%` }}
-                      />
+                    <div className="grid grid-cols-3 gap-2">
+                      <span>CNAME</span><span>@</span><span>dns.fastestcrm.com</span>
                     </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <Label>Buy Additional Seats</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={seatsToBuy}
-                        onChange={(e) => setSeatsToBuy(parseInt(e.target.value) || 1)}
-                        className="w-24"
-                      />
-                      <span className="text-muted-foreground">
-                        × ₹500 = ₹{(seatsToBuy * 500).toLocaleString()}
-                      </span>
-                    </div>
-                    <Button
-                      onClick={handlePurchaseSeats}
-                      disabled={purchasing}
-                      className="gradient-primary"
-                    >
-                      {purchasing ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <CreditCard className="h-4 w-4 mr-2" />
-                      )}
-                      Purchase Seats
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Purchase History</Label>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {licenses.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4 text-center">
-                        No purchases yet
-                      </p>
-                    ) : (
-                      licenses.map((license) => (
-                        <div
-                          key={license.id}
-                          className="flex items-center justify-between p-3 rounded-lg border border-border bg-card/50"
-                        >
-                          <div>
-                            <div className="font-medium">
-                              {license.quantity} Seat{license.quantity > 1 ? 's' : ''}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(license.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium">₹{license.amount_paid.toLocaleString()}</div>
-                            <Badge
-                              variant={license.status === 'completed' ? 'default' : 'outline'}
-                              className={license.status === 'completed' ? 'bg-success/20 text-success' : ''}
-                            >
-                              {license.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))
+                    {vercelTxtRecord && (
+                      <div className="grid grid-cols-3 gap-2 break-all">
+                        <span>{vercelTxtRecord.type}</span><span>{vercelTxtRecord.domain}</span><span>{vercelTxtRecord.value.substring(0, 10)}...</span>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
