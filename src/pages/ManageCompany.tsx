@@ -149,6 +149,7 @@ export default function ManageCompany() {
         .from('wallet_transactions')
         .select('*')
         .eq('wallet_id', profile.company_id)
+        .eq('status', 'success')
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -218,6 +219,79 @@ export default function ManageCompany() {
     if (reserved.includes(slug)) { setSlugError('This slug is reserved'); return false; }
     setSlugError('');
     return true;
+  };
+
+  // Feature Unlocking
+  const [purchasingFeature, setPurchasingFeature] = useState<string | null>(null);
+
+  // Discount Validation
+  const [validatingCode, setValidatingCode] = useState(false);
+  const [discountInfo, setDiscountInfo] = useState<{ valid: boolean; message: string; finalAmount?: number } | null>(null);
+
+  const checkFeature = (feature: string) => {
+    const features = (company?.features as any) || {};
+    return !!features[feature];
+  };
+
+  const handlePurchaseFeature = async (feature: string, cost: number) => {
+    if (!company) return;
+    if (wallet.balance < cost) {
+      toast({ title: "Insufficient Funds", description: `You need ₹${cost - wallet.balance} more.`, variant: "destructive" });
+      setAddCreditOpen(true);
+      return;
+    }
+
+    if (!confirm(`Unlock this feature for ₹${cost}?`)) return;
+
+    setPurchasingFeature(feature);
+    try {
+      const { data, error } = await supabase.functions.invoke('purchase-addon', {
+        body: { feature }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "Unlocked!", description: "Feature is now available." });
+      fetchCompanyData(); // Reload to get updated features
+    } catch (err: any) {
+      toast({ title: "Purchase Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setPurchasingFeature(null);
+    }
+  };
+
+  const handleApplyCode = async () => {
+    if (!discountCode || !rechargeAmount || parseInt(rechargeAmount) < 100) {
+      toast({ title: "Invalid Input", description: "Enter valid amount (>100) and code.", variant: "destructive" });
+      return;
+    }
+    setValidatingCode(true);
+    setDiscountInfo(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-discount', {
+        body: { amount: parseInt(rechargeAmount), code: discountCode }
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setDiscountInfo({
+        valid: data.valid,
+        message: data.message,
+        finalAmount: data.final_amount
+      });
+
+      if (data.valid) {
+        toast({ title: 'Code Applied', description: data.message });
+      } else {
+        toast({ title: 'Invalid Code', description: data.message, variant: 'destructive' });
+      }
+
+    } catch (err: any) {
+      toast({ title: "Validation Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setValidatingCode(false);
+    }
   };
 
   const handleSlugChange = (value: string) => {
@@ -461,10 +535,25 @@ export default function ManageCompany() {
                         <div className="flex gap-2">
                           <Input
                             value={discountCode}
-                            onChange={e => setDiscountCode(e.target.value)}
+                            onChange={e => { setDiscountCode(e.target.value); setDiscountInfo(null); }}
                             placeholder="Enter code"
                           />
+                          <Button
+                            variant="secondary"
+                            onClick={handleApplyCode}
+                            disabled={!discountCode || validatingCode}
+                          >
+                            {validatingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                          </Button>
                         </div>
+                        {discountInfo && (
+                          <div className={`text-xs p-2 rounded flex justify-between items-center ${discountInfo.valid ? 'bg-green-500/10 text-green-600' : 'bg-destructive/10 text-destructive'}`}>
+                            <span>{discountInfo.message}</span>
+                            {discountInfo.valid && discountInfo.finalAmount && (
+                              <span className="font-bold">Final Pay: ₹{discountInfo.finalAmount}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <DialogFooter>
@@ -718,14 +807,33 @@ export default function ManageCompany() {
                 <Label>Default Workspace URL</Label>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center flex-1 bg-muted rounded-md overflow-hidden">
-                    <Input value={companySlug} onChange={e => handleSlugChange(e.target.value)} className="border-0 bg-transparent font-mono text-sm focus-visible:ring-0" />
+                    <Input
+                      value={companySlug}
+                      onChange={e => handleSlugChange(e.target.value)}
+                      className="border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
+                      disabled={!checkFeature('custom_slug')}
+                    />
                     <span className="px-3 py-2 text-sm text-muted-foreground border-l border-border bg-muted/50">.fastestcrm.com</span>
                   </div>
                   <Button variant="outline" size="icon" onClick={() => copyToClipboard(`https://${companySlug}.fastestcrm.com`)}><Copy className="h-4 w-4" /></Button>
                   <Button variant="outline" size="icon" onClick={() => window.open(`https://${companySlug}.fastestcrm.com`, '_blank')}><ExternalLink className="h-4 w-4" /></Button>
                 </div>
-                {slugError && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{slugError}</p>}
-                {companySlug !== company.slug && !slugError && (
+
+                {!checkFeature('custom_slug') ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handlePurchaseFeature('custom_slug', 100)}
+                    disabled={!!purchasingFeature}
+                    className="w-full mt-2"
+                  >
+                    {purchasingFeature === 'custom_slug' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Tag className="mr-2 h-4 w-4 text-primary" /> Unlock Custom URL (100 Credits)
+                  </Button>
+                ) : (
+                  slugError && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{slugError}</p>
+                )}
+
+                {checkFeature('custom_slug') && companySlug !== company.slug && !slugError && (
                   <Button onClick={handleSaveSlugAction} disabled={savingSlug} size="sm" className="mt-2">
                     {savingSlug ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save New Slug
                   </Button>
@@ -743,55 +851,76 @@ export default function ManageCompany() {
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Input value={customDomain} onChange={e => setCustomDomain(e.target.value.toLowerCase())} placeholder="crm.acme.com" className="flex-1" />
-                  {company.custom_domain && (
-                    <>
-                      <Button variant="outline" size="icon" onClick={handleVerifyDomain} disabled={verifyingDomain}><RefreshCw className={`h-4 w-4 ${verifyingDomain ? 'animate-spin' : ''}`} /></Button>
-                      <Button variant="outline" size="icon" onClick={() => window.open(`https://${company.custom_domain}`, '_blank')}><ExternalLink className="h-4 w-4" /></Button>
-                    </>
-                  )}
-                </div>
-                {domainError && <p className="text-xs text-destructive">{domainError}</p>}
 
-                <div className="flex gap-2">
-                  {customDomain !== company.custom_domain && (
-                    <Button size="sm" onClick={handleSaveDomain} disabled={savingDomain} className="flex-1">
-                      {savingDomain ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save Domain
+                {!checkFeature('custom_domain') ? (
+                  <div className="p-4 border border-primary/20 bg-primary/5 rounded-lg text-center space-y-3">
+                    <Globe className="h-8 w-8 text-primary mx-auto opacity-50" />
+                    <div>
+                      <h4 className="font-semibold">White Label Custom Domain</h4>
+                      <p className="text-xs text-muted-foreground">Use your own domain (e.g. crm.yourcompany.com)</p>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() => handlePurchaseFeature('custom_domain', 5000)}
+                      disabled={!!purchasingFeature}
+                    >
+                      {purchasingFeature === 'custom_domain' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Wallet className="mr-2 h-4 w-4" /> Unlock for 5000 Credits
                     </Button>
-                  )}
-                  {company.custom_domain && (
-                    <Button size="sm" variant="destructive" onClick={async () => {
-                      if (!confirm("Remove domain?")) return;
-                      setSavingDomain(true);
-                      try {
-                        const { error } = await supabase.functions.invoke('verify-domain', { body: { action: 'remove', company_id: company.id } });
-                        if (error) throw error;
-                        setCustomDomain(''); setDnsRecords([]);
-                        toast({ title: "Removed", description: "Domain removed." }); fetchCompanyData();
-                      } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
-                      finally { setSavingDomain(false); }
-                    }} disabled={savingDomain} className="flex-1">
-                      <Trash2 className="mr-2 h-4 w-4" /> Remove
-                    </Button>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Input value={customDomain} onChange={e => setCustomDomain(e.target.value.toLowerCase())} placeholder="crm.acme.com" className="flex-1" />
+                      {company.custom_domain && (
+                        <>
+                          <Button variant="outline" size="icon" onClick={handleVerifyDomain} disabled={verifyingDomain}><RefreshCw className={`h-4 w-4 ${verifyingDomain ? 'animate-spin' : ''}`} /></Button>
+                          <Button variant="outline" size="icon" onClick={() => window.open(`https://${company.custom_domain}`, '_blank')}><ExternalLink className="h-4 w-4" /></Button>
+                        </>
+                      )}
+                    </div>
+                    {domainError && <p className="text-xs text-destructive">{domainError}</p>}
 
-                {dnsRecords.length > 0 && (
-                  <div className="p-3 bg-muted/50 rounded-md text-xs space-y-2 font-mono">
-                    <p className="font-sans font-medium">Configuration Required:</p>
-                    <div className="grid grid-cols-3 gap-2 border-b pb-2">
-                      <span className="font-semibold">Type</span><span className="font-semibold">Host</span><span className="font-semibold">Value</span>
+                    <div className="flex gap-2">
+                      {customDomain !== company.custom_domain && (
+                        <Button size="sm" onClick={handleSaveDomain} disabled={savingDomain} className="flex-1">
+                          {savingDomain ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save Domain
+                        </Button>
+                      )}
+                      {company.custom_domain && (
+                        <Button size="sm" variant="destructive" onClick={async () => {
+                          if (!confirm("Remove domain?")) return;
+                          setSavingDomain(true);
+                          try {
+                            const { error } = await supabase.functions.invoke('verify-domain', { body: { action: 'remove', company_id: company.id } });
+                            if (error) throw error;
+                            setCustomDomain(''); setDnsRecords([]);
+                            toast({ title: "Removed", description: "Domain removed." }); fetchCompanyData();
+                          } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
+                          finally { setSavingDomain(false); }
+                        }} disabled={savingDomain} className="flex-1">
+                          <Trash2 className="mr-2 h-4 w-4" /> Remove
+                        </Button>
+                      )}
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <span>CNAME</span><span>@</span><span>dns.fastestcrm.com</span>
-                    </div>
-                    {vercelTxtRecord && (
-                      <div className="grid grid-cols-3 gap-2 break-all">
-                        <span>{vercelTxtRecord.type}</span><span>{vercelTxtRecord.domain}</span><span>{vercelTxtRecord.value.substring(0, 10)}...</span>
+
+                    {dnsRecords.length > 0 && (
+                      <div className="p-3 bg-muted/50 rounded-md text-xs space-y-2 font-mono">
+                        <p className="font-sans font-medium">Configuration Required:</p>
+                        <div className="grid grid-cols-3 gap-2 border-b pb-2">
+                          <span className="font-semibold">Type</span><span className="font-semibold">Host</span><span className="font-semibold">Value</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <span>CNAME</span><span>@</span><span>dns.fastestcrm.com</span>
+                        </div>
+                        {vercelTxtRecord && (
+                          <div className="grid grid-cols-3 gap-2 break-all">
+                            <span>{vercelTxtRecord.type}</span><span>{vercelTxtRecord.domain}</span><span>{vercelTxtRecord.value.substring(0, 10)}...</span>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             </CardContent>
