@@ -190,8 +190,14 @@ export default function Team() {
                 let msg = error.message || "Failed to invite member";
                 try {
                     if (error && typeof error === 'object' && 'context' in error) {
-                        // Supabase functions error might be in context
-                        console.error("Error context:", (error as any).context);
+                        const response = (error as any).context;
+                        if (response instanceof Response) {
+                            const errorBody = await response.json();
+                            console.error("Edge function error body:", errorBody);
+                            if (errorBody && errorBody.error) {
+                                msg = errorBody.error;
+                            }
+                        }
                     }
                 } catch (e) { console.error("Error parsing error context", e); }
 
@@ -212,8 +218,8 @@ export default function Team() {
             setInviteFullName('');
             setInvitePassword('');
             setInviteRole('level_10');
-            // Refetch team after a short delay
-            setTimeout(() => refetch(), 1500);
+            // Refetch team immediately
+            refetch();
         } catch (err: any) {
             console.error("Invite member error caught:", err);
             toast({

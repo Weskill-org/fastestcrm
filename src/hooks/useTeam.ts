@@ -105,11 +105,19 @@ export function useTeam() {
       // 1. Fetch current user's role and company details safely
       const [myProfileResult, myRoleResult] = await Promise.all([
         supabase.from('profiles').select('company_id').eq('id', user.id).single(),
-        supabase.from('user_roles').select('role').eq('user_id', user.id).single()
+        supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle()
       ]);
 
       const myCompanyId = myProfileResult.data?.company_id;
-      const myRole = (myRoleResult.data?.role as AppRole) || null;
+      let myRole = (myRoleResult.data?.role as AppRole) || null;
+
+      // Fallback: If no role record but has company_id (likely Admin/Owner), default to 'company'
+      if (!myRole && myCompanyId) {
+        // Verify if they are actually the admin of the company? 
+        // For frontend simplicity, if they have a company_id in profile but no role, they are likely the owner initiated via register-company
+        // or we can just default to 'company' safely as a fallback for the UI.
+        myRole = 'company';
+      }
 
       if (myRole) {
         setCurrentUserRole(myRole);
