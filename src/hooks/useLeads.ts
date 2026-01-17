@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+// React imports removed as they are no longer used
+
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Database } from '@/integrations/supabase/types';
@@ -13,49 +14,28 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 interface UseLeadsOptions {
   search?: string;
   statusFilter?: string;
+  ownerFilter?: string[];
+  productFilter?: string[];
   page?: number;
   pageSize?: number;
+  fetchAll?: boolean;
+  pendingPaymentOnly?: boolean;
 }
 
 import { useLeadsTable } from './useLeadsTable';
 
-export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseLeadsOptions = {}) {
+export function useLeads({ search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page = 1, pageSize = 25, fetchAll = false }: UseLeadsOptions & { fetchAll?: boolean; pendingPaymentOnly?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { tableName, companyId, loading: tableLoading } = useLeadsTable();
 
-  // Set up real-time subscription (re-subscribe when table changes)
-  useEffect(() => {
-    if (!tableName) return;
+  // Realtime subscription removed to prevent unwanted table reloads during exploration.
+  // Updates are now handled via optimistic updates or explicit invalidation in mutation hooks.
 
-    console.log('[useLeads] Setting up realtime subscription for table:', tableName);
-
-    const channel = supabase
-      .channel(`leads-realtime-${tableName}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: tableName
-        },
-        (payload) => {
-          console.log('[useLeads] Realtime change received:', { table: tableName, event: payload.eventType });
-          // Invalidate and refetch leads query
-          queryClient.invalidateQueries({ queryKey: ['leads'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[useLeads] Cleaning up realtime subscription for table:', tableName);
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient, tableName]);
 
   const query = useQuery({
-    queryKey: ['leads', search, statusFilter, page, pageSize, tableName, companyId],
+    queryKey: ['leads', search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page, pageSize, fetchAll, tableName, companyId],
     queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
-      console.log('[useLeads] Querying table:', { tableName, companyId, statusFilter, search, page });
+      console.log('[useLeads] Querying table:', { tableName, companyId, statusFilter, search, page, fetchAll, pendingPaymentOnly });
       // Build select query with dynamic foreign key reference
       // For custom tables, we can't use named FK joins because CREATE TABLE LIKE doesn't copy FK constraints
       // We'll just select all fields without joins for custom tables
@@ -86,14 +66,32 @@ export function useLeads({ search, statusFilter, page = 1, pageSize = 25 }: UseL
         query = query.eq('status', statusFilter as LeadStatus);
       }
 
+      if (ownerFilter && ownerFilter.length > 0) {
+        query = query.in('sales_owner_id', ownerFilter);
+      }
+
+      if (productFilter && productFilter.length > 0) {
+        query = query.in('product_purchased', productFilter);
+      }
+
+      if (pendingPaymentOnly) {
+        query = query.gt('revenue_received', 0);
+      }
+
       if (search) {
         query = query.or(
           `name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,college.ilike.%${search}%`
         );
       }
 
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
+      let from = (page - 1) * pageSize;
+      let to = from + pageSize - 1;
+
+      if (fetchAll) {
+        from = 0;
+        to = 1000000 - 1; // Effectively "all"
+      }
+
       query = query.range(from, to);
 
       const { data, error, count } = await query;
@@ -188,6 +186,25 @@ export function useCreateLeads() {
       if (data && Array.isArray(data)) {
         data.forEach(lead => automationService.checkAndRunAutomations('lead_created', lead));
       }
+    },
+  });
+}
+
+export function useDeleteLead() {
+  const queryClient = useQueryClient();
+  const { tableName } = useLeadsTable();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from(tableName as any)
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
   });
 }

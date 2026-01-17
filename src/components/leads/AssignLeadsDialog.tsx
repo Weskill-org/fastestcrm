@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCompany } from '@/hooks/useCompany';
 
 interface AssignLeadsDialogProps {
     open: boolean;
@@ -28,24 +29,50 @@ export function AssignLeadsDialog({ open, onOpenChange, selectedLeadIds, onSucce
     const { user } = useAuth();
     const { tableName } = useLeadsTable();
     const queryClient = useQueryClient();
+    const { company } = useCompany();
 
     useEffect(() => {
-        if (open) {
+        if (open && company?.id) {
             fetchProfiles();
         }
-    }, [open]);
+    }, [open, company?.id]);
 
     const fetchProfiles = async () => {
         try {
+            if (!company?.id) return;
+
             // RLS policy "Users can view profiles in their hierarchy" ensures we only get
             // profiles that are in the user's hierarchy (subordinates and self).
-            const { data, error } = await supabase
+            // We explicitly filter by company_id to double-ensure no cross-company data leakage.
+            const { data: profilesData, error: profilesError } = await supabase
                 .from('profiles')
                 .select('id, full_name, email')
+                .eq('company_id', company.id)
                 .neq('id', user?.id); // Exclude current user if we only want "below" in hierarchy
 
-            if (error) throw error;
-            setProfiles(data || []);
+            if (profilesError) throw profilesError;
+
+            const pData = profilesData || [];
+            if (pData.length === 0) {
+                setProfiles([]);
+                return;
+            }
+
+            // Fetch roles to filter out deleted users (who have no role)
+            const profileIds = pData.map(p => p.id);
+            const { data: rolesData, error: rolesError } = await supabase
+                .from('user_roles')
+                .select('user_id')
+                .in('user_id', profileIds);
+
+            if (rolesError) {
+                console.warn('Could not fetch roles for filtering:', rolesError);
+                setProfiles(pData);
+            } else {
+                const activeUserIds = new Set(rolesData?.map(r => r.user_id));
+                const activeProfiles = pData.filter(p => activeUserIds.has(p.id));
+                setProfiles(activeProfiles);
+            }
         } catch (error) {
             console.error('Error fetching profiles:', error);
             toast.error('Failed to load team members');

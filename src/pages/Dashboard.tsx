@@ -8,7 +8,9 @@ import { useLeads } from '@/hooks/useLeads';
 import { format } from 'date-fns';
 
 export default function Dashboard() {
-  const { data: leadsData, isLoading } = useLeads();
+  // Fetch all leads for accurate revenue calculations
+  // TODO: Move aggregation to backend for better performance with large datasets
+  const { data: leadsData, isLoading } = useLeads({ fetchAll: true });
   const leads = leadsData?.leads || [];
 
   // Calculate stats

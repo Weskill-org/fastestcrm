@@ -11,13 +11,22 @@ import { format } from 'date-fns';
 
 export default function PendingPayments() {
     const [searchTerm, setSearchTerm] = useState('');
-    const { data: leadsData, isLoading } = useLeads({ search: searchTerm });
+    // Fetch all leads since we're doing client-side filtering for calculated values (projected vs received)
+    // TODO: Ideally this should be a backend filter, but checking column comparisons (A > B) is complex in Supabase basic queries
+    // Use server-side filtering to get leads with revenue_received > 0
+    // We fetch a larger page size (1000) to get most pending payments without scanning the whole table
+    const { data: leadsData, isLoading } = useLeads({
+        search: searchTerm,
+        pendingPaymentOnly: true,
+        pageSize: 1000
+    });
     const leads = leadsData?.leads || [];
 
     const pendingLeads = leads?.filter(lead => {
         const projected = lead.revenue_projected || 0;
         const received = lead.revenue_received || 0;
-        return projected > received;
+        // Logic: Projected > Received AND Received > 0 (Must have paid something to be "pending balance", otherwise it's just unpaid)
+        return projected > received && received > 0;
     }) || [];
 
     const formatCurrency = (amount: number) => {

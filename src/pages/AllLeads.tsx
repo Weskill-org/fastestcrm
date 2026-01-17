@@ -22,6 +22,7 @@ import { UploadLeadsDialog } from '@/components/leads/UploadLeadsDialog';
 import { AssignLeadsDialog } from '@/components/leads/AssignLeadsDialog';
 import { LeadsTable } from '@/components/leads/LeadsTable';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
+import { useCompany } from '@/hooks/useCompany';
 
 
 
@@ -36,29 +37,54 @@ export default function AllLeads() {
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const { tableName } = useLeadsTable();
+  const { company } = useCompany();
 
   // Fetch filter options
   const { data: filterOptions } = useQuery({
-    queryKey: ['leadsFilterOptions'],
+    queryKey: ['leadsFilterOptions', company?.id],
     queryFn: async () => {
-      const { data: owners } = await supabase
+      if (!company?.id) return null;
+
+      // Fetch owners (profiles)
+      const { data: ownersData } = await supabase
         .from('profiles')
         .select('id, full_name')
+        .eq('company_id', company.id)
         .not('full_name', 'is', null);
 
-      const { data: products } = await supabase.from('products').select('name').order('name');
+      let activeOwners = ownersData || [];
+      if (activeOwners.length > 0) {
+        // Filter out deleted users (those who don't have a role in user_roles)
+        const ownerIds = activeOwners.map(o => o.id);
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .in('user_id', ownerIds);
+
+        const activeUserIds = new Set(rolesData?.map(r => r.user_id));
+        activeOwners = activeOwners.filter(o => activeUserIds.has(o.id));
+      }
+
+      const { data: products } = await supabase
+        .from('products')
+        .select('name')
+        .eq('company_id', company.id)
+        .order('name');
 
       return {
-        owners: owners?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [],
+        owners: activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id })),
         products: Array.from(new Set(((products as any[]) || []).map(p => p.name))).map(name => ({ label: name, value: name })),
         statuses: Constants.public.Enums.lead_status.map(s => ({ label: s.replace('_', ' '), value: s }))
       };
-    }
+    },
+    enabled: !!company?.id
   });
 
   const { data: leadsData, isLoading, refetch } = useLeads({
     search: debouncedSearchQuery,
     statusFilter: selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : undefined,
+    ownerFilter: Array.from(selectedOwners),
+    productFilter: Array.from(selectedProducts),
     page,
     pageSize
   });
