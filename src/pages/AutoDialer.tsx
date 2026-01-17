@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ export default function AutoDialer() {
     const [isDialing, setIsDialing] = useState(false);
     const [currentLeadIndex, setCurrentLeadIndex] = useState(0);
     const [callStatus, setCallStatus] = useState<LeadStatus | ''>('');
+    const [timer, setTimer] = useState<number | null>(null);
+    const phoneLinkRef = useRef<HTMLAnchorElement>(null);
 
     // Fetch only 'new' leads for auto-dialer
     const { data: leadsData, isLoading } = useLeads({ statusFilter: 'new' });
@@ -30,6 +32,33 @@ export default function AutoDialer() {
         }
     }, [leads, currentLeadIndex]);
 
+    // Auto-click phone link when dialing starts or lead changes
+    useEffect(() => {
+        if (isDialing && currentLead && phoneLinkRef.current) {
+            // Small delay to ensure render is complete and user is ready
+            const timeoutId = setTimeout(() => {
+                phoneLinkRef.current?.click();
+            }, 500);
+            return () => clearTimeout(timeoutId);
+        }
+    }, [isDialing, currentLead]);
+
+    // Timer countdown effect
+    useEffect(() => {
+        if (timer === null) return;
+
+        if (timer === 0) {
+            handleCallOutcome();
+            return;
+        }
+
+        const intervalId = setInterval(() => {
+            setTimer((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [timer]);
+
     const startDialing = () => {
         if (!leads || leads.length === 0) {
             toast.error("No new leads to dial");
@@ -37,14 +66,20 @@ export default function AutoDialer() {
         }
         setIsDialing(true);
         setCurrentLeadIndex(0);
+        setCallStatus('');
+        setTimer(null);
     };
 
     const stopDialing = () => {
         setIsDialing(false);
+        setTimer(null);
     };
 
     const handleCallOutcome = async () => {
         if (!currentLead || !callStatus) return;
+
+        // Clear timer if it was running (e.g. manual click)
+        setTimer(null);
 
         try {
             await updateLead.mutateAsync({
@@ -69,6 +104,12 @@ export default function AutoDialer() {
         }
     };
 
+    const handleStatusChange = (val: LeadStatus) => {
+        setCallStatus(val);
+        // Start 3 second timer on selection
+        setTimer(3);
+    };
+
     return (
         <DashboardLayout>
             <div className="p-8 space-y-8">
@@ -91,16 +132,27 @@ export default function AutoDialer() {
                                         {isDialing ? 'Dialing in progress...' : 'Ready to start dialing'}
                                     </CardDescription>
                                 </div>
-                                <Badge variant={isDialing ? "default" : "secondary"} className="text-lg px-4 py-1">
-                                    {isDialing ? 'ON CALL' : 'IDLE'}
-                                </Badge>
+                                <div className="flex items-center gap-4">
+                                    {isDialing && (
+                                        <Button variant="destructive" size="sm" onClick={stopDialing}>
+                                            <Pause className="h-4 w-4 mr-1" /> Stop
+                                        </Button>
+                                    )}
+                                    <Badge variant={isDialing ? "default" : "secondary"} className="text-lg px-4 py-1">
+                                        {isDialing ? 'ON CALL' : 'IDLE'}
+                                    </Badge>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-8">
                             {isDialing && currentLead ? (
                                 <div className="text-center py-8 space-y-6">
                                     <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                                        <a href={`tel:${currentLead.phone}`} className="flex items-center justify-center w-full h-full">
+                                        <a
+                                            href={`tel:${currentLead.phone}`}
+                                            ref={phoneLinkRef}
+                                            className="flex items-center justify-center w-full h-full"
+                                        >
                                             <Phone className="h-10 w-10 text-primary" />
                                         </a>
                                     </div>
@@ -113,23 +165,34 @@ export default function AutoDialer() {
                                     </div>
 
                                     <div className="flex justify-center gap-4 max-w-md mx-auto">
-                                        <Select value={callStatus} onValueChange={(val) => setCallStatus(val as LeadStatus)}>
-                                            <SelectTrigger className="w-[180px]">
-                                                <SelectValue placeholder="Select Outcome" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="interested">Interested</SelectItem>
-                                                <SelectItem value="follow_up">Follow Up</SelectItem>
-                                                <SelectItem value="rnr">RNR (No Response)</SelectItem>
-                                                <SelectItem value="not_interested">Not Interested</SelectItem>
-                                                <SelectItem value="dnd">DND</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <div className="w-[180px]">
+                                            <Select value={callStatus} onValueChange={(val) => handleStatusChange(val as LeadStatus)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Outcome" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="interested">Interested</SelectItem>
+                                                    <SelectItem value="follow_up">Follow Up</SelectItem>
+                                                    <SelectItem value="rnr">RNR (No Response)</SelectItem>
+                                                    <SelectItem value="not_interested">Not Interested</SelectItem>
+                                                    <SelectItem value="dnd">DND</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
 
-                                        <Button onClick={handleCallOutcome} disabled={!callStatus} className="gradient-primary">
-                                            Next Call <SkipForward className="ml-2 h-4 w-4" />
+                                        <Button
+                                            onClick={handleCallOutcome}
+                                            disabled={!callStatus}
+                                            className="gradient-primary min-w-[140px]"
+                                        >
+                                            {timer !== null ? `Next Call (${timer})` : 'Next Call'} <SkipForward className="ml-2 h-4 w-4" />
                                         </Button>
                                     </div>
+                                    {timer !== null && (
+                                        <p className="text-sm text-muted-foreground animate-pulse">
+                                            Auto-switching in {timer} seconds...
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="text-center py-12">
