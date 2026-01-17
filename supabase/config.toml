@@ -29,3 +29,27 @@ verify_jwt = true
 
 [functions.verify-domain]
 verify_jwt = false
+
+[functions.admin-manage-company]
+verify_jwt = false
+
+[functions.manage-subscription]
+verify_jwt = true
+
+[functions.process-auto-debit]
+verify_jwt = false
+
+[functions.initiate-wallet-recharge]
+verify_jwt = true
+
+[functions.verify-wallet-recharge]
+verify_jwt = true
+
+[functions.validate-discount]
+verify_jwt = true
+
+[functions.redeem-gift-card]
+verify_jwt = true
+
+[functions.purchase-addon]
+verify_jwt = true

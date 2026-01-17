@@ -43,11 +43,13 @@ serve(async (req) => {
         // actions: 'add_seats', 'extend_subscription'
 
         // Get Company & Wallet
-        const { data: company } = await supabaseAdmin
+        const { data: company, error: companyFetchError } = await supabaseAdmin
             .from('companies')
             .select('total_licenses, subscription_valid_until, subscription_status')
             .eq('id', companyId)
             .single()
+
+        if (companyFetchError || !company) throw new Error('Company not found')
 
         const { data: wallet } = await supabaseAdmin
             .from('wallets')

@@ -30,6 +30,7 @@ interface Company {
   is_active: boolean;
   subscription_valid_until: string | null;
   subscription_status: string | null;
+  features: Record<string, boolean> | null;
 }
 
 interface WalletData {
@@ -128,12 +129,29 @@ export default function ManageCompany() {
 
       if (companyError) throw companyError;
 
-      setCompany(companyData);
-      setCompanyName(companyData.name);
-      setCompanySlug(companyData.slug);
-      setCustomDomain(companyData.custom_domain || '');
-      setPrimaryColor(companyData.primary_color || '#8B5CF6');
-      setLogoUrl(companyData.logo_url);
+      // Map to Company interface with proper typing
+      const mappedCompany: Company = {
+        id: companyData.id,
+        name: companyData.name,
+        slug: companyData.slug,
+        custom_domain: companyData.custom_domain,
+        domain_status: companyData.domain_status,
+        logo_url: companyData.logo_url,
+        primary_color: companyData.primary_color,
+        total_licenses: companyData.total_licenses,
+        used_licenses: companyData.used_licenses,
+        is_active: companyData.is_active ?? true,
+        subscription_valid_until: companyData.subscription_valid_until,
+        subscription_status: companyData.subscription_status,
+        features: (companyData.features as Record<string, boolean>) || null,
+      };
+
+      setCompany(mappedCompany);
+      setCompanyName(mappedCompany.name);
+      setCompanySlug(mappedCompany.slug);
+      setCustomDomain(mappedCompany.custom_domain || '');
+      setPrimaryColor(mappedCompany.primary_color || '#8B5CF6');
+      setLogoUrl(mappedCompany.logo_url);
 
       // Get Wallet
       const { data: walletData } = await supabase
@@ -147,13 +165,13 @@ export default function ManageCompany() {
       // Get Transactions
       const { data: txData } = await supabase
         .from('wallet_transactions')
-        .select('*')
+        .select('id, amount, type, description, status, created_at')
         .eq('wallet_id', profile.company_id)
         .eq('status', 'success')
         .order('created_at', { ascending: false })
         .limit(10);
 
-      setTransactions(txData || []);
+      setTransactions((txData || []) as WalletTransaction[]);
 
       // Load TXT verification (existing logic)
       if (companyData.custom_domain) {

@@ -74,7 +74,7 @@ export function useLGLinks() {
       const linksWithStats = await Promise.all(
         rawLinks.map(async (link) => {
           const { data: leadStats } = await supabase
-            .from(tableName)
+            .from(tableName as 'leads')
             .select('status, revenue_received, revenue_projected')
             .eq('lg_link_id', link.id);
 
