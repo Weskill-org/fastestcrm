@@ -346,29 +346,41 @@ export function useTeam() {
     fetchTeam();
   }, [fetchTeam]);
 
+  const deleteMember = async (targetUserId: string) => {
+    if (!user) return { error: new Error('Not authenticated') };
+
+    // Optimistic update - remove immediately from UI
+    const previousMembers = members;
+    setMembers(prev => prev.filter(m => m.id !== targetUserId));
+
+    const { data, error: funcError } = await supabase.functions.invoke('delete-team-member', {
+      body: { targetUserId }
+    });
+
+    if (funcError || data?.error) {
+      // Rollback on error
+      setMembers(previousMembers);
+      return { error: funcError || new Error(data?.error) };
+    }
+
+    return { error: null };
+  };
+
+  const addMemberOptimistic = (newMember: TeamMember) => {
+    setMembers(prev => [...prev, newMember]);
+  };
+
   return {
     members,
     loading,
     currentUserRole,
     promoteUser,
-    deleteMember: async (targetUserId: string) => {
-      if (!user) return { error: new Error('Not authenticated') };
-
-      const { data, error: funcError } = await supabase.functions.invoke('delete-team-member', {
-        body: { targetUserId }
-      });
-
-      if (funcError) return { error: funcError };
-      if (data?.error) return { error: new Error(data.error) };
-
-      // Optimistic update
-      setMembers(prev => prev.filter(m => m.id !== targetUserId));
-      return { error: null };
-    },
+    deleteMember,
     setManager,
     getRoleLabel,
     getAssignableRoles,
     refetch: fetchTeam,
-    roleLabels
+    roleLabels,
+    addMemberOptimistic
   };
 }

@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Team() {
-    const { members, loading, currentUserRole, promoteUser, setManager, deleteMember, getRoleLabel, getAssignableRoles, refetch } = useTeam();
+    const { members, loading, currentUserRole, promoteUser, setManager, deleteMember, getRoleLabel, getAssignableRoles, refetch, addMemberOptimistic } = useTeam();
     const { company } = useCompany();
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -167,12 +167,9 @@ export default function Team() {
             return;
         }
 
-        console.log("Starting invite process...", { email: inviteEmail, role: inviteRole });
         setIsInviting(true);
 
         try {
-            console.log("Invoking edge function 'invite-team-member'...");
-            // Call secure edge function for team member invitation
             const { data, error } = await supabase.functions.invoke('invite-team-member', {
                 body: {
                     email: validationResult.data.email,
@@ -182,31 +179,34 @@ export default function Team() {
                 }
             });
 
-            console.log("Edge function returned:", { data, error });
-
             if (error) {
-                console.error("Invoke error details:", error);
-                // Extract error message if it's buried in JSON string
                 let msg = error.message || "Failed to invite member";
                 try {
                     if (error && typeof error === 'object' && 'context' in error) {
                         const response = (error as any).context;
                         if (response instanceof Response) {
                             const errorBody = await response.json();
-                            console.error("Edge function error body:", errorBody);
-                            if (errorBody && errorBody.error) {
-                                msg = errorBody.error;
-                            }
+                            if (errorBody?.error) msg = errorBody.error;
                         }
                     }
-                } catch (e) { console.error("Error parsing error context", e); }
-
+                } catch (e) { /* ignore parse errors */ }
                 throw new Error(msg);
             }
 
-            if (data?.error) {
-                console.error("Data error details:", data.error);
-                throw new Error(data.error);
+            if (data?.error) throw new Error(data.error);
+
+            // Optimistic update - add new member immediately to UI
+            if (data?.userId) {
+                addMemberOptimistic({
+                    id: data.userId,
+                    email: validationResult.data.email,
+                    full_name: validationResult.data.fullName,
+                    phone: null,
+                    avatar_url: null,
+                    manager_id: null,
+                    created_at: new Date().toISOString(),
+                    role: validationResult.data.role as AppRole,
+                });
             }
 
             toast({
@@ -218,17 +218,13 @@ export default function Team() {
             setInviteFullName('');
             setInvitePassword('');
             setInviteRole('level_10');
-            // Refetch team immediately
-            refetch();
         } catch (err: any) {
-            console.error("Invite member error caught:", err);
             toast({
                 title: "Error",
                 description: err.message || "Failed to invite member.",
                 variant: "destructive"
             });
         } finally {
-            console.log("Setting isInviting to false");
             setIsInviting(false);
         }
     };
