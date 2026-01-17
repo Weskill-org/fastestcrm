@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubdomainContext } from '@/contexts/SubdomainContext';
 import { useCompanyBranding } from '@/contexts/CompanyBrandingContext';
+import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,14 +35,20 @@ export default function Auth() {
   const { signIn, signUp, user } = useAuth();
   const { isSubdomain, company: subdomainCompany } = useSubdomainContext();
   const { companyName, logoUrl, applyBranding } = useCompanyBranding();
+  const { data: isPlatformAdmin, isLoading: isCheckingAdmin } = usePlatformAdmin();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Redirect logic: platform admins go to /platform, others go to /dashboard
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
+    if (user && !isCheckingAdmin) {
+      if (isPlatformAdmin) {
+        navigate('/platform');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [user, navigate]);
+  }, [user, isPlatformAdmin, isCheckingAdmin, navigate]);
 
   const validateForm = () => {
     setErrors({});
