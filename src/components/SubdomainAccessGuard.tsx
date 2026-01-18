@@ -47,10 +47,10 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
       // Redirect them to their own company's subdomain
       const correctUrl = getWorkspaceUrl(userCompany.slug);
       const currentPath = window.location.pathname;
-      
+
       // Show toast-like message before redirecting
-      console.log(`Redirecting to correct workspace: ${correctUrl}${currentPath}`);
-      
+
+
       // Redirect to user's actual workspace
       window.location.href = `${correctUrl}${currentPath}`;
       return;

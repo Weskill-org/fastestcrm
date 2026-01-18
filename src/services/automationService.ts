@@ -102,7 +102,7 @@ export const automationService = {
             return;
         }
 
-        console.log(`Checking ${automations.length} automations for trigger ${triggerType}`);
+
 
         // 2. Filter and Execute
         for (const auto of automations as Automation[]) {
@@ -127,7 +127,7 @@ export const automationService = {
     },
 
     async executeAction(auto: Automation, data: any) {
-        console.log(`Executing automation: ${auto.name}`);
+
         const logEntry = {
             automation_id: auto.id,
             status: 'pending',
@@ -145,11 +145,7 @@ export const automationService = {
 
         try {
             if (auto.action_type === 'send_email') {
-                console.log('Sending Email:', {
-                    to: data.email,
-                    subject: auto.action_config?.subject,
-                    body: auto.action_config?.body
-                });
+
                 // TODO: Real email sending logic
             } else if (auto.action_type === 'webhook') {
                 if (auto.action_config?.url) {
@@ -165,11 +161,7 @@ export const automationService = {
                     throw new Error('WhatsApp integration not connected');
                 }
                 const message = auto.action_config?.template?.replace('{{name}}', data.name || 'User');
-                console.log('Sending WhatsApp:', {
-                    to: data.phone,
-                    message: message,
-                    apiKey: '***'
-                });
+
                 // Simulate API call
             }
 

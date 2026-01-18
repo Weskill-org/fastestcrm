@@ -110,8 +110,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
 
 
   const handleCreatePaymentLink = async (lead: Lead) => {
-    console.log('handleCreatePaymentLink called for:', lead);
-    console.log('Products available:', products);
+
 
     if (!lead.product_purchased) {
       toast.error('Please select a specific product to create a payment link');
@@ -120,7 +119,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
 
     // Match by name. Ideally we should match by ID if we stored product_id
     const selectedProgram = products?.find(p => p.name === lead.product_purchased && (!(lead as any).product_category || p.category === (lead as any).product_category));
-    console.log('Selected program:', selectedProgram);
+
 
     if (!selectedProgram) {
       toast.error('Program details not found');
@@ -129,7 +128,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
 
     // Convert price to paise (assuming price in DB is in INR)
     const amount = (selectedProgram.price || 0) * 100;
-    console.log('Calculated amount (paise):', amount);
+
 
     if (amount <= 0) {
       toast.error('Program price must be greater than 0');
@@ -155,7 +154,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
         },
         reference_id: lead.id
       };
-      console.log('Sending payload:', payload);
+
 
       const { data, error } = await supabase.functions.invoke('create-payment-link', {
         body: payload

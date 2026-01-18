@@ -35,7 +35,7 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
   const query = useQuery({
     queryKey: ['leads', search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page, pageSize, fetchAll, tableName, companyId],
     queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
-      console.log('[useLeads] Querying table:', { tableName, companyId, statusFilter, search, page, fetchAll, pendingPaymentOnly });
+
       // Build select query with dynamic foreign key reference
       // For custom tables, we can't use named FK joins because CREATE TABLE LIKE doesn't copy FK constraints
       // We'll just select all fields without joins for custom tables
@@ -56,10 +56,9 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
           console.warn('[useLeads] Security Guard: companyId missing for shared table. Aborting query to prevent data leakage.');
           return { leads: [], count: 0 };
         }
-        console.log('[useLeads] Applying strict company_id filter:', companyId);
         query = query.eq('company_id', companyId);
       } else {
-        console.log('[useLeads] Custom table detected, skipping company_id filter (Implicit Isolation)');
+
       }
 
       if (statusFilter && statusFilter !== 'all') {
@@ -101,7 +100,7 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
         throw error;
       }
 
-      console.log('[useLeads] Query successful:', { count, rowsReturned: data?.length });
+
 
       return { leads: (data as unknown as Lead[]) || [], count: count || 0 };
     },

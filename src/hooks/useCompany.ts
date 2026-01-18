@@ -57,12 +57,7 @@ export function useCompany() {
         console.error('[useCompany] Error fetching company:', error);
         setCompany(null);
       } else {
-        console.log('[useCompany] Fetched company data:', {
-          id: companyData.id,
-          name: companyData.name,
-          custom_leads_table: companyData.custom_leads_table,
-          admin_id: companyData.admin_id
-        });
+
         setCompany(companyData);
         setIsCompanyAdmin(companyData.admin_id === user?.id);
       }
