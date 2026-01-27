@@ -21,6 +21,11 @@ const navItems = [{
   label: 'All Leads',
   path: '/dashboard/leads'
 }, {
+  icon: Building2,
+  label: 'Real Estate Leads',
+  path: '/dashboard/real-estate-leads',
+  industryOnly: 'real_estate'
+}, {
   icon: UserCheck,
   label: 'Interested',
   path: '/dashboard/interested'
@@ -59,7 +64,18 @@ const navItems = [{
 }, {
   icon: Package,
   label: 'Products',
-  path: '/dashboard/products'
+  path: '/dashboard/products',
+  industryExclude: 'real_estate'
+}, {
+  icon: Building2,
+  label: 'Properties',
+  path: '/dashboard/products',
+  industryOnly: 'real_estate'
+}, {
+  icon: Users,
+  label: 'Lead Profiling',
+  path: '/dashboard/lead-profiling',
+  industryOnly: 'real_estate'
 }, {
   icon: Building2,
   label: 'Manage Company',
@@ -99,18 +115,29 @@ export default function DashboardLayout({
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+  const companyIndustry = (company as any)?.industry;
   const filteredNavItems = navItems.filter(item => {
+    // Industry-specific filtering
+    if ((item as any).industryOnly && (item as any).industryOnly !== companyIndustry) {
+      return false;
+    }
+    if ((item as any).industryExclude && (item as any).industryExclude === companyIndustry) {
+      return false;
+    }
+    
     if (item.label === 'Integrations') {
       return role === 'company' || role === 'company_subadmin';
     }
-    if (item.label === 'Products') {
+    if (item.label === 'Products' || item.label === 'Properties') {
+      return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
+    }
+    if (item.label === 'Lead Profiling') {
       return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
     }
     if (item.label === 'Manage Company') {
       return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
     }
     if (item.label === 'Statuses') {
-      // Only admins or subadmins of a company should see this
       return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
     }
     return true;
