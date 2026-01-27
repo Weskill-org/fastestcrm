@@ -66,16 +66,16 @@ export default function ManageStatuses() {
 
     const { data: statuses, isLoading, refetch } = useQuery({
         queryKey: ['company-lead-statuses', company?.id],
-        queryFn: async () => {
+        queryFn: async (): Promise<CompanyLeadStatus[]> => {
             if (!company?.id) return [];
             const { data, error } = await supabase
-                .from('company_lead_statuses')
+                .from('company_lead_statuses' as any)
                 .select('*')
                 .eq('company_id', company.id)
                 .order('order_index', { ascending: true });
             
             if (error) throw error;
-            return data as CompanyLeadStatus[];
+            return (data as unknown as CompanyLeadStatus[]) || [];
         },
         enabled: !!company?.id
     });
@@ -119,7 +119,7 @@ export default function ManageStatuses() {
 
             if (editingStatus) {
                 const { error } = await supabase
-                    .from('company_lead_statuses')
+                    .from('company_lead_statuses' as any)
                     .update({
                         label: payload.label,
                         color: payload.color,
@@ -130,7 +130,7 @@ export default function ManageStatuses() {
                 toast.success('Status updated');
             } else {
                  const { error } = await supabase
-                    .from('company_lead_statuses')
+                    .from('company_lead_statuses' as any)
                     .insert(payload);
                 if (error) throw error;
                 toast.success('Status created');
@@ -148,7 +148,7 @@ export default function ManageStatuses() {
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure? leads with this status might display incorrectly if not migrated.')) return;
         try {
-            const { error } = await supabase.from('company_lead_statuses').delete().eq('id', id);
+            const { error } = await supabase.from('company_lead_statuses' as any).delete().eq('id', id);
             if (error) throw error;
             toast.success('Status deleted');
             refetch();

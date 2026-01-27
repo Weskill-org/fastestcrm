@@ -137,12 +137,23 @@ export function useDeleteForm() {
 
 import { useLeadsTable } from './useLeadsTable';
 
+export interface LeadResponse {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  created_at: string;
+  form_id: string | null;
+  [key: string]: any;
+}
+
 export function useFormResponses(formId: string | undefined) {
   const { tableName, companyId } = useLeadsTable();
 
   return useQuery({
     queryKey: ['form-responses', formId, tableName, companyId],
-    queryFn: async () => {
+    queryFn: async (): Promise<LeadResponse[]> => {
       if (!formId) return [];
 
       let query = supabase
@@ -158,7 +169,7 @@ export function useFormResponses(formId: string | undefined) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data;
+      return (data as unknown as LeadResponse[]) || [];
     },
     enabled: !!formId,
   });

@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ManageLeadAttributes from './ManageLeadAttributes';
 import { useCompany } from '@/hooks/useCompany';
+import GeneralSettingsTab from '@/components/settings/GeneralSettingsTab';
 
 export default function Settings() {
     const { user } = useAuth();
@@ -162,7 +163,7 @@ export default function Settings() {
                 </div>
 
                 <Tabs defaultValue="profile" className="w-full">
-                    <TabsList className="mb-8">
+                    <TabsList className="mb-8 flex-wrap">
                         <TabsTrigger value="profile" className="flex items-center gap-2">
                             <User className="h-4 w-4" /> Profile
                         </TabsTrigger>
@@ -172,9 +173,11 @@ export default function Settings() {
                         <TabsTrigger value="security" className="flex items-center gap-2">
                             <Shield className="h-4 w-4" /> Security
                         </TabsTrigger>
-                        <TabsTrigger value="general" className="flex items-center gap-2">
-                            <Globe className="h-4 w-4" /> General
-                        </TabsTrigger>
+                        {isCompanyAdmin && (
+                            <TabsTrigger value="general" className="flex items-center gap-2">
+                                <Globe className="h-4 w-4" /> General
+                            </TabsTrigger>
+                        )}
                         {isCompanyAdmin && (
                             <TabsTrigger value="attributes" className="flex items-center gap-2">
                                 <Database className="h-4 w-4" /> Lead Attributes
@@ -303,17 +306,11 @@ export default function Settings() {
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="general">
-                        <Card className="glass max-w-2xl">
-                            <CardHeader>
-                                <CardTitle>General Settings</CardTitle>
-                                <CardDescription>Manage general application settings.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-muted-foreground text-sm">General settings configuration coming soon.</p>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                    {isCompanyAdmin && (
+                        <TabsContent value="general">
+                            <GeneralSettingsTab />
+                        </TabsContent>
+                    )}
 
                     {isCompanyAdmin && (
                         <TabsContent value="attributes">
