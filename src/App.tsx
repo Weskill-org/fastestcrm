@@ -35,6 +35,8 @@ import PlatformAdmin from "./pages/PlatformAdmin";
 import NotFound from "./pages/NotFound";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
+import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +69,8 @@ const MainDomainRoutes = () => (
     <Route path="/dashboard/company" element={<ManageCompany />} />
     <Route path="/dashboard/statuses" element={<ManageStatuses />} />
     <Route path="/dashboard/products" element={<ManageProducts />} />
+    <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
+    <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
     <Route path="/platform" element={<PlatformAdmin />} />
     <Route path="/form/:id" element={<PublicForm />} />
     <Route path="*" element={<NotFound />} />
@@ -102,6 +106,8 @@ const SubdomainRoutes = () => (
       <Route path="/dashboard/company" element={<ManageCompany />} />
       <Route path="/dashboard/statuses" element={<ManageStatuses />} />
       <Route path="/dashboard/products" element={<ManageProducts />} />
+      <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
+      <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
       <Route path="/form/:id" element={<PublicForm />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

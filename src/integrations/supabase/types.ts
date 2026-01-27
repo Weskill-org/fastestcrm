@@ -494,6 +494,41 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_profiling_config: {
+        Row: {
+          company_id: string
+          config: Json
+          created_at: string
+          id: string
+          industry: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          config?: Json
+          created_at?: string
+          id?: string
+          industry: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          config?: Json
+          created_at?: string
+          id?: string
+          industry?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_profiling_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           batch_month: string | null
@@ -651,6 +686,182 @@ export type Database = {
           },
           {
             foreignKeyName: "leads_sales_owner_id_fkey"
+            columns: ["sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads_real_estate: {
+        Row: {
+          broker_name: string | null
+          budget_max: number | null
+          budget_min: number | null
+          commission_amount: number | null
+          commission_percentage: number | null
+          company_id: string | null
+          created_at: string
+          created_by_id: string
+          deal_value: number | null
+          email: string | null
+          form_id: string | null
+          id: string
+          lead_profile: Json | null
+          lead_source: string | null
+          lg_link_id: string | null
+          name: string
+          notes: string | null
+          payment_link: string | null
+          phone: string | null
+          possession_timeline: string | null
+          post_sales_owner_id: string | null
+          pre_sales_owner_id: string | null
+          preferred_location: string | null
+          property_name: string | null
+          property_size: string | null
+          property_type: string | null
+          purpose: string | null
+          revenue_projected: number | null
+          revenue_received: number | null
+          sales_owner_id: string | null
+          site_visit_photos: Json | null
+          status: string
+          status_metadata: Json | null
+          unit_number: string | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          broker_name?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          commission_amount?: number | null
+          commission_percentage?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by_id: string
+          deal_value?: number | null
+          email?: string | null
+          form_id?: string | null
+          id?: string
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          name: string
+          notes?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          possession_timeline?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          preferred_location?: string | null
+          property_name?: string | null
+          property_size?: string | null
+          property_type?: string | null
+          purpose?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          site_visit_photos?: Json | null
+          status?: string
+          status_metadata?: Json | null
+          unit_number?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          broker_name?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          commission_amount?: number | null
+          commission_percentage?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by_id?: string
+          deal_value?: number | null
+          email?: string | null
+          form_id?: string | null
+          id?: string
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          name?: string
+          notes?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          possession_timeline?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          preferred_location?: string | null
+          property_name?: string | null
+          property_size?: string | null
+          property_type?: string | null
+          purpose?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          site_visit_photos?: Json | null
+          status?: string
+          status_metadata?: Json | null
+          unit_number?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_real_estate_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_real_estate_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_real_estate_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_real_estate_lg_link_id_fkey"
+            columns: ["lg_link_id"]
+            isOneToOne: false
+            referencedRelation: "lg_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_real_estate_post_sales_owner_id_fkey"
+            columns: ["post_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_real_estate_pre_sales_owner_id_fkey"
+            columns: ["pre_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_real_estate_sales_owner_id_fkey"
             columns: ["sales_owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
