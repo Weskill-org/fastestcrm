@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Phone, Mail, MoreHorizontal, MapPin, FileText } from 'lucide-react';
+import { Phone, Mail, MoreHorizontal, MapPin, FileText, Camera } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -380,6 +380,7 @@ export function RealEstateLeadsTable({
               <TableHead className="font-semibold min-w-[120px]">Property Type</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Budget</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Location</TableHead>
+              <TableHead className="font-semibold min-w-[100px]">Site Visit</TableHead>
               <TableHead className="font-semibold min-w-[200px]">Lead Profile</TableHead>
               <TableHead className="font-semibold min-w-[150px]">Status</TableHead>
               <TableHead className="font-semibold min-w-[150px]">Pre-Sales</TableHead>
@@ -426,6 +427,17 @@ export function RealEstateLeadsTable({
                       <MapPin className="h-3 w-3" /> {lead.preferred_location}
                     </span>
                   ) : '-'}
+                </TableCell>
+                <TableCell className="align-top py-3">
+                  <Button
+                    variant={lead.site_visit_photos && lead.site_visit_photos.length > 0 ? "outline" : "secondary"}
+                    size="sm"
+                    className="h-8 text-xs gap-1"
+                    onClick={() => setCameraDialogLead(lead)}
+                  >
+                    <Camera className="h-3 w-3" />
+                    {lead.site_visit_photos && lead.site_visit_photos.length > 0 ? 'View/Add' : 'Record'}
+                  </Button>
                 </TableCell>
                 {/* Lead Profile: Nested Dropdown Edit */}
                 <TableCell className="align-top py-3">

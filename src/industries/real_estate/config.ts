@@ -8,7 +8,7 @@ export interface RealEstateLeadFields {
   phone: string | null;
   whatsapp: string | null;
   status: string;
-  
+
   // Real Estate-specific fields
   property_type: string | null;
   budget_min: number | null;
@@ -19,14 +19,14 @@ export interface RealEstateLeadFields {
   possession_timeline: string | null;
   site_visit_date: string | null;
   broker_name: string | null;
-  
+
   // Property details (when dealing)
   property_name: string | null;
   unit_number: string | null;
   deal_value: number | null;
   commission_percentage: number | null;
   commission_amount: number | null;
-  
+
   // Financial fields
   revenue_projected: number | null;
   revenue_received: number | null;
@@ -42,6 +42,7 @@ export const REAL_ESTATE_LEAD_COLUMNS = [
   { key: 'budget_min', label: 'Min Budget', type: 'currency', required: false },
   { key: 'budget_max', label: 'Max Budget', type: 'currency', required: false },
   { key: 'preferred_location', label: 'Preferred Location', type: 'text', required: false },
+  { key: 'site_visit_photos', label: 'Site Visit', type: 'custom', required: false },
   { key: 'property_size', label: 'Property Size (sq ft)', type: 'text', required: false },
   { key: 'purpose', label: 'Purpose', type: 'select', required: false },
   { key: 'possession_timeline', label: 'Possession Timeline', type: 'text', required: false },
