@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useCompany } from '@/hooks/useCompany';
@@ -22,6 +23,7 @@ interface ColumnDef {
 }
 
 export default function ManageLeadAttributes() {
+    const navigate = useNavigate();
     const { company, loading: companyLoading, refetch: refetchCompany } = useCompany();
     const { user } = useAuth();
     const [unlocking, setUnlocking] = useState(false);
@@ -31,8 +33,21 @@ export default function ManageLeadAttributes() {
 
     // Requirement: Company Admin only
     const isCompanyAdmin = company?.admin_id === user?.id;
-    // Requirement: At least 2 seats
-    const hasEnoughLicenses = (company?.total_licenses || 0) >= 2;
+
+    const { data: wallet } = useQuery({
+        queryKey: ['wallet-balance', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return { balance: 0 };
+            const { data, error } = await supabase
+                .from('wallets')
+                .select('balance')
+                .eq('company_id', company.id)
+                .single();
+            if (error) return { balance: 0 };
+            return data;
+        },
+        enabled: !!company?.id
+    });
 
     const isUnlocked = !!company?.custom_leads_table;
 
@@ -73,14 +88,26 @@ export default function ManageLeadAttributes() {
 
     const handleUnlock = async () => {
         if (!company) return;
-        if (!confirm('Are you sure? This will migrate your leads to a dedicated table.')) return;
+
+        const PRICE = 100000;
+        const balance = wallet?.balance || 0;
+
+        if (balance < PRICE) {
+            toast.error(`Insufficient wallet balance. Required: ₹${PRICE.toLocaleString()}. Available: ₹${balance.toLocaleString()}`);
+            if (confirm("You don't have enough credits. Go to dashboard to add money?")) {
+                navigate('/dashboard/company');
+            }
+            return;
+        }
+
+        if (!confirm(`Unlock Custom Attributes for ₹${PRICE.toLocaleString()}?`)) return;
 
         setUnlocking(true);
         try {
-            const { data, error } = await supabase.rpc('enable_custom_leads_table' as any, { input_company_id: company.id });
+            const { data, error } = await supabase.functions.invoke('unlock-lead-attributes');
+
             if (error) throw error;
-            const response = data as any;
-            if (!response.success) throw new Error(response.message);
+            if (data?.error) throw new Error(data.error);
 
             toast.success('Attributes unlocked! Leads migrated.');
             await refetchCompany();
@@ -182,107 +209,125 @@ export default function ManageLeadAttributes() {
                 <p className="text-muted-foreground">Customize your lead schema.</p>
             </div>
 
-            {!hasEnoughLicenses ? (
-                <Alert variant="destructive"><AlertTitle>Upgrade Required</AlertTitle></Alert>
+            {/* Removed License Check */}
+            {!isUnlocked ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Lock className="h-5 w-5" /> Unlock Custom Attributes
+                        </CardTitle>
+                        <CardDescription>
+                            Gain full control over your lead schema. Add custom fields, unique constraints, and more.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="bg-muted p-4 rounded-lg border flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold text-lg">One-time Unlock Fee</p>
+                                <p className="text-sm text-muted-foreground">Unlock unlimited custom attributes forever.</p>
+                            </div>
+                            <div className="text-2xl font-bold font-mono">
+                                ₹1,00,000
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">
+                                Current Wallet Balance: <span className={wallet?.balance && wallet.balance >= 100000 ? "text-green-600 font-bold" : "text-destructive font-bold"}>₹{wallet?.balance?.toLocaleString() || 0}</span>
+                            </p>
+                            <Button onClick={handleUnlock} disabled={unlocking} size="lg">
+                                {unlocking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : 'Pay & Unlock'}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             ) : (
-                <>
-                    {!isUnlocked ? (
-                        <Card>
-                            {/* Unlock UI (Simplified for brevity as it was working) */}
-                            <CardHeader><CardTitle>Unlock Custom Attributes</CardTitle></CardHeader>
-                            <CardContent>
-                                <Button onClick={handleUnlock} disabled={unlocking}>{unlocking ? 'Migrating...' : 'Unlock'}</Button>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Unlock className="h-5 w-5 text-green-500" /> Custom Attributes Active
-                                    </CardTitle>
-                                    <CardDescription>Table: {company.custom_leads_table}</CardDescription>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <Unlock className="h-5 w-5 text-green-500" /> Custom Attributes Active
+                            </CardTitle>
+                            <CardDescription>Table: {company.custom_leads_table}</CardDescription>
+                        </div>
+                        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm"><Plus className="h-4 w-4 mr-2" /> Add Attribute</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Add New Attribute</DialogTitle>
+                                    <DialogDescription>Add a new text field to your leads table.</DialogDescription>
+                                </DialogHeader>
+                                <div className="py-4">
+                                    <Label>Attribute Name</Label>
+                                    <Input
+                                        value={newAttributeName}
+                                        onChange={e => setNewAttributeName(e.target.value)}
+                                        placeholder="e.g. LinkedIn URL"
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">Will be converted to snake_case (e.g. linkedin_url)</p>
                                 </div>
-                                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button size="sm"><Plus className="h-4 w-4 mr-2" /> Add Attribute</Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Add New Attribute</DialogTitle>
-                                            <DialogDescription>Add a new text field to your leads table.</DialogDescription>
-                                        </DialogHeader>
-                                        <div className="py-4">
-                                            <Label>Attribute Name</Label>
-                                            <Input
-                                                value={newAttributeName}
-                                                onChange={e => setNewAttributeName(e.target.value)}
-                                                placeholder="e.g. LinkedIn URL"
-                                            />
-                                            <p className="text-xs text-muted-foreground mt-1">Will be converted to snake_case (e.g. linkedin_url)</p>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button onClick={handleAddAttribute} disabled={addingAttribute}>
-                                                {addingAttribute ? <Loader2 className="animate-spin" /> : 'Add Attribute'}
-                                            </Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-                            </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Attribute Name</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead>Properties</TableHead>
-                                            <TableHead>Unique Constraint</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                <DialogFooter>
+                                    <Button onClick={handleAddAttribute} disabled={addingAttribute}>
+                                        {addingAttribute ? <Loader2 className="animate-spin" /> : 'Add Attribute'}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Attribute Name</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Properties</TableHead>
+                                    <TableHead>Unique Constraint</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {attributesList.map((attr) => {
+                                    const isUnique = uniqueConstraints?.includes(attr.name) || false;
+                                    return (
+                                        <TableRow key={attr.name}>
+                                            <TableCell className="font-medium">{attr.label}</TableCell>
+                                            <TableCell><Badge variant="outline">{attr.type}</Badge></TableCell>
+                                            <TableCell>
+                                                {attr.system ? <Badge variant="secondary">System</Badge> : <Badge>Custom</Badge>}
+                                            </TableCell>
+                                            <TableCell>
+                                                {attr.canUnique ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <Switch
+                                                            checked={isUnique}
+                                                            onCheckedChange={() => handleToggleUnique(attr.name, isUnique)}
+                                                            disabled={constraintsLoading}
+                                                        />
+                                                        {isUnique && <span className="text-xs text-green-600 flex gap-1"><Fingerprint className="h-3 w-3" /> Unique</span>}
+                                                    </div>
+                                                ) : <span className="text-muted-foreground text-xs">Not applicable</span>}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {!attr.system && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive hover:bg-destructive/10"
+                                                        onClick={() => handleDeleteAttribute(attr.name)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {attributesList.map((attr) => {
-                                            const isUnique = uniqueConstraints?.includes(attr.name) || false;
-                                            return (
-                                                <TableRow key={attr.name}>
-                                                    <TableCell className="font-medium">{attr.label}</TableCell>
-                                                    <TableCell><Badge variant="outline">{attr.type}</Badge></TableCell>
-                                                    <TableCell>
-                                                        {attr.system ? <Badge variant="secondary">System</Badge> : <Badge>Custom</Badge>}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {attr.canUnique ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <Switch
-                                                                    checked={isUnique}
-                                                                    onCheckedChange={() => handleToggleUnique(attr.name, isUnique)}
-                                                                    disabled={constraintsLoading}
-                                                                />
-                                                                {isUnique && <span className="text-xs text-green-600 flex gap-1"><Fingerprint className="h-3 w-3" /> Unique</span>}
-                                                            </div>
-                                                        ) : <span className="text-muted-foreground text-xs">Not applicable</span>}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {!attr.system && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="text-destructive hover:bg-destructive/10"
-                                                                onClick={() => handleDeleteAttribute(attr.name)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    )}
-                </>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
             )}
         </div>
     );
