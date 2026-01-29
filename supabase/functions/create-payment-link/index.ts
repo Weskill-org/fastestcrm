@@ -191,7 +191,7 @@ serve(async (req) => {
                     created_by: user.id,
                     table_name: tableName
                 },
-                reference_id: reference_id
+                reference_id: `${reference_id.slice(-12)}_${Date.now()}`
             }),
         })
 

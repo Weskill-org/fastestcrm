@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -23,18 +23,110 @@ import { LeadsTable } from '@/components/leads/LeadsTable';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
 import { useCompany } from '@/hooks/useCompany';
 
+import { useSearchParams } from 'react-router-dom';
+
 export default function GenericAllLeads() {
     const { company } = useCompany();
-    const [searchQuery, setSearchQuery] = useState('');
-    const debouncedSearchQuery = useDebounce(searchQuery, 500);
-    const [selectedOwners, setSelectedOwners] = useState<Set<string>>(new Set());
-    const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
-    const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
-    const [page, setPage] = useState(1);
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Get values from URL or defaults
+    const searchQuery = searchParams.get('q') || '';
+    const page = parseInt(searchParams.get('page') || '1');
+    const selectedOwners = new Set(searchParams.getAll('owner'));
+    const selectedStatuses = new Set(searchParams.getAll('status'));
+    const selectedProducts = new Set(searchParams.getAll('product'));
+
+    // Local state only for immediate input usage (debounced later)
+    const [localSearch, setLocalSearch] = useState(searchQuery);
+    const debouncedSearchQuery = useDebounce(localSearch, 500);
+
+    // Sync debounced search to URL
+    // We need useEffect to update URL when debounce finishes if it differs
+    // But be careful of infinite loops. 
+    // Actually, simpler pattern: Update local state on type, useEffect to update URL on debounce change.
+
+    // Better pattern for this refactor to avoid complex effects:
+    // Keep using simple state for the input, and useEffect to push to URL.
+    // OR just push to URL on change? No, that floods history.
+    // Let's stick to the plan: derive from URL is source of truth.
+
+    // Wait, if I derive from URL, typing in input needs to update URL? 
+    // If I update URL on every keystroke it's bad.
+    // So: Input value -> local state. 
+    // Debounced value -> Effect -> Update URL.
+    // URL -> Query.
+
     const pageSize = 25;
     const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
     const [assignDialogOpen, setAssignDialogOpen] = useState(false);
     const { tableName } = useLeadsTable();
+
+    // Effect to sync debounced search to URL
+    // We only want to update if the value in URL is different from debounced value
+    // AND we are the ones who initiated the change (not a nav event).
+    // Actually simpler: When debouncedSearchQuery changes, update URL.
+    useEffect(() => { // Need to import useEffect
+        if (debouncedSearchQuery !== searchQuery) {
+            setSearchParams(prev => {
+                const newParams = new URLSearchParams(prev);
+                if (debouncedSearchQuery) {
+                    newParams.set('q', debouncedSearchQuery);
+                } else {
+                    newParams.delete('q');
+                }
+                newParams.set('page', '1'); // Reset page on search
+                return newParams;
+            });
+        }
+    }, [debouncedSearchQuery, setSearchParams, searchQuery]);
+
+    // Update local search if URL changes externally (e.g. back button)
+    useEffect(() => {
+        if (searchQuery !== localSearch) {
+            setLocalSearch(searchQuery);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery]);
+
+
+    // Handlers for filters
+    const handleSetOwners = (newOwners: Set<string>) => {
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.delete('owner');
+            newOwners.forEach(o => newParams.append('owner', o));
+            newParams.set('page', '1');
+            return newParams;
+        });
+    };
+
+    const handleSetStatuses = (newStatuses: Set<string>) => {
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.delete('status');
+            newStatuses.forEach(s => newParams.append('status', s));
+            newParams.set('page', '1');
+            return newParams;
+        });
+    };
+
+    const handleSetProducts = (newProducts: Set<string>) => {
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.delete('product');
+            newProducts.forEach(p => newParams.append('product', p));
+            newParams.set('page', '1');
+            return newParams;
+        });
+    };
+
+    const handlePageChange = (newPage: number) => {
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.set('page', newPage.toString());
+            return newParams;
+        });
+    }
 
     // Fetch filter options
     const { data: filterOptions } = useQuery({
@@ -93,7 +185,9 @@ export default function GenericAllLeads() {
     });
 
     const { data: leadsData, isLoading, refetch } = useLeads({
-        search: debouncedSearchQuery,
+        search: searchQuery, // Use URL value directly? Or debounced? 
+        // Logic: The URL is updated by debounce. So using URL value is effectively using debounced value, 
+        // with the added benefit of being instant on page load.
         statusFilter: selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : undefined,
         ownerFilter: Array.from(selectedOwners),
         productFilter: Array.from(selectedProducts),
@@ -174,8 +268,8 @@ export default function GenericAllLeads() {
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search leads..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    value={localSearch}
+                                    onChange={(e) => setLocalSearch(e.target.value)}
                                     className="pl-9"
                                 />
                             </div>
@@ -192,28 +286,39 @@ export default function GenericAllLeads() {
                                         title="Owner"
                                         options={filterOptions.owners}
                                         selectedValues={selectedOwners}
-                                        onSelectionChange={setSelectedOwners}
+                                        onSelectionChange={handleSetOwners}
                                     />
                                     <MultiSelectFilter
                                         title="Status"
                                         options={filterOptions.statuses}
                                         selectedValues={selectedStatuses}
-                                        onSelectionChange={setSelectedStatuses}
+                                        onSelectionChange={handleSetStatuses}
                                     />
                                     <MultiSelectFilter
                                         title="Product"
                                         options={filterOptions.products}
                                         selectedValues={selectedProducts}
-                                        onSelectionChange={setSelectedProducts}
+                                        onSelectionChange={handleSetProducts}
                                     />
                                     {(selectedOwners.size > 0 || selectedStatuses.size > 0 || selectedProducts.size > 0) && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                                setSelectedOwners(new Set());
-                                                setSelectedStatuses(new Set());
-                                                setSelectedProducts(new Set());
+                                                setSearchParams(prev => {
+                                                    const newParams = new URLSearchParams(prev);
+                                                    newParams.delete('owner');
+                                                    newParams.delete('status');
+                                                    newParams.delete('product');
+                                                    newParams.set('page', '1');
+                                                    return newParams;
+                                                });
+                                                // Also reset local search? No, reset button usually just clears filters not search? 
+                                                // The original code was:
+                                                // setSelectedOwners(new Set());
+                                                // setSelectedStatuses(new Set());
+                                                // setSelectedProducts(new Set());
+                                                // So it only cleared filters, NOT search.
                                             }}
                                             className="h-8 px-2 lg:px-3"
                                         >
@@ -242,7 +347,7 @@ export default function GenericAllLeads() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                onClick={() => handlePageChange(Math.max(1, page - 1))}
                                 disabled={page === 1 || isLoading}
                             >
                                 <ChevronLeft className="h-4 w-4" />
@@ -254,7 +359,7 @@ export default function GenericAllLeads() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                                 disabled={page === totalPages || isLoading}
                             >
                                 Next
