@@ -380,7 +380,6 @@ export function RealEstateLeadsTable({
               <TableHead className="font-semibold min-w-[120px]">Property Type</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Budget</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Location</TableHead>
-              <TableHead className="font-semibold min-w-[100px]">Site Visit</TableHead>
               <TableHead className="font-semibold min-w-[200px]">Lead Profile</TableHead>
               <TableHead className="font-semibold min-w-[150px]">Status</TableHead>
               <TableHead className="font-semibold min-w-[150px]">Pre-Sales</TableHead>
@@ -388,6 +387,7 @@ export function RealEstateLeadsTable({
               <TableHead className="font-semibold min-w-[150px]">Post-Sales</TableHead>
               <TableHead className="font-semibold min-w-[200px]">Notes</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Date</TableHead>
+              <TableHead className="font-semibold min-w-[100px]">Site Visit</TableHead>
               <TableHead className="font-semibold w-[50px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -427,17 +427,6 @@ export function RealEstateLeadsTable({
                       <MapPin className="h-3 w-3" /> {lead.preferred_location}
                     </span>
                   ) : '-'}
-                </TableCell>
-                <TableCell className="align-top py-3">
-                  <Button
-                    variant={lead.site_visit_photos && lead.site_visit_photos.length > 0 ? "outline" : "secondary"}
-                    size="sm"
-                    className="h-8 text-xs gap-1"
-                    onClick={() => setCameraDialogLead(lead)}
-                  >
-                    <Camera className="h-3 w-3" />
-                    {lead.site_visit_photos && lead.site_visit_photos.length > 0 ? 'View/Add' : 'Record'}
-                  </Button>
                 </TableCell>
                 {/* Lead Profile: Nested Dropdown Edit */}
                 <TableCell className="align-top py-3">
@@ -584,6 +573,17 @@ export function RealEstateLeadsTable({
 
                 <TableCell className="align-top py-3 text-sm">
                   {format(new Date(lead.created_at), 'MMM d, yyyy')}
+                </TableCell>
+                <TableCell className="align-top py-3">
+                  <Button
+                    variant={lead.site_visit_photos && lead.site_visit_photos.length > 0 ? "outline" : "secondary"}
+                    size="sm"
+                    className="h-8 text-xs gap-1"
+                    onClick={() => setCameraDialogLead(lead)}
+                  >
+                    <Camera className="h-3 w-3" />
+                    {lead.site_visit_photos && lead.site_visit_photos.length > 0 ? 'View/Add' : 'Record'}
+                  </Button>
                 </TableCell>
                 <TableCell className="align-top py-3">
                   <DropdownMenu>

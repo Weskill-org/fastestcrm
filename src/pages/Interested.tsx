@@ -72,14 +72,32 @@ export default function Interested() {
 
     // Filter Owners (for leads table)
     const { data: owners } = useQuery({
-        queryKey: ['leadsFilterOptionsOwners'],
+        queryKey: ['leadsFilterOptionsOwners', company?.id],
         queryFn: async () => {
-            const { data } = await supabase
+            if (!company?.id) return [];
+
+            const { data: ownersData } = await supabase
                 .from('profiles')
                 .select('id, full_name')
+                .eq('company_id', company.id)
                 .not('full_name', 'is', null);
-            return data?.map(o => ({ label: o.full_name || 'Unknown', value: o.id })) || [];
-        }
+
+            let activeOwners = ownersData || [];
+
+            if (activeOwners.length > 0) {
+                const ownerIds = activeOwners.map(o => o.id);
+                const { data: rolesData } = await supabase
+                    .from('user_roles')
+                    .select('user_id')
+                    .in('user_id', ownerIds);
+
+                const activeUserIds = new Set(rolesData?.map(r => r.user_id));
+                activeOwners = activeOwners.filter(o => activeUserIds.has(o.id));
+            }
+
+            return activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id }));
+        },
+        enabled: !!company?.id
     });
 
     if (isLoading) {
