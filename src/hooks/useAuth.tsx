@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const validationInterval = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Register session in database
+  // Register session using RPC function
   const registerSession = useCallback(async (userId: string) => {
     if (sessionRegistered.current) return;
 
@@ -66,20 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const deviceInfo = getDeviceInfo();
 
     try {
-      // Upsert session (update if exists, insert if not)
-      const { error } = await supabase
-        .from('user_sessions')
-        .upsert(
-          {
-            user_id: userId,
-            session_token: sessionToken,
-            device_info: deviceInfo,
-            last_active: new Date().toISOString(),
-          },
-          {
-            onConflict: 'user_id,session_token',
-          }
-        );
+      const { error } = await supabase.rpc('register_user_session', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+        p_device_info: deviceInfo,
+      });
 
       if (error) {
         console.error('Error registering session:', error);
@@ -92,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Validate if current session is still valid
+  // Validate if current session is still valid using RPC
   const validateSession = useCallback(async (userId: string): Promise<boolean> => {
     const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
     
@@ -101,44 +92,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Check if our session exists
-      const { data, error } = await supabase
-        .from('user_sessions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('session_token', sessionToken)
-        .single();
+      const { data, error } = await supabase.rpc('validate_user_session', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+      });
 
-      if (error || !data) {
-        // Session doesn't exist - was invalidated
+      if (error) {
+        console.error('Session validation error:', error);
         return false;
       }
 
-      // Update last_active timestamp
-      await supabase
-        .from('user_sessions')
-        .update({ last_active: new Date().toISOString() })
-        .eq('id', data.id);
-
-      return true;
+      return data === true;
     } catch (err) {
       console.error('Session validation failed:', err);
       return false;
     }
   }, []);
 
-  // Remove session on logout
+  // Remove session on logout using RPC
   const removeSession = useCallback(async (userId: string) => {
     const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
     
     if (!sessionToken || !userId) return;
 
     try {
-      await supabase
-        .from('user_sessions')
-        .delete()
-        .eq('user_id', userId)
-        .eq('session_token', sessionToken);
+      await supabase.rpc('remove_user_session', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+      });
 
       sessionRegistered.current = false;
     } catch (err) {
