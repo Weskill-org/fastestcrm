@@ -2,7 +2,7 @@ import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Home, ChevronLeft, ChevronRight, Trash2, Users } from 'lucide-react';
+import { Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,8 @@ import { RealEstateLeadDetailsDialog } from './components/RealEstateLeadDetailsD
 import { useRealEstateLeads } from './hooks/useRealEstateLeads';
 import { REAL_ESTATE_PROPERTY_TYPES } from './config';
 import { MobileLeadsHeader } from '@/components/leads/MobileLeadsHeader';
-import { LeadMobileCard } from '@/components/leads/LeadMobileCard';
+import { SwipeableLeadCard } from '@/components/leads/SwipeableLeadCard';
+import { FloatingAddButton } from '@/components/leads/FloatingAddButton';
 
 export default function RealEstateAllLeads() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +35,7 @@ export default function RealEstateAllLeads() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<any>(null);
   const [viewingLead, setViewingLead] = useState<any>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const { company } = useCompany();
   const { data: userRole } = useUserRole();
   const isMobile = useIsMobile();
@@ -179,7 +181,7 @@ export default function RealEstateAllLeads() {
           onDelete={handleDeleteLeads}
           onAssign={() => setAssignDialogOpen(true)}
           canDelete={userRole === 'company' || userRole === 'company_subadmin'}
-          addButton={<RealEstateAddLeadDialog />}
+          addButton={!isMobile ? <RealEstateAddLeadDialog /> : null}
         />
 
         {/* Mobile Card View */}
@@ -191,7 +193,7 @@ export default function RealEstateAllLeads() {
               </div>
             ) : (
               leads.map((lead) => (
-                <LeadMobileCard
+                <SwipeableLeadCard
                   key={lead.id}
                   lead={lead}
                   isSelected={selectedLeads.has(lead.id)}
@@ -271,6 +273,17 @@ export default function RealEstateAllLeads() {
         onOpenChange={(open) => !open && setViewingLead(null)}
         lead={viewingLead}
         owners={filterOptions?.owners || []}
+      />
+
+      {/* Mobile Floating Action Button */}
+      {isMobile && (
+        <FloatingAddButton onClick={() => setAddDialogOpen(true)} />
+      )}
+
+      {/* Mobile Add Dialog */}
+      <RealEstateAddLeadDialog 
+        open={addDialogOpen} 
+        onOpenChange={setAddDialogOpen}
       />
     </DashboardLayout>
   );
