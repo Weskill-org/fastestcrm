@@ -141,7 +141,7 @@ export function RealEstateLeadsTable({
         console.error('Error fetching profiling config', error);
         return null;
       }
-      return data?.config as { levels: ProfileLevel[] } | null;
+      return (data?.config as unknown) as { levels: ProfileLevel[] } | null;
     },
     enabled: !!company?.id
   });

@@ -31,7 +31,7 @@ export function useRealEstateProperties() {
             if (!company?.id) return [];
 
             const { data, error } = await supabase
-                .from('real_estate_properties')
+                .from('real_estate_properties' as any)
                 .select('*')
                 .eq('company_id', company.id)
                 .order('created_at', { ascending: false });
@@ -45,7 +45,7 @@ export function useRealEstateProperties() {
                 throw error;
             }
 
-            return data as RealEstateProperty[];
+            return (data as unknown) as RealEstateProperty[];
         },
         enabled: !!company?.id,
     });
@@ -55,13 +55,13 @@ export function useRealEstateProperties() {
             if (!company?.id) throw new Error("No company ID");
 
             const { data, error } = await supabase
-                .from('real_estate_properties')
+                .from('real_estate_properties' as any)
                 .insert([{ ...newProperty, company_id: company.id }])
                 .select()
                 .single();
 
             if (error) throw error;
-            return data;
+            return data as unknown as RealEstateProperty;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['real-estate-properties'] });
@@ -82,7 +82,7 @@ export function useRealEstateProperties() {
     const updateProperty = useMutation({
         mutationFn: async ({ id, ...updates }: Partial<PropertyFormData> & { id: string }) => {
             const { data, error } = await supabase
-                .from('real_estate_properties')
+                .from('real_estate_properties' as any)
                 .update(updates)
                 .eq('id', id)
                 .select()
@@ -110,7 +110,7 @@ export function useRealEstateProperties() {
     const deleteProperty = useMutation({
         mutationFn: async (id: string) => {
             const { error } = await supabase
-                .from('real_estate_properties')
+                .from('real_estate_properties' as any)
                 .delete()
                 .eq('id', id);
 

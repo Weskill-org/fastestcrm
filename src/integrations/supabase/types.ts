@@ -1162,6 +1162,59 @@ export type Database = {
         }
         Relationships: []
       }
+      real_estate_properties: {
+        Row: {
+          available_units: number | null
+          category: string
+          company_id: string
+          cost: number | null
+          country: string | null
+          created_at: string
+          id: string
+          location: string | null
+          name: string
+          sq_ft: number | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          available_units?: number | null
+          category: string
+          company_id: string
+          cost?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          name: string
+          sq_ft?: number | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          available_units?: number | null
+          category?: string
+          company_id?: string
+          cost?: number | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string
+          sq_ft?: number | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "real_estate_properties_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

@@ -1,23 +1,26 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Filter, X, ChevronLeft, ChevronRight, Users, Trash2, Home } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Home, ChevronLeft, ChevronRight, Trash2, Users } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import {
   RealEstateLeadsTable,
 } from './components/RealEstateLeadsTable';
 import { RealEstateAddLeadDialog } from './components/RealEstateAddLeadDialog';
 import { RealEstateAssignLeadsDialog } from './components/RealEstateAssignLeadsDialog';
+import { RealEstateEditLeadDialog } from './components/RealEstateEditLeadDialog';
+import { RealEstateLeadDetailsDialog } from './components/RealEstateLeadDetailsDialog';
 import { useRealEstateLeads } from './hooks/useRealEstateLeads';
 import { REAL_ESTATE_PROPERTY_TYPES } from './config';
+import { MobileLeadsHeader } from '@/components/leads/MobileLeadsHeader';
+import { LeadMobileCard } from '@/components/leads/LeadMobileCard';
 
 export default function RealEstateAllLeads() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,8 +32,11 @@ export default function RealEstateAllLeads() {
   const pageSize = 25;
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<any>(null);
+  const [viewingLead, setViewingLead] = useState<any>(null);
   const { company } = useCompany();
   const { data: userRole } = useUserRole();
+  const isMobile = useIsMobile();
 
   // Fetch filter options
   const { data: filterOptions } = useQuery({
@@ -115,6 +121,31 @@ export default function RealEstateAllLeads() {
     }
   };
 
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads_real_estate')
+        .update({ status: newStatus })
+        .eq('id', leadId);
+
+      if (error) throw error;
+      toast.success('Status updated successfully');
+      await refetch();
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const toggleLead = (id: string) => {
+    const newSelected = new Set(selectedLeads);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedLeads(newSelected);
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -127,131 +158,98 @@ export default function RealEstateAllLeads() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Home className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-bold">Real Estate Leads</h1>
-          </div>
-          <div className="flex gap-2">
-            {selectedLeads.size > 0 && (
-              <>
-                {(userRole === 'company' || userRole === 'company_subadmin') && (
-                  <Button
-                    variant="destructive"
-                    onClick={handleDeleteLeads}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete {selectedLeads.size}
-                  </Button>
-                )}
-                <Button onClick={() => setAssignDialogOpen(true)} variant="secondary">
-                  <Users className="mr-2 h-4 w-4" />
-                  Assign {selectedLeads.size} to...
-                </Button>
-              </>
+      <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+        <MobileLeadsHeader
+          title="Real Estate Leads"
+          icon={<Home className="h-5 w-5 md:h-6 md:w-6 text-primary shrink-0" />}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterOptions={filterOptions ? {
+            owners: filterOptions.owners,
+            statuses: filterOptions.statuses,
+            propertyTypes: filterOptions.propertyTypes
+          } : undefined}
+          selectedOwners={selectedOwners}
+          onOwnersChange={setSelectedOwners}
+          selectedStatuses={selectedStatuses}
+          onStatusesChange={setSelectedStatuses}
+          selectedPropertyTypes={selectedPropertyTypes}
+          onPropertyTypesChange={setSelectedPropertyTypes}
+          selectedCount={selectedLeads.size}
+          onDelete={handleDeleteLeads}
+          onAssign={() => setAssignDialogOpen(true)}
+          canDelete={userRole === 'company' || userRole === 'company_subadmin'}
+          addButton={<RealEstateAddLeadDialog />}
+        />
+
+        {/* Mobile Card View */}
+        {isMobile ? (
+          <div className="space-y-3">
+            {leads.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No leads found. Add your first real estate lead to get started!</p>
+              </div>
+            ) : (
+              leads.map((lead) => (
+                <LeadMobileCard
+                  key={lead.id}
+                  lead={lead}
+                  isSelected={selectedLeads.has(lead.id)}
+                  onToggleSelect={() => toggleLead(lead.id)}
+                  onViewDetails={() => setViewingLead(lead)}
+                  onEdit={() => setEditingLead(lead)}
+                  onStatusChange={(status) => handleStatusChange(lead.id, status)}
+                  owners={filterOptions?.owners}
+                  variant="real_estate"
+                />
+              ))
             )}
-            <RealEstateAddLeadDialog />
+          </div>
+        ) : (
+          /* Desktop Table View */
+          <Card>
+            <CardContent className="pt-6">
+              <RealEstateLeadsTable
+                leads={leads}
+                loading={isLoading}
+                selectedLeads={selectedLeads}
+                onSelectionChange={setSelectedLeads}
+                owners={filterOptions?.owners || []}
+                onRefetch={refetch}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
+          <div className="text-sm text-muted-foreground">
+            Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1 || isLoading}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Previous</span>
+            </Button>
+            <div className="text-sm font-medium px-2">
+              {page} / {totalPages || 1}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || isLoading}
+            >
+              <span className="hidden sm:inline mr-1">Next</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search leads..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Advanced Filters */}
-            <div className="flex flex-wrap gap-2 pt-2">
-              {filterOptions && (
-                <>
-                  <MultiSelectFilter
-                    title="Owner"
-                    options={filterOptions.owners}
-                    selectedValues={selectedOwners}
-                    onSelectionChange={setSelectedOwners}
-                  />
-                  <MultiSelectFilter
-                    title="Status"
-                    options={filterOptions.statuses}
-                    selectedValues={selectedStatuses}
-                    onSelectionChange={setSelectedStatuses}
-                  />
-                  <MultiSelectFilter
-                    title="Property Type"
-                    options={filterOptions.propertyTypes}
-                    selectedValues={selectedPropertyTypes}
-                    onSelectionChange={setSelectedPropertyTypes}
-                  />
-                  {(selectedOwners.size > 0 || selectedStatuses.size > 0 || selectedPropertyTypes.size > 0) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedOwners(new Set());
-                        setSelectedStatuses(new Set());
-                        setSelectedPropertyTypes(new Set());
-                      }}
-                      className="h-8 px-2 lg:px-3"
-                    >
-                      Reset
-                      <X className="ml-2 h-4 w-4" />
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <RealEstateLeadsTable
-              leads={leads}
-              loading={isLoading}
-              selectedLeads={selectedLeads}
-              onSelectionChange={setSelectedLeads}
-              owners={filterOptions?.owners || []}
-              onRefetch={refetch}
-            />
-          </CardContent>
-          <div className="flex items-center justify-between px-4 py-4 border-t">
-            <div className="text-sm text-muted-foreground">
-              Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} leads
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1 || isLoading}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <div className="text-sm font-medium">
-                Page {page} of {totalPages || 1}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages || isLoading}
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </Card>
       </div>
 
       <RealEstateAssignLeadsDialog
@@ -259,6 +257,20 @@ export default function RealEstateAllLeads() {
         onOpenChange={setAssignDialogOpen}
         selectedLeadIds={Array.from(selectedLeads)}
         onSuccess={() => setSelectedLeads(new Set())}
+      />
+
+      <RealEstateEditLeadDialog
+        open={!!editingLead}
+        onOpenChange={(open) => !open && setEditingLead(null)}
+        lead={editingLead}
+        onSuccess={refetch}
+      />
+
+      <RealEstateLeadDetailsDialog
+        open={!!viewingLead}
+        onOpenChange={(open) => !open && setViewingLead(null)}
+        lead={viewingLead}
+        owners={filterOptions?.owners || []}
       />
     </DashboardLayout>
   );
