@@ -1092,6 +1092,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_sessions: Json | null
           avatar_url: string | null
           company_id: string | null
           created_at: string
@@ -1103,6 +1104,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_sessions?: Json | null
           avatar_url?: string | null
           company_id?: string | null
           created_at?: string
@@ -1114,6 +1116,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_sessions?: Json | null
           avatar_url?: string | null
           company_id?: string | null
           created_at?: string
@@ -1229,33 +1232,6 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_sessions: {
-        Row: {
-          created_at: string
-          device_info: string | null
-          id: string
-          last_active: string
-          session_token: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          device_info?: string | null
-          id?: string
-          last_active?: string
-          session_token: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          device_info?: string | null
-          id?: string
-          last_active?: string
-          session_token?: string
           user_id?: string
         }
         Relationships: []
@@ -1459,9 +1435,21 @@ export type Database = {
         Returns: boolean
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      register_user_session: {
+        Args: {
+          p_device_info: string
+          p_session_token: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       remove_lead_attribute: {
         Args: { attribute_name: string; input_company_id: string }
         Returns: Json
+      }
+      remove_user_session: {
+        Args: { p_session_token: string; p_user_id: string }
+        Returns: undefined
       }
       reset_monthly_xp: { Args: never; Returns: undefined }
       toggle_lead_unique_constraint: {
@@ -1471,6 +1459,10 @@ export type Database = {
           is_unique: boolean
         }
         Returns: Json
+      }
+      validate_user_session: {
+        Args: { p_session_token: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
