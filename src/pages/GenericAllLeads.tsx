@@ -16,8 +16,9 @@ import { AddLeadDialog } from '@/components/leads/AddLeadDialog';
 import { UploadLeadsDialog } from '@/components/leads/UploadLeadsDialog';
 import { AssignLeadsDialog } from '@/components/leads/AssignLeadsDialog';
 import { LeadsTable } from '@/components/leads/LeadsTable';
-import { LeadMobileCard } from '@/components/leads/LeadMobileCard';
+import { SwipeableLeadCard } from '@/components/leads/SwipeableLeadCard';
 import { MobileLeadsHeader } from '@/components/leads/MobileLeadsHeader';
+import { FloatingAddButton } from '@/components/leads/FloatingAddButton';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
 import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -30,6 +31,7 @@ export default function GenericAllLeads() {
     const { company } = useCompany();
     const isMobile = useIsMobile();
     const [searchParams, setSearchParams] = useSearchParams();
+    const [addDialogOpen, setAddDialogOpen] = useState(false);
 
     // Get values from URL or defaults
     const searchQuery = searchParams.get('q') || '';
@@ -261,9 +263,9 @@ export default function GenericAllLeads() {
                     onDelete={handleDeleteLeads}
                     onAssign={() => setAssignDialogOpen(true)}
                     canDelete={userRole === 'company' || userRole === 'company_subadmin'}
-                    uploadButton={<UploadLeadsDialog />}
-                    addButton={<AddLeadDialog />}
-                />
+                        uploadButton={<UploadLeadsDialog />}
+                        addButton={!isMobile ? <AddLeadDialog /> : null}
+                    />
 
                 {/* Mobile Card View */}
                 {isMobile ? (
@@ -274,7 +276,7 @@ export default function GenericAllLeads() {
                             </div>
                         ) : (
                             leads.map((lead) => (
-                                <LeadMobileCard
+                                <SwipeableLeadCard
                                     key={lead.id}
                                     lead={lead}
                                     isSelected={selectedLeads.has(lead.id)}
@@ -352,6 +354,17 @@ export default function GenericAllLeads() {
                 onOpenChange={(open) => !open && setViewingLead(null)}
                 lead={viewingLead}
                 owners={filterOptions?.owners || []}
+            />
+
+            {/* Mobile Floating Action Button */}
+            {isMobile && (
+                <FloatingAddButton onClick={() => setAddDialogOpen(true)} />
+            )}
+
+            {/* Mobile Add Dialog */}
+            <AddLeadDialog 
+                open={addDialogOpen} 
+                onOpenChange={setAddDialogOpen}
             />
         </DashboardLayout>
     );

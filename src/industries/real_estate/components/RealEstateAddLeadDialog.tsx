@@ -52,8 +52,17 @@ const formSchema = z.object({
   lead_source: z.string().optional(),
 });
 
-export function RealEstateAddLeadDialog() {
-  const [open, setOpen] = useState(false);
+interface RealEstateAddLeadDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
+}
+
+export function RealEstateAddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: RealEstateAddLeadDialogProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (onOpenChange || (() => {})) : setInternalOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { company } = useCompany();
@@ -122,12 +131,16 @@ export function RealEstateAddLeadDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gradient-primary">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Lead
-        </Button>
-      </DialogTrigger>
+      {trigger !== undefined ? (
+        trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : (
+        <DialogTrigger asChild>
+          <Button className="gradient-primary">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Lead
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Lead</DialogTitle>
