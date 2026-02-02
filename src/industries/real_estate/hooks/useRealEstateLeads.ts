@@ -36,6 +36,7 @@ export function useRealEstateLeads({
     ],
     queryFn: async (): Promise<{ leads: RealEstateLead[]; count: number }> => {
       if (!company?.id) {
+        console.warn('[useRealEstateLeads] No company context - returning empty results');
         return { leads: [], count: 0 };
       }
 
@@ -61,12 +62,13 @@ export function useRealEstateLeads({
       }
 
       if (ownerFilter && ownerFilter.length > 0) {
-        // Filter by any of the owner fields
-        query = query.or(
-          ownerFilter.map(id =>
-            `pre_sales_owner_id.eq.${id},sales_owner_id.eq.${id},post_sales_owner_id.eq.${id}`
-          ).join(',')
-        );
+        // Filter by any of the owner fields using OR condition
+        const orConditions = ownerFilter.flatMap(id => [
+          `pre_sales_owner_id.eq.${id}`,
+          `sales_owner_id.eq.${id}`,
+          `post_sales_owner_id.eq.${id}`
+        ]).join(',');
+        query = query.or(orConditions);
       }
 
       if (propertyTypeFilter && propertyTypeFilter.length > 0) {
@@ -97,6 +99,8 @@ export function useRealEstateLeads({
     },
     enabled: !companyLoading && !!company?.id,
     placeholderData: (prev) => prev,
+    retry: 2,
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   return {

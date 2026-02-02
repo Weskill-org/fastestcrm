@@ -56,9 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const sessionRegistered = useRef(false);
   const validationInterval = useRef<NodeJS.Timeout | null>(null);
+  const isValidatingSession = useRef(false);
   const { toast } = useToast();
 
-  // Register session using RPC function
+  // Register session using RPC function - with retry logic
   const registerSession = useCallback(async (userId: string) => {
     if (sessionRegistered.current) return;
 
@@ -73,23 +74,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error('Error registering session:', error);
+        // Log but don't block - session management is secondary to core auth
+        console.warn('[Auth] Session registration failed:', error.message);
         return;
       }
 
       sessionRegistered.current = true;
     } catch (err) {
-      console.error('Failed to register session:', err);
+      // Silent fail - don't disrupt user experience
+      console.warn('[Auth] Session registration error:', err);
     }
   }, []);
 
   // Validate if current session is still valid using RPC
   const validateSession = useCallback(async (userId: string): Promise<boolean> => {
+    // Prevent concurrent validation calls
+    if (isValidatingSession.current) return true;
+    
     const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
     
     if (!sessionToken) {
-      return false;
+      return true; // No token means fresh session, allow it
     }
+
+    isValidatingSession.current = true;
 
     try {
       const { data, error } = await supabase.rpc('validate_user_session', {
@@ -97,15 +105,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         p_session_token: sessionToken,
       });
 
+      isValidatingSession.current = false;
+
       if (error) {
-        console.error('Session validation error:', error);
-        return false;
+        // On error, be permissive - don't kick out user for DB issues
+        console.warn('[Auth] Session validation error:', error.message);
+        return true;
       }
 
       return data === true;
     } catch (err) {
-      console.error('Session validation failed:', err);
-      return false;
+      isValidatingSession.current = false;
+      // On exception, be permissive
+      console.warn('[Auth] Session validation failed:', err);
+      return true;
     }
   }, []);
 
@@ -123,12 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       sessionRegistered.current = false;
     } catch (err) {
-      console.error('Failed to remove session:', err);
+      // Silent fail - don't block logout
+      console.warn('[Auth] Failed to remove session:', err);
     }
   }, []);
 
   // Force logout when session is invalidated
   const forceLogout = useCallback(async () => {
+    // Clear interval first to prevent multiple calls
+    if (validationInterval.current) {
+      clearInterval(validationInterval.current);
+      validationInterval.current = null;
+    }
+
     toast({
       title: 'Session Expired',
       description: 'You have been logged out because you logged in on another device. Maximum 2 devices allowed.',
@@ -184,17 +204,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [registerSession]);
 
-  // Periodically validate session (every 30 seconds)
+  // Periodically validate session (every 60 seconds - reduced frequency for stability)
   useEffect(() => {
     if (user && sessionRegistered.current) {
-      validationInterval.current = setInterval(async () => {
-        const isValid = await validateSession(user.id);
-        if (!isValid) {
-          await forceLogout();
-        }
-      }, 30000); // Check every 30 seconds
+      // Start validation after a delay to let initial setup complete
+      const startDelay = setTimeout(() => {
+        validationInterval.current = setInterval(async () => {
+          const isValid = await validateSession(user.id);
+          if (!isValid) {
+            await forceLogout();
+          }
+        }, 60000); // Check every 60 seconds (increased from 30s for stability)
+      }, 5000); // Wait 5 seconds before starting validation
 
       return () => {
+        clearTimeout(startDelay);
         if (validationInterval.current) {
           clearInterval(validationInterval.current);
         }
