@@ -35,6 +35,11 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
   const query = useQuery({
     queryKey: ['leads', search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page, pageSize, fetchAll, tableName, companyId],
     queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
+      // Early exit if no company context
+      if (!companyId) {
+        console.warn('[useLeads] No company context - returning empty results');
+        return { leads: [], count: 0 };
+      }
 
       // Build select query with dynamic foreign key reference
       // For custom tables, we can't use named FK joins because CREATE TABLE LIKE doesn't copy FK constraints
@@ -49,17 +54,9 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
         .order('created_at', { ascending: false })
         .order('id', { ascending: false });
 
-      // CRITICAL: Enforce company isolation for shared table
-      // Custom tables are already isolated (contain only one company's data)
-      if (tableName === 'leads' || tableName === 'leads_real_estate') {
-        if (!companyId) {
-          console.warn('[useLeads] Security Guard: companyId missing for shared table. Aborting query to prevent data leakage.');
-          return { leads: [], count: 0 };
-        }
-        query = query.eq('company_id', companyId);
-      } else {
-
-      }
+      // CRITICAL: Enforce company isolation for all lead tables
+      // RLS already enforces this, but we add client-side filter for defense in depth
+      query = query.eq('company_id', companyId);
 
       if (statusFilter) {
         if (Array.isArray(statusFilter)) {
@@ -106,12 +103,12 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
         throw error;
       }
 
-
-
       return { leads: (data as unknown as Lead[]) || [], count: count || 0 };
     },
     placeholderData: (previousData) => previousData,
-    enabled: !tableLoading,
+    enabled: !tableLoading && !!companyId,
+    retry: 2,
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   return {

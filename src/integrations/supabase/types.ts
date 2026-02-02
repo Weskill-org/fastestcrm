@@ -1435,6 +1435,10 @@ export type Database = {
         Returns: boolean
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_same_company: {
+        Args: { _lead_company_id: string; _user_id: string }
+        Returns: boolean
+      }
       register_user_session: {
         Args: {
           p_device_info: string
