@@ -144,14 +144,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
+        // Update state synchronously - never block on async operations
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
 
         if (event === 'SIGNED_IN' && newSession?.user) {
-          // Register session on login
-          await registerSession(newSession.user.id);
+          // Register session on login - fire and forget (non-blocking)
+          registerSession(newSession.user.id);
         } else if (event === 'SIGNED_OUT') {
           // Clear session tracking
           sessionRegistered.current = false;
@@ -164,14 +165,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       setLoading(false);
 
       if (existingSession?.user) {
-        // Register/validate session for existing login
-        await registerSession(existingSession.user.id);
+        // Register/validate session for existing login - fire and forget (non-blocking)
+        registerSession(existingSession.user.id);
       }
     });
 
