@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -9,25 +9,42 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useCreateLeads } from '@/hooks/useLeads';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useLeadsTable } from '@/hooks/useLeadsTable';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, FileUp, Download } from 'lucide-react';
+import { Upload, FileUp, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import { Constants } from '@/integrations/supabase/types';
+import { Progress } from '@/components/ui/progress';
+import { useQueryClient } from '@tanstack/react-query';
+
+const BATCH_SIZE = 100; // Process 100 leads at a time
+
+interface UploadProgress {
+    total: number;
+    processed: number;
+    success: number;
+    duplicates: number;
+    errors: number;
+}
 
 export function UploadLeadsDialog() {
     const [open, setOpen] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [progress, setProgress] = useState<UploadProgress | null>(null);
     const { user } = useAuth();
     const { company } = useCompany();
-    const createLeads = useCreateLeads();
+    const { tableName } = useLeadsTable();
+    const queryClient = useQueryClient();
+    const abortRef = useRef(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
+            setProgress(null);
         }
     };
 
@@ -48,6 +65,42 @@ export function UploadLeadsDialog() {
         window.URL.revokeObjectURL(url);
     };
 
+    const insertLeadWithRetry = async (lead: any): Promise<'success' | 'duplicate' | 'error'> => {
+        try {
+            const { error } = await supabase
+                .from(tableName as any)
+                .insert(lead);
+
+            if (error) {
+                // Check for duplicate/unique constraint violations
+                if (error.code === '23505' || error.message?.toLowerCase().includes('duplicate') || error.message?.toLowerCase().includes('unique')) {
+                    return 'duplicate';
+                }
+                console.error('Insert error:', error);
+                return 'error';
+            }
+            return 'success';
+        } catch (err) {
+            console.error('Insert exception:', err);
+            return 'error';
+        }
+    };
+
+    const processBatch = async (
+        leads: any[],
+        currentProgress: UploadProgress
+    ): Promise<UploadProgress> => {
+        const results = await Promise.all(leads.map(lead => insertLeadWithRetry(lead)));
+        
+        return {
+            ...currentProgress,
+            processed: currentProgress.processed + leads.length,
+            success: currentProgress.success + results.filter(r => r === 'success').length,
+            duplicates: currentProgress.duplicates + results.filter(r => r === 'duplicate').length,
+            errors: currentProgress.errors + results.filter(r => r === 'error').length,
+        };
+    };
+
     const handleUpload = async () => {
         if (!file || !user || !company) {
             if (!company) toast.error("Company information missing");
@@ -55,6 +108,7 @@ export function UploadLeadsDialog() {
         }
 
         setUploading(true);
+        abortRef.current = false;
 
         Papa.parse(file, {
             header: true,
@@ -62,15 +116,13 @@ export function UploadLeadsDialog() {
             complete: async (results) => {
                 try {
                     const leads = results.data.map((row: any) => {
-                        // Basic validation and mapping
                         const status = row.Status || row.status || 'new';
-                        // Validate status against enum
                         const validStatus = Constants.public.Enums.lead_status.includes(status.toLowerCase())
                             ? status.toLowerCase()
                             : 'new';
 
                         return {
-                            name: row.Name || row.name || 'Unknown', // Name not mandatory, default provided if missing
+                            name: row.Name || row.name || 'Unknown',
                             email: row.Email || row.email || null,
                             phone: row.Phone || row.phone || null,
                             college: row.College || row.college || null,
@@ -80,7 +132,7 @@ export function UploadLeadsDialog() {
                             sales_owner_id: user.id,
                             company_id: company.id,
                         };
-                    }).filter(lead => lead.phone); // Ensure phone exists (Mandatory)
+                    }).filter((lead: any) => lead.phone);
 
                     if (leads.length === 0) {
                         toast.error('No valid leads found in CSV. Phone Number is mandatory.');
@@ -88,13 +140,51 @@ export function UploadLeadsDialog() {
                         return;
                     }
 
-                    await createLeads.mutateAsync(leads as any);
-                    toast.success(`${leads.length} leads uploaded successfully`);
-                    setOpen(false);
-                    setFile(null);
+                    let currentProgress: UploadProgress = {
+                        total: leads.length,
+                        processed: 0,
+                        success: 0,
+                        duplicates: 0,
+                        errors: 0,
+                    };
+                    setProgress(currentProgress);
+
+                    // Process in batches
+                    for (let i = 0; i < leads.length; i += BATCH_SIZE) {
+                        if (abortRef.current) {
+                            toast.info('Upload cancelled');
+                            break;
+                        }
+
+                        const batch = leads.slice(i, i + BATCH_SIZE);
+                        currentProgress = await processBatch(batch, currentProgress);
+                        setProgress({ ...currentProgress });
+                    }
+
+                    // Invalidate queries to refresh the leads list
+                    queryClient.invalidateQueries({ queryKey: ['leads'] });
+
+                    // Show final summary
+                    if (currentProgress.success > 0) {
+                        toast.success(
+                            `Uploaded ${currentProgress.success} leads successfully` +
+                            (currentProgress.duplicates > 0 ? `, ${currentProgress.duplicates} duplicates skipped` : '') +
+                            (currentProgress.errors > 0 ? `, ${currentProgress.errors} failed` : '')
+                        );
+                    } else if (currentProgress.duplicates > 0) {
+                        toast.warning(`All ${currentProgress.duplicates} leads were duplicates`);
+                    } else {
+                        toast.error('Failed to upload leads');
+                    }
+
+                    if (!abortRef.current && currentProgress.errors === 0) {
+                        setOpen(false);
+                        setFile(null);
+                        setProgress(null);
+                    }
                 } catch (error) {
                     console.error('Upload error:', error);
-                    toast.error('Failed to upload leads');
+                    toast.error('Failed to process CSV file');
                 } finally {
                     setUploading(false);
                 }
@@ -107,8 +197,22 @@ export function UploadLeadsDialog() {
         });
     };
 
+    const handleCancel = () => {
+        abortRef.current = true;
+    };
+
+    const progressPercent = progress ? Math.round((progress.processed / progress.total) * 100) : 0;
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(newOpen) => {
+            if (!uploading) {
+                setOpen(newOpen);
+                if (!newOpen) {
+                    setFile(null);
+                    setProgress(null);
+                }
+            }
+        }}>
             <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={handleDownloadFormat}>
                     <Download className="h-4 w-4 mr-2" />
@@ -125,7 +229,7 @@ export function UploadLeadsDialog() {
                 <DialogHeader>
                     <DialogTitle>Upload Leads CSV</DialogTitle>
                     <DialogDescription>
-                        Upload a CSV file with columns: Name, Email, Phone, College, Status, Lead Source. Phone is mandatory.
+                        Upload a CSV file with columns: Name, Email, Phone, College, Status, Lead Source. Phone is mandatory. Duplicates will be skipped.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -135,23 +239,57 @@ export function UploadLeadsDialog() {
                             accept=".csv"
                             onChange={handleFileChange}
                             className="cursor-pointer"
+                            disabled={uploading}
                         />
                     </div>
-                    {file && (
+                    {file && !uploading && (
                         <div className="text-sm text-muted-foreground">
                             Selected: {file.name}
                         </div>
                     )}
-                    <Button onClick={handleUpload} disabled={!file || uploading} className="w-full">
+                    
+                    {progress && (
+                        <div className="space-y-3">
+                            <Progress value={progressPercent} className="h-2" />
+                            <div className="text-sm space-y-1">
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>Processing...</span>
+                                    <span>{progress.processed} / {progress.total}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-3 text-xs">
+                                    <span className="flex items-center gap-1 text-green-600">
+                                        <CheckCircle className="h-3 w-3" />
+                                        {progress.success} uploaded
+                                    </span>
+                                    {progress.duplicates > 0 && (
+                                        <span className="flex items-center gap-1 text-yellow-600">
+                                            <AlertCircle className="h-3 w-3" />
+                                            {progress.duplicates} duplicates
+                                        </span>
+                                    )}
+                                    {progress.errors > 0 && (
+                                        <span className="flex items-center gap-1 text-red-600">
+                                            <AlertCircle className="h-3 w-3" />
+                                            {progress.errors} errors
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex gap-2">
                         {uploading ? (
-                            <>
-                                <FileUp className="mr-2 h-4 w-4 animate-bounce" />
-                                Uploading...
-                            </>
+                            <Button onClick={handleCancel} variant="destructive" className="w-full">
+                                Cancel Upload
+                            </Button>
                         ) : (
-                            'Upload Leads'
+                            <Button onClick={handleUpload} disabled={!file} className="w-full">
+                                <FileUp className="mr-2 h-4 w-4" />
+                                Upload Leads
+                            </Button>
                         )}
-                    </Button>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
