@@ -10,6 +10,7 @@ export * from './components/RealEstateLeadDetailsDialog';
 export * from './components/RealEstateAssignLeadsDialog';
 export * from './components/SiteVisitDateTimeDialog';
 export * from './components/SiteVisitCameraDialog';
+export * from './components/RealEstateUploadLeadsDialog';
 
 // Industry identifier
 export const INDUSTRY_ID = 'real_estate' as const;
