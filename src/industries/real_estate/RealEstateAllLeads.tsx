@@ -14,6 +14,7 @@ import {
   RealEstateLeadsTable,
 } from './components/RealEstateLeadsTable';
 import { RealEstateAddLeadDialog } from './components/RealEstateAddLeadDialog';
+import { RealEstateUploadLeadsDialog } from './components/RealEstateUploadLeadsDialog';
 import { RealEstateAssignLeadsDialog } from './components/RealEstateAssignLeadsDialog';
 import { RealEstateEditLeadDialog } from './components/RealEstateEditLeadDialog';
 import { RealEstateLeadDetailsDialog } from './components/RealEstateLeadDetailsDialog';
@@ -181,7 +182,12 @@ export default function RealEstateAllLeads() {
           onDelete={handleDeleteLeads}
           onAssign={() => setAssignDialogOpen(true)}
           canDelete={userRole === 'company' || userRole === 'company_subadmin'}
-          addButton={!isMobile ? <RealEstateAddLeadDialog /> : null}
+          addButton={!isMobile ? (
+            <div className="flex items-center gap-2">
+              <RealEstateUploadLeadsDialog />
+              <RealEstateAddLeadDialog />
+            </div>
+          ) : null}
         />
 
         {/* Mobile Card View */}
