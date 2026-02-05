@@ -53,3 +53,18 @@ verify_jwt = true
 
 [functions.purchase-addon]
 verify_jwt = true
+
+[functions.meta-lead-webhook]
+verify_jwt = false
+
+[functions.google-lead-webhook]
+verify_jwt = false
+
+[functions.linkedin-lead-webhook]
+verify_jwt = false
+
+[functions.change-industry]
+verify_jwt = true
+
+[functions.unlock-lead-attributes]
+verify_jwt = true

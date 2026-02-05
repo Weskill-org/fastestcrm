@@ -4,13 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from "@/components/ui/switch";
-import { Mail, MessageSquare, Phone, CreditCard, Calendar, FileSpreadsheet, Webhook, Loader2 } from 'lucide-react';
+import { Mail, MessageSquare, Phone, CreditCard, Calendar, FileSpreadsheet, Webhook, Loader2, Megaphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AddIntegrationDialog } from '@/components/integrations/AddIntegrationDialog';
+import { PerformanceMarketingDialog } from '@/components/integrations/PerformanceMarketingDialog';
+import { useCompany } from '@/hooks/useCompany';
 
 const integrationTypes = [
+    { id: 'performance_marketing', name: 'Performance Marketing', icon: Megaphone, description: 'Meta, Google & LinkedIn Ads', category: 'Lead Generation', isSpecial: true },
     { id: 'gmail', name: 'Gmail / Outlook', icon: Mail, description: 'Sync emails and calendar', category: 'Communication' },
     { id: 'whatsapp', name: 'WhatsApp Business', icon: MessageSquare, description: 'Send automated messages', category: 'Communication' },
     { id: 'telephony', name: 'Exotel / Twilio', icon: Phone, description: 'Click-to-call and recording', category: 'Telephony' },
@@ -22,8 +25,10 @@ const integrationTypes = [
 
 export default function Integrations() {
     const { user } = useAuth();
+    const { company } = useCompany();
     const [selectedIntegration, setSelectedIntegration] = useState<{ id: string, name: string } | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isPerformanceMarketingOpen, setIsPerformanceMarketingOpen] = useState(false);
 
     const { data: connectedKeys, isLoading } = useQuery({
         queryKey: ['integration-keys', user?.id],
@@ -40,11 +45,33 @@ export default function Integrations() {
         enabled: !!user?.id
     });
 
+    // Query for performance marketing integrations
+    const { data: pmIntegrations } = useQuery({
+        queryKey: ['performance-marketing-integrations', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return [];
+            const { data } = await supabase
+                .from('performance_marketing_integrations' as any)
+                .select('platform, is_active')
+                .eq('company_id', company.id)
+                .eq('is_active', true);
+            return data || [];
+        },
+        enabled: !!company?.id
+    });
+
     const isConnected = (serviceId: string) => {
+        if (serviceId === 'performance_marketing') {
+            return (pmIntegrations?.length || 0) > 0;
+        }
         return connectedKeys?.some(key => key.service_name === serviceId && key.is_active);
     };
 
-    const handleConnect = (integration: { id: string, name: string }) => {
+    const handleConnect = (integration: { id: string, name: string, isSpecial?: boolean }) => {
+        if (integration.id === 'performance_marketing') {
+            setIsPerformanceMarketingOpen(true);
+            return;
+        }
         setSelectedIntegration(integration);
         setIsDialogOpen(true);
     };
@@ -105,6 +132,11 @@ export default function Integrations() {
                         displayName={selectedIntegration.name}
                     />
                 )}
+
+                <PerformanceMarketingDialog 
+                    isOpen={isPerformanceMarketingOpen}
+                    onOpenChange={setIsPerformanceMarketingOpen}
+                />
             </div>
         </DashboardLayout>
     );
