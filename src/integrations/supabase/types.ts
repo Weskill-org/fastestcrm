@@ -1031,6 +1031,115 @@ export type Database = {
           },
         ]
       }
+      marketing_campaign_connections: {
+        Row: {
+          campaign_id: string
+          campaign_name: string
+          created_at: string
+          form_id: string | null
+          form_name: string | null
+          id: string
+          integration_id: string
+          is_active: boolean | null
+          lead_status: string | null
+          leads_received: number | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name: string
+          created_at?: string
+          form_id?: string | null
+          form_name?: string | null
+          id?: string
+          integration_id: string
+          is_active?: boolean | null
+          lead_status?: string | null
+          leads_received?: number | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string
+          created_at?: string
+          form_id?: string | null
+          form_name?: string | null
+          id?: string
+          integration_id?: string
+          is_active?: boolean | null
+          lead_status?: string | null
+          leads_received?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaign_connections_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "performance_marketing_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_marketing_integrations: {
+        Row: {
+          access_token: string | null
+          ad_account_id: string | null
+          company_id: string
+          created_at: string
+          default_lead_status: string | null
+          id: string
+          is_active: boolean | null
+          page_id: string | null
+          page_name: string | null
+          platform: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          webhook_verify_token: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          ad_account_id?: string | null
+          company_id: string
+          created_at?: string
+          default_lead_status?: string | null
+          id?: string
+          is_active?: boolean | null
+          page_id?: string | null
+          page_name?: string | null
+          platform: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          webhook_verify_token?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          ad_account_id?: string | null
+          company_id?: string
+          created_at?: string
+          default_lead_status?: string | null
+          id?: string
+          is_active?: boolean | null
+          page_id?: string | null
+          page_name?: string | null
+          platform?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          webhook_verify_token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_marketing_integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admins: {
         Row: {
           created_at: string | null
