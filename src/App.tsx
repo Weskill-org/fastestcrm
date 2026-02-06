@@ -8,36 +8,40 @@ import { SubdomainProvider } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
 import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
 import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import RegisterCompany from "./pages/RegisterCompany";
-import Dashboard from "./pages/Dashboard";
-import AllLeads from "./pages/AllLeads";
-import LGDashboard from "./pages/LGDashboard";
-import Interested from "./pages/Interested";
-import Paid from "./pages/Paid";
-import PendingPayments from "./pages/PendingPayments";
-import AutoDialer from "./pages/AutoDialer";
-import AIInsights from "./pages/AIInsights";
-import Team from "./pages/Team";
-import Automations from "./pages/Automations";
-import Integrations from "./pages/Integrations";
-import Settings from "./pages/Settings";
-import Forms from "./pages/Forms";
-import FormResponses from "./pages/FormResponses";
-import FormBuilder from "./pages/FormBuilder";
-import PublicForm from "./pages/PublicForm";
-import ResetPassword from "./pages/ResetPassword";
-import ManageCompany from "./pages/ManageCompany";
-import ManageStatuses from "./pages/ManageStatuses";
-import ManageProducts from "./pages/ManageProducts";
-import PlatformAdmin from "./pages/PlatformAdmin";
-import NotFound from "./pages/NotFound";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
-import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
-import ManageProperties from "./industries/real_estate/pages/ManageProperties";
+import { lazy, Suspense } from "react";
+import PageLoading from "@/components/PageLoading";
+
+// Lazy load pages to improve initial load performance (Code Splitting)
+const Landing = lazy(() => import("./pages/Landing"));
+const Auth = lazy(() => import("./pages/Auth"));
+const RegisterCompany = lazy(() => import("./pages/RegisterCompany"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AllLeads = lazy(() => import("./pages/AllLeads"));
+const LGDashboard = lazy(() => import("./pages/LGDashboard"));
+const Interested = lazy(() => import("./pages/Interested"));
+const Paid = lazy(() => import("./pages/Paid"));
+const PendingPayments = lazy(() => import("./pages/PendingPayments"));
+const AutoDialer = lazy(() => import("./pages/AutoDialer"));
+const AIInsights = lazy(() => import("./pages/AIInsights"));
+const Team = lazy(() => import("./pages/Team"));
+const Automations = lazy(() => import("./pages/Automations"));
+const Integrations = lazy(() => import("./pages/Integrations"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Forms = lazy(() => import("./pages/Forms"));
+const FormResponses = lazy(() => import("./pages/FormResponses"));
+const FormBuilder = lazy(() => import("./pages/FormBuilder"));
+const PublicForm = lazy(() => import("./pages/PublicForm"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ManageCompany = lazy(() => import("./pages/ManageCompany"));
+const ManageStatuses = lazy(() => import("./pages/ManageStatuses"));
+const ManageProducts = lazy(() => import("./pages/ManageProducts"));
+const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const RealEstateAllLeads = lazy(() => import("./industries/real_estate/RealEstateAllLeads"));
+const ManageLeadProfiling = lazy(() => import("./industries/real_estate/ManageLeadProfiling"));
+const ManageProperties = lazy(() => import("./industries/real_estate/pages/ManageProperties"));
 
 const queryClient = new QueryClient();
 
@@ -126,8 +130,16 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <SubdomainGate mainDomainContent={<MainDomainRoutes />}>
-                <SubdomainRoutes />
+              <SubdomainGate
+                mainDomainContent={
+                  <Suspense fallback={<PageLoading />}>
+                    <MainDomainRoutes />
+                  </Suspense>
+                }
+              >
+                <Suspense fallback={<PageLoading />}>
+                  <SubdomainRoutes />
+                </Suspense>
               </SubdomainGate>
             </BrowserRouter>
           </AuthProvider>
