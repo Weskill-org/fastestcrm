@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,7 +77,7 @@ export default function Integrations() {
     };
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold">Integrations</h1>
@@ -133,11 +133,11 @@ export default function Integrations() {
                     />
                 )}
 
-                <PerformanceMarketingDialog 
+                <PerformanceMarketingDialog
                     isOpen={isPerformanceMarketingOpen}
                     onOpenChange={setIsPerformanceMarketingOpen}
                 />
             </div>
-        </DashboardLayout>
+        </>
     );
 }

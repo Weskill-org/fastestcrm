@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Home, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -18,6 +18,7 @@ import { RealEstateUploadLeadsDialog } from './components/RealEstateUploadLeadsD
 import { RealEstateAssignLeadsDialog } from './components/RealEstateAssignLeadsDialog';
 import { RealEstateEditLeadDialog } from './components/RealEstateEditLeadDialog';
 import { RealEstateLeadDetailsDialog } from './components/RealEstateLeadDetailsDialog';
+import { useHierarchy } from '@/hooks/useHierarchy';
 import { useRealEstateLeads } from './hooks/useRealEstateLeads';
 import { REAL_ESTATE_PROPERTY_TYPES } from './config';
 import { MobileLeadsHeader } from '@/components/leads/MobileLeadsHeader';
@@ -41,9 +42,12 @@ export default function RealEstateAllLeads() {
   const { data: userRole } = useUserRole();
   const isMobile = useIsMobile();
 
+  // Hierarchy Check
+  const { accessibleUserIds, canViewAll, loading: hierarchyLoading } = useHierarchy();
+
   // Fetch filter options
   const { data: filterOptions } = useQuery({
-    queryKey: ['realEstateLeadsFilterOptions', company?.id],
+    queryKey: ['realEstateLeadsFilterOptions', company?.id, canViewAll, accessibleUserIds],
     queryFn: async () => {
       if (!company?.id) return null;
 
@@ -66,6 +70,12 @@ export default function RealEstateAllLeads() {
         activeOwners = activeOwners.filter(o => activeUserIds.has(o.id));
       }
 
+      // Filter owners based on hierarchy for the dropdown
+      if (!canViewAll && accessibleUserIds.length > 0) {
+        const accessibleSet = new Set(accessibleUserIds);
+        activeOwners = activeOwners.filter(o => accessibleSet.has(o.id));
+      }
+
       const { data: statusesData } = await supabase
         .from('company_lead_statuses' as any)
         .select('label, value, category, order_index')
@@ -86,7 +96,7 @@ export default function RealEstateAllLeads() {
         propertyTypes: REAL_ESTATE_PROPERTY_TYPES.map(t => ({ label: t, value: t })),
       };
     },
-    enabled: !!company?.id
+    enabled: !!company?.id && !hierarchyLoading
   });
 
   const { data: leadsData, isLoading, refetch } = useRealEstateLeads({
@@ -95,7 +105,9 @@ export default function RealEstateAllLeads() {
     ownerFilter: Array.from(selectedOwners),
     propertyTypeFilter: Array.from(selectedPropertyTypes),
     page,
-    pageSize
+    pageSize,
+    accessibleUserIds,
+    canViewAll
   });
 
   const leads = leadsData?.leads || [];
@@ -151,16 +163,16 @@ export default function RealEstateAllLeads() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
         <MobileLeadsHeader
           title="Real Estate Leads"
@@ -287,10 +299,10 @@ export default function RealEstateAllLeads() {
       )}
 
       {/* Mobile Add Dialog */}
-      <RealEstateAddLeadDialog 
-        open={addDialogOpen} 
+      <RealEstateAddLeadDialog
+        open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
       />
-    </DashboardLayout>
+    </>
   );
 }

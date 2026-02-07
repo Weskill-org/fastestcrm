@@ -1,6 +1,6 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -25,14 +25,14 @@ export default function FormResponses() {
 
     if (!form) {
         return (
-            <DashboardLayout>
+            <>
                 <div className="p-8 text-center">
                     <h1 className="text-2xl font-bold">Form not found</h1>
                     <Button onClick={() => navigate('/dashboard/forms')} className="mt-4">
                         Back to Forms
                     </Button>
                 </div>
-            </DashboardLayout>
+            </>
         );
     }
 
@@ -61,7 +61,7 @@ export default function FormResponses() {
     };
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -134,6 +134,6 @@ export default function FormResponses() {
                     </CardContent>
                 </Card>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -58,7 +58,7 @@ export default function Forms() {
     };
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div className="flex items-center justify-between">
                     <div>
@@ -172,6 +172,6 @@ export default function Forms() {
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -71,16 +71,16 @@ export default function PendingPayments() {
 
     if (isLoading) {
         return (
-            <DashboardLayout>
+            <>
                 <div className="flex items-center justify-center h-screen">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-            </DashboardLayout>
+            </>
         );
     }
 
     return (
-        <DashboardLayout>
+        <>
             <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
                 <MobileLeadsHeader
                     title="Pending Payments"
@@ -219,6 +219,6 @@ export default function PendingPayments() {
                 lead={viewingLead}
                 owners={[]}
             />
-        </DashboardLayout>
+        </>
     );
 }

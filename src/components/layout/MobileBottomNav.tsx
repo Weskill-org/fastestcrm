@@ -24,6 +24,7 @@ const allNavItems = [
   { icon: CreditCard, label: 'Paid', path: '/dashboard/paid' },
   { icon: Calendar, label: 'Pending Payments', path: '/dashboard/pending' },
   { icon: Phone, label: 'Auto Dialer', path: '/dashboard/dialer' },
+  { icon: BarChart3, label: 'Report', path: '/dashboard/report' },
   { icon: Brain, label: 'AI Insights', path: '/dashboard/ai' },
   { icon: FileText, label: 'Forms', path: '/dashboard/forms' },
   { icon: Users, label: 'Team', path: '/dashboard/team' },

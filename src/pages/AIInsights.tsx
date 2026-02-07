@@ -1,4 +1,4 @@
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Brain, TrendingUp, AlertTriangle, CheckCircle2, Lightbulb, Phone } from 'lucide-react';
@@ -23,7 +23,7 @@ export default function AIInsights() {
     };
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div className="flex items-center justify-between">
                     <div>
@@ -131,6 +131,6 @@ export default function AIInsights() {
                     </Card>
                 </div>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

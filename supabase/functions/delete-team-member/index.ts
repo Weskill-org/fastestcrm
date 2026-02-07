@@ -67,14 +67,14 @@ serve(async (req) => {
 
     // Simple permission: Only company admins can delete, or managers can delete their direct/indirect reports
     const requesterLevel = ROLE_LEVELS[requesterRole || ''] ?? 99;
-    
+
     // Get target's role
     const { data: targetRoleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", targetUserId)
       .maybeSingle();
-    
+
     const targetLevel = ROLE_LEVELS[targetRoleData?.role || ''] ?? 99;
 
     // Only allow deletion if requester has higher authority
@@ -82,9 +82,22 @@ serve(async (req) => {
       throw new Error("You can only delete team members below your level");
     }
 
+    // 1. Delete all forms created by this user
+    const { error: formsError } = await supabaseAdmin
+      .from("forms")
+      .delete()
+      .eq("created_by_id", targetUserId);
+
+    if (formsError) {
+      console.error("Error deleting user forms:", formsError);
+      // We continue even if this fails? Or fail? 
+      // Safest is to fail so we don't leave partial state or fail at the next step anyway.
+      throw new Error("Failed to delete user forms: " + formsError.message);
+    }
+
     // Delete user from auth (this will cascade to profiles due to FK)
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
-    
+
     if (deleteError) {
       console.error("Delete error:", deleteError);
       throw new Error("Failed to delete user: " + deleteError.message);

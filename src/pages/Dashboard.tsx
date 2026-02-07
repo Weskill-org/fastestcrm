@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   Users, Brain, TrendingUp, DollarSign, Target, BarChart3, CreditCard, Loader2
 } from 'lucide-react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { useLeads } from '@/hooks/useLeads';
 import { format } from 'date-fns';
 
@@ -76,7 +76,7 @@ export default function Dashboard() {
   const recentLeads = leads.slice(0, 5);
 
   return (
-    <DashboardLayout>
+    <>
       <header className="sticky top-0 bg-background/80 backdrop-blur-xl border-b border-border px-8 py-4 z-10">
         <div className="flex items-center justify-between">
           <div>
@@ -177,6 +177,6 @@ export default function Dashboard() {
           </>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

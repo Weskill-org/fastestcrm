@@ -38,8 +38,14 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
 import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
 import ManageProperties from "./industries/real_estate/pages/ManageProperties";
+import Report from "./pages/Report";
 
 const queryClient = new QueryClient();
+
+// Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
+import AppLayout from "@/components/layout/AppLayout";
+
+// ... existing imports
 
 // Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
 const MainDomainRoutes = () => (
@@ -50,44 +56,8 @@ const MainDomainRoutes = () => (
     <Route path="/privacy" element={<PrivacyPolicy />} />
     <Route path="/register-company" element={<RegisterCompany />} />
     <Route path="/reset-password" element={<ResetPassword />} />
-    <Route path="/dashboard" element={<Dashboard />} />
-    <Route path="/dashboard/lg" element={<LGDashboard />} />
-    <Route path="/dashboard/leads" element={<AllLeads />} />
-    <Route path="/dashboard/interested" element={<Interested />} />
-    <Route path="/dashboard/paid" element={<Paid />} />
-    <Route path="/dashboard/pending" element={<PendingPayments />} />
-    <Route path="/dashboard/dialer" element={<AutoDialer />} />
-    <Route path="/dashboard/ai" element={<AIInsights />} />
-    <Route path="/dashboard/team" element={<Team />} />
-    <Route path="/dashboard/automations" element={<Automations />} />
-    <Route path="/dashboard/integrations" element={<Integrations />} />
-    <Route path="/dashboard/settings" element={<Settings />} />
-    <Route path="/dashboard/forms" element={<Forms />} />
-    <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
-    <Route path="/dashboard/forms/new" element={<FormBuilder />} />
-    <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-    <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-    <Route path="/dashboard/company" element={<ManageCompany />} />
-    <Route path="/dashboard/statuses" element={<ManageStatuses />} />
-    <Route path="/dashboard/products" element={<ManageProducts />} />
-    <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
-    <Route path="/dashboard/properties" element={<ManageProperties />} />
-    <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
-    <Route path="/platform" element={<PlatformAdmin />} />
-    <Route path="/form/:id" element={<PublicForm />} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
 
-// Subdomain routes (company.fastestcrm.com) - can be customized per workspace
-// Wrapped with SubdomainAccessGuard to ensure users can only access their own company's subdomain
-const SubdomainRoutes = () => (
-  <SubdomainAccessGuard>
-    <Routes>
-      {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
-      <Route path="/" element={<Auth />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+    <Route element={<AppLayout />}>
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/lg" element={<LGDashboard />} />
       <Route path="/dashboard/leads" element={<AllLeads />} />
@@ -95,6 +65,7 @@ const SubdomainRoutes = () => (
       <Route path="/dashboard/paid" element={<Paid />} />
       <Route path="/dashboard/pending" element={<PendingPayments />} />
       <Route path="/dashboard/dialer" element={<AutoDialer />} />
+      <Route path="/dashboard/report" element={<Report />} />
       <Route path="/dashboard/ai" element={<AIInsights />} />
       <Route path="/dashboard/team" element={<Team />} />
       <Route path="/dashboard/automations" element={<Automations />} />
@@ -111,6 +82,51 @@ const SubdomainRoutes = () => (
       <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
       <Route path="/dashboard/properties" element={<ManageProperties />} />
       <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
+    </Route>
+
+    <Route path="/platform" element={<PlatformAdmin />} />
+    <Route path="/form/:id" element={<PublicForm />} />
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
+
+// Subdomain routes (company.fastestcrm.com) - can be customized per workspace
+// Wrapped with SubdomainAccessGuard to ensure users can only access their own company's subdomain
+const SubdomainRoutes = () => (
+  <SubdomainAccessGuard>
+    <Routes>
+      {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
+      <Route path="/" element={<Auth />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+
+      <Route element={<AppLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard/lg" element={<LGDashboard />} />
+        <Route path="/dashboard/leads" element={<AllLeads />} />
+        <Route path="/dashboard/interested" element={<Interested />} />
+        <Route path="/dashboard/paid" element={<Paid />} />
+        <Route path="/dashboard/pending" element={<PendingPayments />} />
+        <Route path="/dashboard/dialer" element={<AutoDialer />} />
+        <Route path="/dashboard/report" element={<Report />} />
+        <Route path="/dashboard/ai" element={<AIInsights />} />
+        <Route path="/dashboard/team" element={<Team />} />
+        <Route path="/dashboard/automations" element={<Automations />} />
+        <Route path="/dashboard/integrations" element={<Integrations />} />
+        <Route path="/dashboard/settings" element={<Settings />} />
+        <Route path="/dashboard/forms" element={<Forms />} />
+        <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
+        <Route path="/dashboard/forms/new" element={<FormBuilder />} />
+        <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+        <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+        <Route path="/dashboard/company" element={<ManageCompany />} />
+        <Route path="/dashboard/statuses" element={<ManageStatuses />} />
+        <Route path="/dashboard/products" element={<ManageProducts />} />
+        <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
+        <Route path="/dashboard/properties" element={<ManageProperties />} />
+        <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
+      </Route>
+
       <Route path="/form/:id" element={<PublicForm />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

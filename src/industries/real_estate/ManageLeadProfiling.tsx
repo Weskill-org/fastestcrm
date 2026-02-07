@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,7 +130,7 @@ export default function ManageLeadProfiling() {
     queryKey: ['lead-profiling-config', company?.id],
     queryFn: async () => {
       if (!company?.id) return null;
-      
+
       const { data, error } = await supabase
         .from('lead_profiling_config')
         .select('*')
@@ -179,7 +179,7 @@ export default function ManageLeadProfiling() {
 
   const findNode = (levels: ProfileLevel[], path: string[]): ProfileLevel | null => {
     if (path.length === 0) return null;
-    
+
     let current: ProfileLevel | undefined = levels.find(l => l.id === path[0]);
     for (let i = 1; i < path.length && current; i++) {
       current = current.children.find(c => c.id === path[i]);
@@ -202,7 +202,7 @@ export default function ManageLeadProfiling() {
 
     setConfig(prev => {
       const newConfig = { ...prev, levels: [...prev.levels] };
-      
+
       if (parentPath.length === 0) {
         newConfig.levels.push(newItem);
       } else {
@@ -219,7 +219,7 @@ export default function ManageLeadProfiling() {
         };
         newConfig.levels = addToPath(newConfig.levels, parentPath, 0);
       }
-      
+
       return newConfig;
     });
 
@@ -232,7 +232,7 @@ export default function ManageLeadProfiling() {
 
     setConfig(prev => {
       const newConfig = { ...prev };
-      
+
       if (path.length === 1) {
         newConfig.levels = prev.levels.filter(l => l.id !== path[0]);
       } else {
@@ -249,7 +249,7 @@ export default function ManageLeadProfiling() {
         };
         newConfig.levels = removeFromPath(prev.levels, path, 0);
       }
-      
+
       return newConfig;
     });
 
@@ -264,13 +264,12 @@ export default function ManageLeadProfiling() {
         {levels.map((level) => {
           const currentPath = [...path, level.id];
           const isSelected = selectedPath.join('/') === currentPath.join('/');
-          
+
           return (
             <div key={level.id}>
-              <div 
-                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                  isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted'
-                }`}
+              <div
+                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted'
+                  }`}
                 onClick={() => setSelectedPath(currentPath)}
               >
                 {level.children.length > 0 && (
@@ -302,16 +301,16 @@ export default function ManageLeadProfiling() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -355,7 +354,7 @@ export default function ManageLeadProfiling() {
             <CardHeader>
               <CardTitle>Add New Option</CardTitle>
               <CardDescription>
-                {selectedPath.length === 0 
+                {selectedPath.length === 0
                   ? 'Add a top-level category'
                   : `Add sub-option to: ${findNode(config.levels, selectedPath)?.label || ''}`
                 }
@@ -390,8 +389,8 @@ export default function ManageLeadProfiling() {
                 />
               </div>
 
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={() => addItem(selectedPath)}
                 disabled={!newItemLabel.trim()}
               >
@@ -400,8 +399,8 @@ export default function ManageLeadProfiling() {
               </Button>
 
               {selectedPath.length > 0 && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={() => setSelectedPath([])}
                 >
@@ -432,6 +431,6 @@ export default function ManageLeadProfiling() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

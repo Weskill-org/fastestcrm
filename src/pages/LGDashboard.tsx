@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,7 +91,7 @@ export default function LGDashboard() {
     };
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold mb-2">Lead Generation Dashboard</h1>
@@ -232,6 +232,6 @@ export default function LGDashboard() {
                     </CardContent>
                 </Card>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +52,7 @@ interface CompanyLeadStatus {
 export default function ManageStatuses() {
     const { company, isCompanyAdmin } = useCompany();
     const { user } = useAuth();
-    
+
     const [isaddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [editingStatus, setEditingStatus] = useState<CompanyLeadStatus | null>(null);
     const [saving, setSaving] = useState(false);
@@ -73,7 +73,7 @@ export default function ManageStatuses() {
                 .select('*')
                 .eq('company_id', company.id)
                 .order('order_index', { ascending: true });
-            
+
             if (error) throw error;
             return (data as unknown as CompanyLeadStatus[]) || [];
         },
@@ -106,7 +106,7 @@ export default function ManageStatuses() {
         setSaving(true);
         try {
             const value = formData.label.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
-            
+
             const payload = {
                 company_id: company.id,
                 label: formData.label.trim(),
@@ -114,7 +114,7 @@ export default function ManageStatuses() {
                 color: formData.color,
                 category: formData.category,
                 // For new items, put at end. better logic needed for true reordering but simple append works for now.
-                order_index: editingStatus ? editingStatus.order_index : (statuses?.length || 0), 
+                order_index: editingStatus ? editingStatus.order_index : (statuses?.length || 0),
             };
 
             if (editingStatus) {
@@ -129,7 +129,7 @@ export default function ManageStatuses() {
                 if (error) throw error;
                 toast.success('Status updated');
             } else {
-                 const { error } = await supabase
+                const { error } = await supabase
                     .from('company_lead_statuses' as any)
                     .insert(payload);
                 if (error) throw error;
@@ -161,7 +161,7 @@ export default function ManageStatuses() {
     if (!isCompanyAdmin) return <div className="p-8 text-center text-red-500">Access Restricted</div>;
 
     return (
-        <DashboardLayout>
+        <>
             <div className="space-y-6 max-w-5xl mx-auto pb-10">
                 <div className="flex justify-between items-center">
                     <div>
@@ -246,22 +246,22 @@ export default function ManageStatuses() {
                                 Configure the display label and behavior of this status.
                             </DialogDescription>
                         </DialogHeader>
-                        
+
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
                                 <Label>Label</Label>
-                                <Input 
+                                <Input
                                     placeholder="e.g. Meeting Scheduled"
                                     value={formData.label}
-                                    onChange={(e) => setFormData({...formData, label: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <Label>System Category</Label>
-                                <Select 
-                                    value={formData.category} 
-                                    onValueChange={(val) => setFormData({...formData, category: val as any})}
+                                <Select
+                                    value={formData.category}
+                                    onValueChange={(val) => setFormData({ ...formData, category: val as any })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
@@ -281,15 +281,15 @@ export default function ManageStatuses() {
                             <div className="space-y-2">
                                 <Label>Color</Label>
                                 <div className="flex gap-2">
-                                    <Input 
-                                        type="color" 
+                                    <Input
+                                        type="color"
                                         className="w-12 h-10 p-1 cursor-pointer"
                                         value={formData.color}
-                                        onChange={(e) => setFormData({...formData, color: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                                     />
-                                    <Input 
+                                    <Input
                                         value={formData.color}
-                                        onChange={(e) => setFormData({...formData, color: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                                         className="uppercase font-mono"
                                     />
                                 </div>
@@ -306,6 +306,6 @@ export default function ManageStatuses() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

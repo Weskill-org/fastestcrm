@@ -86,13 +86,63 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
         );
       }
 
+      if (fetchAll) {
+        let allLeads: Lead[] = [];
+        let hasMore = true;
+        let pageIndex = 0;
+        const CHUNK_SIZE = 1000;
+
+        while (hasMore) {
+          const from = pageIndex * CHUNK_SIZE;
+          const to = from + CHUNK_SIZE - 1;
+
+          // Clone the base query for this chunk
+          let chunkQuery = supabase
+            .from(tableName as any)
+            .select(selectQuery, { count: 'exact' });
+
+          // Re-apply filters to chunkQuery
+          chunkQuery = chunkQuery.eq('company_id', companyId);
+          if (statusFilter) {
+            if (Array.isArray(statusFilter)) {
+              if (statusFilter.length > 0) chunkQuery = chunkQuery.in('status', statusFilter);
+            } else if (statusFilter !== 'all') {
+              chunkQuery = chunkQuery.eq('status', statusFilter as LeadStatus);
+            }
+          }
+          if (ownerFilter && ownerFilter.length > 0) chunkQuery = chunkQuery.in('sales_owner_id', ownerFilter);
+          if (productFilter && productFilter.length > 0) chunkQuery = chunkQuery.in('product_purchased', productFilter);
+          if (pendingPaymentOnly) chunkQuery = chunkQuery.gt('revenue_received', 0);
+          if (search) {
+            chunkQuery = chunkQuery.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,college.ilike.%${search}%`);
+          }
+
+          chunkQuery = chunkQuery.order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to);
+
+          const { data: chunkData, error: chunkError, count: totalCount } = await chunkQuery;
+
+          if (chunkError) {
+            console.error('[useLeads] Chunk query error:', chunkError);
+            throw chunkError;
+          }
+
+          if (chunkData) {
+            allLeads = [...allLeads, ...(chunkData as unknown as Lead[])];
+            if (chunkData.length < CHUNK_SIZE) {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+          }
+          pageIndex++;
+        }
+
+        return { leads: allLeads, count: allLeads.length };
+      }
+
+      // Normal pagination logic
       let from = (page - 1) * pageSize;
       let to = from + pageSize - 1;
-
-      if (fetchAll) {
-        from = 0;
-        to = 1000000 - 1; // Effectively "all"
-      }
 
       query = query.range(from, to);
 

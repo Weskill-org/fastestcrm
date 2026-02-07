@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -67,7 +67,7 @@ export default function Interested() {
 
     const isLoading = isRealEstate ? realEstateLeadsQuery.isLoading : genericLeadsQuery.isLoading;
     const refetch = isRealEstate ? realEstateLeadsQuery.refetch : genericLeadsQuery.refetch;
-    const leads = isRealEstate 
+    const leads = isRealEstate
         ? (realEstateLeadsQuery.data?.leads || [])
         : (genericLeadsQuery.data?.leads || []);
 
@@ -128,16 +128,16 @@ export default function Interested() {
 
     if (isLoading) {
         return (
-            <DashboardLayout>
+            <>
                 <div className="flex items-center justify-center h-screen">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-            </DashboardLayout>
+            </>
         );
     }
 
     return (
-        <DashboardLayout>
+        <>
             <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
                 <MobileLeadsHeader
                     title={isRealEstate ? "Site Visited" : "Interested Leads"}
@@ -219,6 +219,6 @@ export default function Interested() {
                 lead={viewingLead}
                 owners={owners || []}
             />
-        </DashboardLayout>
+        </>
     );
 }

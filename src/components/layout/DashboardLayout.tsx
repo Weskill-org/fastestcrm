@@ -6,7 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
 const navItems = [{
   icon: LayoutDashboard,
@@ -20,6 +20,10 @@ const navItems = [{
   icon: Users,
   label: 'All Leads',
   path: '/dashboard/leads'
+}, {
+  icon: PieChart,
+  label: 'Report',
+  path: '/dashboard/report'
 },
 // {
 //   icon: Building2,

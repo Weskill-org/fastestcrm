@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,7 +103,7 @@ export default function ManageProducts() {
     // Derived state for filtering/search could be added later
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div className="flex items-center justify-between">
                     <div>
@@ -309,6 +309,6 @@ export default function ManageProducts() {
                     </Card>
                 )}
             </div>
-        </DashboardLayout>
+        </>
     );
 }

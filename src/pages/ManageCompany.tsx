@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -479,18 +479,18 @@ export default function ManageCompany() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   if (!company) return null;
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-8 pb-10">
         <div>
           <h1 className="text-2xl font-bold">Manage Company</h1>
@@ -945,6 +945,6 @@ export default function ManageCompany() {
           </Card>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

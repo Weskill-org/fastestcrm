@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -233,16 +233,16 @@ export default function GenericAllLeads() {
 
     if (isLoading) {
         return (
-            <DashboardLayout>
+            <>
                 <div className="flex items-center justify-center h-screen">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-            </DashboardLayout>
+            </>
         );
     }
 
     return (
-        <DashboardLayout>
+        <>
             <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
                 <MobileLeadsHeader
                     title="All Leads"
@@ -263,9 +263,9 @@ export default function GenericAllLeads() {
                     onDelete={handleDeleteLeads}
                     onAssign={() => setAssignDialogOpen(true)}
                     canDelete={userRole === 'company' || userRole === 'company_subadmin'}
-                        uploadButton={<UploadLeadsDialog />}
-                        addButton={!isMobile ? <AddLeadDialog /> : null}
-                    />
+                    uploadButton={<UploadLeadsDialog />}
+                    addButton={!isMobile ? <AddLeadDialog /> : null}
+                />
 
                 {/* Mobile Card View */}
                 {isMobile ? (
@@ -362,10 +362,10 @@ export default function GenericAllLeads() {
             )}
 
             {/* Mobile Add Dialog */}
-            <AddLeadDialog 
-                open={addDialogOpen} 
+            <AddLeadDialog
+                open={addDialogOpen}
                 onOpenChange={setAddDialogOpen}
             />
-        </DashboardLayout>
+        </>
     );
 }

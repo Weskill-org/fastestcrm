@@ -10,6 +10,8 @@ interface UseRealEstateLeadsOptions {
   propertyTypeFilter?: string[];
   page?: number;
   pageSize?: number;
+  accessibleUserIds?: string[];
+  canViewAll?: boolean;
 }
 
 export function useRealEstateLeads({
@@ -21,7 +23,6 @@ export function useRealEstateLeads({
   pageSize = 25,
 }: UseRealEstateLeadsOptions = {}) {
   const { company, loading: companyLoading } = useCompany();
-  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: [
@@ -32,7 +33,7 @@ export function useRealEstateLeads({
       propertyTypeFilter,
       page,
       pageSize,
-      company?.id,
+      company?.id
     ],
     queryFn: async (): Promise<{ leads: RealEstateLead[]; count: number }> => {
       if (!company?.id) {
@@ -40,67 +41,46 @@ export function useRealEstateLeads({
         return { leads: [], count: 0 };
       }
 
-      let query = supabase
-        .from('leads_real_estate')
-        .select(`
-          *,
-          pre_sales_owner:profiles!leads_real_estate_pre_sales_owner_id_fkey(full_name),
-          sales_owner:profiles!leads_real_estate_sales_owner_id_fkey(full_name),
-          post_sales_owner:profiles!leads_real_estate_post_sales_owner_id_fkey(full_name)
-        `, { count: 'exact' })
-        .eq('company_id', company.id)
-        .order('created_at', { ascending: false });
-
+      // Convert statusFilter to single string if possible, or null/undefined
+      // The RPC expects `status_filter text`. If array is passed, we take the first one or null.
+      // This matches previous behavior in RealEstateAllLeads.tsx which passed `undefined` for multiple selections.
+      let rpcStatusFilter: string | null = null;
       if (statusFilter && statusFilter !== 'all') {
         if (Array.isArray(statusFilter)) {
-          if (statusFilter.length > 0) {
-            query = query.in('status', statusFilter);
-          }
+          if (statusFilter.length === 1) rpcStatusFilter = statusFilter[0];
+          // if > 1, we pass null -> fetch all (as per previous logic limitation)
         } else {
-          query = query.eq('status', statusFilter);
+          rpcStatusFilter = statusFilter;
         }
       }
 
-      if (ownerFilter && ownerFilter.length > 0) {
-        // Filter by any of the owner fields using OR condition
-        const orConditions = ownerFilter.flatMap(id => [
-          `pre_sales_owner_id.eq.${id}`,
-          `sales_owner_id.eq.${id}`,
-          `post_sales_owner_id.eq.${id}`
-        ]).join(',');
-        query = query.or(orConditions);
-      }
-
-      if (propertyTypeFilter && propertyTypeFilter.length > 0) {
-        query = query.in('property_type', propertyTypeFilter);
-      }
-
-      if (search) {
-        query = query.or(
-          `name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,preferred_location.ilike.%${search}%,property_name.ilike.%${search}%`
-        );
-      }
-
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error } = await supabase.rpc('get_real_estate_leads', {
+        page: page,
+        page_size: pageSize,
+        search_query: search || null,
+        status_filter: rpcStatusFilter,
+        owner_filter: ownerFilter && ownerFilter.length > 0 ? ownerFilter : null,
+        property_type_filter: propertyTypeFilter && propertyTypeFilter.length > 0 ? propertyTypeFilter : null
+      });
 
       if (error) {
-        console.error('[useRealEstateLeads] Query error:', error);
+        console.error('[useRealEstateLeads] RPC error:', error);
         throw error;
       }
 
+      // The RPC returns a JSON object { leads: [...], count: N }
+      // We need to cast it properly
+      const result = data as { leads: any[], count: number };
+
       return {
-        leads: (data as unknown as RealEstateLead[]) || [],
-        count: count || 0
+        leads: result.leads || [],
+        count: result.count || 0
       };
     },
     enabled: !companyLoading && !!company?.id,
     placeholderData: (prev) => prev,
     retry: 2,
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    staleTime: 30000,
   });
 
   return {

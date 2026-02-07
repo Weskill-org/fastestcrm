@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,16 +128,16 @@ export default function FormBuilder() {
 
     if (id && isLoading) {
         return (
-            <DashboardLayout>
+            <>
                 <div className="p-8 flex items-center justify-center">
                     <p>Loading form...</p>
                 </div>
-            </DashboardLayout>
+            </>
         );
     }
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -292,6 +292,6 @@ export default function FormBuilder() {
                     </Card>
                 </div>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -146,16 +146,16 @@ export default function Settings() {
 
     if (isLoading) {
         return (
-            <DashboardLayout>
+            <>
                 <div className="flex items-center justify-center h-screen">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-            </DashboardLayout>
+            </>
         );
     }
 
     return (
-        <DashboardLayout>
+        <>
             <div className="p-8 space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold">Settings</h1>
@@ -319,6 +319,6 @@ export default function Settings() {
                     )}
                 </Tabs>
             </div>
-        </DashboardLayout>
+        </>
     );
 }
