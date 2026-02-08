@@ -54,27 +54,43 @@ export function useRealEstateLeads({
         }
       }
 
-      const { data, error } = await supabase.rpc('get_real_estate_leads', {
-        page: page,
-        page_size: pageSize,
-        search_query: search || null,
-        status_filter: rpcStatusFilter,
-        owner_filter: ownerFilter && ownerFilter.length > 0 ? ownerFilter : null,
-        property_type_filter: propertyTypeFilter && propertyTypeFilter.length > 0 ? propertyTypeFilter : null
-      });
+      // Use direct query instead of RPC to avoid TypeScript issues
+      let query = supabase
+        .from('leads_real_estate')
+        .select('*, sales_owner:profiles!leads_real_estate_sales_owner_id_fkey(full_name)', { count: 'exact' })
+        .eq('company_id', company.id)
+        .order('created_at', { ascending: false });
+
+      if (rpcStatusFilter) {
+        query = query.eq('status', rpcStatusFilter);
+      }
+
+      if (ownerFilter && ownerFilter.length > 0) {
+        query = query.in('sales_owner_id', ownerFilter);
+      }
+
+      if (propertyTypeFilter && propertyTypeFilter.length > 0) {
+        query = query.in('property_type', propertyTypeFilter);
+      }
+
+      if (search) {
+        query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,property_name.ilike.%${search}%`);
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) {
-        console.error('[useRealEstateLeads] RPC error:', error);
+        console.error('[useRealEstateLeads] Query error:', error);
         throw error;
       }
 
-      // The RPC returns a JSON object { leads: [...], count: N }
-      // We need to cast it properly
-      const result = data as { leads: any[], count: number };
-
       return {
-        leads: result.leads || [],
-        count: result.count || 0
+        leads: (data as unknown as RealEstateLead[]) || [],
+        count: count || 0
       };
     },
     enabled: !companyLoading && !!company?.id,

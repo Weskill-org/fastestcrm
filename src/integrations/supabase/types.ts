@@ -1505,6 +1505,10 @@ export type Database = {
         Args: { input_table_name: string }
         Returns: undefined
       }
+      get_accessible_team_ids: {
+        Args: { input_user_id: string }
+        Returns: string[]
+      }
       get_company_by_domain: { Args: { _domain: string }; Returns: string }
       get_company_lead_columns: {
         Args: { input_company_id: string }
@@ -1516,6 +1520,17 @@ export type Database = {
       }
       get_lead_unique_constraints: {
         Args: { input_company_id: string }
+        Returns: Json
+      }
+      get_real_estate_leads: {
+        Args: {
+          owner_filter?: string[]
+          page?: number
+          page_size?: number
+          property_type_filter?: string[]
+          search_query?: string
+          status_filter?: string
+        }
         Returns: Json
       }
       get_role_level: {
