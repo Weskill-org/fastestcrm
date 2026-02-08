@@ -30,7 +30,7 @@ interface FacebookPage {
 }
 
 // Meta App ID - this is public/publishable
-const META_APP_ID = '679498251591152';
+const META_APP_ID = '1222309222740033';
 
 export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingIntegration }: MetaAdsSetupDialogProps) {
   const { toast } = useToast();
