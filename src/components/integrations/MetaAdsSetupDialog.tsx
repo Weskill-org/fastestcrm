@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Loader2, Facebook, CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -32,17 +44,35 @@ interface FacebookPage {
 // Meta App ID - this is public/publishable
 const META_APP_ID = '1222309222740033';
 
-export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingIntegration }: MetaAdsSetupDialogProps) {
+// Use the already-deployed edge function URL as redirect_uri.
+// This is stable and avoids Meta rejecting new subdomains/custom domains.
+const META_OAUTH_REDIRECT_URI =
+  'https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-oauth-callback';
+
+// Only accept postMessage events from our callback origins.
+const META_OAUTH_ALLOWED_ORIGINS = new Set([
+  'https://uykdyqdeyilpulaqlqip.supabase.co',
+  'https://fastestcrm.com',
+]);
+
+export function MetaAdsSetupDialog({
+  isOpen,
+  onOpenChange,
+  onComplete,
+  existingIntegration,
+}: MetaAdsSetupDialogProps) {
   const { toast } = useToast();
   const { company } = useCompany();
   const { statuses } = useLeadStatuses();
   const queryClient = useQueryClient();
-  
+
   const [step, setStep] = useState<Step>('connect');
   const [isLoading, setIsLoading] = useState(false);
   const [pages, setPages] = useState<FacebookPage[]>([]);
   const [selectedPageId, setSelectedPageId] = useState('');
-  const [defaultStatus, setDefaultStatus] = useState(existingIntegration?.default_lead_status || 'new');
+  const [defaultStatus, setDefaultStatus] = useState(
+    existingIntegration?.default_lead_status || 'new'
+  );
   const [connectedPage, setConnectedPage] = useState(existingIntegration?.page_name || '');
 
   // Reset state when dialog opens
@@ -62,16 +92,21 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
   // Listen for OAuth callback message
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      if (event.data?.type === 'META_OAUTH_CALLBACK' && event.data?.code) {
+      if (event.data?.type !== 'META_OAUTH_CALLBACK') return;
+      if (!META_OAUTH_ALLOWED_ORIGINS.has(event.origin)) return;
+
+      if (event.data?.code) {
         console.log('Received OAuth callback with code');
         await handleOAuthCallback(event.data.code);
+        return;
       }
-      if (event.data?.type === 'META_OAUTH_CALLBACK' && event.data?.error) {
+
+      if (event.data?.error) {
         setIsLoading(false);
-        toast({ 
-          title: 'Facebook Login Failed', 
-          description: event.data.error, 
-          variant: 'destructive' 
+        toast({
+          title: 'Facebook Login Failed',
+          description: event.data.error,
+          variant: 'destructive',
         });
       }
     };
@@ -86,8 +121,7 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
       return;
     }
 
-    // Use fixed redirect URI for fastestcrm.com (works from any subdomain)
-    const redirectUri = 'https://fastestcrm.com/meta-oauth-callback';
+    const redirectUri = META_OAUTH_REDIRECT_URI;
     const scope = [
       'pages_show_list',
       'pages_read_engagement',
@@ -95,22 +129,20 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
       'pages_manage_ads',
       'leads_retrieval',
       'ads_management',
-      'business_management'
+      'business_management',
     ].join(',');
 
-    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=${company.id}`;
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&scope=${scope}&response_type=code&state=${company.id}`;
 
     // Open popup for OAuth
     const width = 600;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
-    
-    window.open(
-      authUrl,
-      'meta-oauth',
-      `width=${width},height=${height},left=${left},top=${top}`
-    );
+
+    window.open(authUrl, 'meta-oauth', `width=${width},height=${height},left=${left},top=${top}`);
 
     setIsLoading(true);
   };
@@ -119,15 +151,15 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
     if (!company?.id) return;
 
     try {
-      const redirectUri = 'https://fastestcrm.com/meta-oauth-callback';
-      
+      const redirectUri = META_OAUTH_REDIRECT_URI;
+
       const { data, error } = await supabase.functions.invoke('meta-oauth-callback', {
         body: {
           code,
           redirectUri,
           companyId: company.id,
-          defaultStatus
-        }
+          defaultStatus,
+        },
       });
 
       if (error) throw error;
@@ -136,12 +168,15 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
       if (data.pages && data.pages.length > 0) {
         setPages(data.pages);
         setStep('select-page');
-        toast({ title: 'Connected!', description: 'Now select a Facebook Page to receive leads from.' });
+        toast({
+          title: 'Connected!',
+          description: 'Now select a Facebook Page to receive leads from.',
+        });
       } else {
-        toast({ 
-          title: 'No Pages Found', 
+        toast({
+          title: 'No Pages Found',
           description: 'You need a Facebook Page with Lead Ads to continue.',
-          variant: 'destructive'
+          variant: 'destructive',
         });
       }
     } catch (err: any) {
@@ -155,7 +190,7 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
   const handleSelectPage = async () => {
     if (!selectedPageId || !company?.id) return;
 
-    const selectedPage = pages.find(p => p.id === selectedPageId);
+    const selectedPage = pages.find((p) => p.id === selectedPageId);
     if (!selectedPage) return;
 
     setIsLoading(true);
@@ -164,8 +199,8 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
         body: {
           companyId: company.id,
           pageId: selectedPageId,
-          pageName: selectedPage.name
-        }
+          pageName: selectedPage.name,
+        },
       });
 
       if (error) throw error;
@@ -173,10 +208,10 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
 
       setConnectedPage(selectedPage.name);
       setStep('success');
-      
+
       // Invalidate queries to refresh integration status
       queryClient.invalidateQueries({ queryKey: ['performance-marketing-integrations'] });
-      
+
       toast({ title: 'Success!', description: data.message });
       onComplete?.();
     } catch (err: any) {
@@ -211,11 +246,11 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
                   <SelectValue placeholder="Select status for new leads" />
                 </SelectTrigger>
                 <SelectContent>
-                  {statuses.map(status => (
+                  {statuses.map((status) => (
                     <SelectItem key={status.value} value={status.value}>
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-2 h-2 rounded-full" 
+                        <div
+                          className="w-2 h-2 rounded-full"
                           style={{ backgroundColor: status.color }}
                         />
                         {status.label}
@@ -267,7 +302,7 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
                   <SelectValue placeholder="Choose a page" />
                 </SelectTrigger>
                 <SelectContent>
-                  {pages.map(page => (
+                  {pages.map((page) => (
                     <SelectItem key={page.id} value={page.id}>
                       {page.name}
                     </SelectItem>
