@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, Facebook, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Facebook, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -76,7 +76,7 @@ export function MetaAdsSetupDialog({
     existingIntegration?.default_lead_status || 'new'
   );
   const [connectedPage, setConnectedPage] = useState(existingIntegration?.page_name || '');
-  
+
   // Refs for cleanup
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -115,10 +115,10 @@ export function MetaAdsSetupDialog({
   // Handle OAuth callback - memoized to use in effects
   const handleOAuthCallback = useCallback(async (code: string) => {
     if (!company?.id || isProcessingRef.current) return;
-    
+
     isProcessingRef.current = true;
     cleanup();
-    
+
     console.log('handleOAuthCallback: Processing code for company', company.id);
 
     try {
@@ -166,7 +166,7 @@ export function MetaAdsSetupDialog({
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type !== 'META_OAUTH_CALLBACK') return;
-      
+
       // Accept messages from allowed origins only
       if (!META_OAUTH_ALLOWED_ORIGINS.has(event.origin)) {
         console.warn('Ignored postMessage from unexpected origin:', event.origin);
@@ -202,14 +202,14 @@ export function MetaAdsSetupDialog({
     if (!isLoading || step !== 'connect') return;
 
     console.log('Starting localStorage polling for OAuth code...');
-    
+
     pollIntervalRef.current = setInterval(() => {
       const storedCode = localStorage.getItem('meta_oauth_code');
       const timestamp = localStorage.getItem('meta_oauth_timestamp');
-      
+
       if (storedCode && timestamp) {
         const codeAge = Date.now() - parseInt(timestamp, 10);
-        
+
         // Only accept codes less than 5 minutes old
         if (codeAge < OAUTH_TIMEOUT_MS) {
           console.log('Found OAuth code in localStorage, age:', codeAge, 'ms');
@@ -325,6 +325,42 @@ export function MetaAdsSetupDialog({
     } catch (err: any) {
       console.error('Select page error:', err);
       toast({ title: 'Error', description: err.message || 'Failed to connect page', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!existingIntegration?.id) return;
+
+    // Simple confirm
+    if (!confirm('Are you sure you want to disconnect Meta Ads? This will stop lead syncing immediately.')) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('performance_marketing_integrations' as any)
+        .delete()
+        .eq('id', existingIntegration.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Disconnected',
+        description: 'Meta Ads integration has been removed.',
+      });
+
+      onComplete?.();
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error('Disconnect error:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to disconnect integration',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -478,9 +514,21 @@ export function MetaAdsSetupDialog({
               </div>
             </div>
 
-            <Button onClick={() => onOpenChange(false)} className="w-full">
-              Done
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button onClick={() => onOpenChange(false)} className="w-full">
+                Done
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="text-red-500 hover:text-red-600 hover:bg-red-50 w-full"
+                onClick={handleDisconnect}
+                disabled={isLoading}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Disconnect Integration
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

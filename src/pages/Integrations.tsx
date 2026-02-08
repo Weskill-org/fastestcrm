@@ -109,7 +109,15 @@ export default function Integrations() {
                                     <CardContent>
                                         <div className="flex items-center justify-between pt-4 border-t border-border">
                                             <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{integration.category}</span>
-                                            {connected ? (
+                                            {integration.id === 'performance_marketing' ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant={connected ? "secondary" : "outline"}
+                                                    onClick={() => handleConnect(integration)}
+                                                >
+                                                    {connected ? 'Manage' : 'Connect'}
+                                                </Button>
+                                            ) : connected ? (
                                                 <Switch checked={true} />
                                             ) : (
                                                 <Button size="sm" variant="outline" onClick={() => handleConnect(integration)}>

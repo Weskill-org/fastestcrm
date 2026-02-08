@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
-import { Loader2, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Copy, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface LinkedInAdsSetupDialogProps {
@@ -27,7 +27,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
   const { company } = useCompany();
   const { statuses } = useLeadStatuses();
   const { toast } = useToast();
-  
+
   const [step, setStep] = useState(existingIntegration ? 3 : 1);
   const [loading, setLoading] = useState(false);
   const [accountName, setAccountName] = useState(existingIntegration?.page_name || '');
@@ -46,7 +46,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
 
   const handleSaveIntegration = async () => {
     if (!company?.id) return;
-    
+
     setLoading(true);
     try {
       const integrationData = {
@@ -63,13 +63,13 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
           .from('performance_marketing_integrations' as any)
           .update(integrationData)
           .eq('id', existingIntegration.id);
-        
+
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('performance_marketing_integrations' as any)
           .insert(integrationData);
-        
+
         if (error) throw error;
       }
 
@@ -77,7 +77,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
         title: 'LinkedIn Ads Integration Saved',
         description: 'Your webhook is ready to receive leads.',
       });
-      
+
       onComplete();
       onOpenChange(false);
     } catch (error: any) {
@@ -85,6 +85,42 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
         title: 'Error',
         description: error.message,
         variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!existingIntegration?.id) return;
+
+    // Simple confirm
+    if (!confirm('Are you sure you want to disconnect LinkedIn Ads? This will stop lead syncing immediately.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('performance_marketing_integrations' as any)
+        .delete()
+        .eq('id', existingIntegration.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Disconnected',
+        description: 'LinkedIn Ads integration has been removed.',
+      });
+
+      onComplete();
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error('Disconnect error:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to disconnect integration',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -102,7 +138,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                 LinkedIn Lead Gen Forms require a LinkedIn Developer App with Lead Sync API access.
               </AlertDescription>
             </Alert>
-            
+
             <div className="space-y-4">
               <h4 className="font-medium">Step 1: Create LinkedIn Developer App</h4>
               <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
@@ -111,14 +147,14 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                 <li>Request access to the "Lead Sync" API product</li>
                 <li>You'll need Leads Viewer access on your Ad Account</li>
               </ol>
-              
+
               <Button className="w-full" onClick={() => setStep(2)}>
                 Continue to Webhook Setup
               </Button>
-              
-              <a 
-                href="https://learn.microsoft.com/en-us/linkedin/shared/api-guide/webhook-validation" 
-                target="_blank" 
+
+              <a
+                href="https://learn.microsoft.com/en-us/linkedin/shared/api-guide/webhook-validation"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-primary underline block text-center"
               >
@@ -127,7 +163,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
             </div>
           </div>
         );
-        
+
       case 2:
         return (
           <div className="space-y-4">
@@ -135,14 +171,14 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
             <p className="text-sm text-muted-foreground">
               Register this webhook URL in your LinkedIn Developer App's Webhooks tab:
             </p>
-            
+
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label>Webhook URL</Label>
                 <div className="flex gap-2">
                   <Input value={webhookUrl} readOnly className="font-mono text-xs" />
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
                     onClick={() => copyToClipboard(webhookUrl)}
                   >
@@ -150,7 +186,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="clientSecret">App Client Secret</Label>
                 <Input
@@ -165,13 +201,13 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                 </p>
               </div>
             </div>
-            
+
             <Alert>
               <AlertDescription className="text-xs">
                 LinkedIn uses HMAC-SHA256 with your client secret to validate webhook requests. The validation must respond within 3 seconds.
               </AlertDescription>
             </Alert>
-            
+
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               <Button className="flex-1" onClick={() => setStep(3)}>
@@ -180,12 +216,12 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
             </div>
           </div>
         );
-        
+
       case 3:
         return (
           <div className="space-y-4">
             <h4 className="font-medium">Step 3: Configure Lead Settings</h4>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="accountName">LinkedIn Company/Account Name</Label>
@@ -196,7 +232,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                   placeholder="e.g., My Company LinkedIn"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Default Lead Status</Label>
                 <Select value={defaultStatus} onValueChange={setDefaultStatus}>
@@ -207,8 +243,8 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                     {statuses.map((status) => (
                       <SelectItem key={status.value} value={status.value}>
                         <div className="flex items-center gap-2">
-                          <div 
-                            className="w-2 h-2 rounded-full" 
+                          <div
+                            className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: status.color }}
                           />
                           {status.label}
@@ -222,19 +258,19 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                 </p>
               </div>
             </div>
-            
+
             <Alert>
               <AlertDescription className="text-xs">
                 Lead Source will be set as: <strong>LinkedIn - [Campaign Name]</strong>
               </AlertDescription>
             </Alert>
-            
+
             <div className="flex gap-2">
               {!existingIntegration && (
                 <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
               )}
-              <Button 
-                className="flex-1" 
+              <Button
+                className="flex-1"
                 onClick={handleSaveIntegration}
                 disabled={loading}
               >
@@ -242,20 +278,32 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
                 {existingIntegration ? 'Update Integration' : 'Complete Setup'}
               </Button>
             </div>
-            
+
             {existingIntegration && (
-              <div className="pt-4 border-t">
-                <p className="text-xs text-muted-foreground mb-2">Your Webhook URL:</p>
-                <div className="flex gap-2">
-                  <Input value={webhookUrl} readOnly className="font-mono text-xs" />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => copyToClipboard(webhookUrl)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+              <div className="pt-4 border-t space-y-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Your Webhook URL:</p>
+                  <div className="flex gap-2">
+                    <Input value={webhookUrl} readOnly className="font-mono text-xs" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(webhookUrl)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
+
+                <Button
+                  variant="ghost"
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50 w-full"
+                  onClick={handleDisconnect}
+                  disabled={loading}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Disconnect Integration
+                </Button>
               </div>
             )}
           </div>
@@ -269,8 +317,8 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <svg viewBox="0 0 48 48" className="w-6 h-6">
-              <path fill="#0288D1" d="M42,37c0,2.762-2.238,5-5,5H11c-2.761,0-5-2.238-5-5V11c0-2.762,2.239-5,5-5h26c2.762,0,5,2.238,5,5V37z"/>
-              <path fill="#FFF" d="M12 19H17V36H12zM14.485 17h-.028C12.965 17 12 15.888 12 14.499 12 13.08 12.995 12 14.514 12c1.521 0 2.458 1.08 2.486 2.499C17 15.887 16.035 17 14.485 17zM36 36h-5v-9.099c0-2.198-1.225-3.698-3.192-3.698-1.501 0-2.313 1.012-2.707 1.99C24.957 25.543 25 26.511 25 27v9h-5V19h5v2.616C25.721 20.5 26.85 19 29.738 19c3.578 0 6.261 2.25 6.261 7.274L36 36 36 36z"/>
+              <path fill="#0288D1" d="M42,37c0,2.762-2.238,5-5,5H11c-2.761,0-5-2.238-5-5V11c0-2.762,2.239-5,5-5h26c2.762,0,5,2.238,5,5V37z" />
+              <path fill="#FFF" d="M12 19H17V36H12zM14.485 17h-.028C12.965 17 12 15.888 12 14.499 12 13.08 12.995 12 14.514 12c1.521 0 2.458 1.08 2.486 2.499C17 15.887 16.035 17 14.485 17zM36 36h-5v-9.099c0-2.198-1.225-3.698-3.192-3.698-1.501 0-2.313 1.012-2.707 1.99C24.957 25.543 25 26.511 25 27v9h-5V19h5v2.616C25.721 20.5 26.85 19 29.738 19c3.578 0 6.261 2.25 6.261 7.274L36 36 36 36z" />
             </svg>
             LinkedIn Ads Integration
           </DialogTitle>
@@ -278,7 +326,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
             Receive leads from LinkedIn Lead Gen Forms in real-time
           </DialogDescription>
         </DialogHeader>
-        
+
         {renderStep()}
       </DialogContent>
     </Dialog>
