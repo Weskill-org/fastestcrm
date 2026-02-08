@@ -24,7 +24,7 @@ serve(async (req) => {
     const { companyId, pageId, pageName } = body;
 
     if (!companyId || !pageId || !pageName) {
-      console.error('meta-select-page: Missing required parameters');
+      console.error('meta-select-page: Missing required parameters', { companyId: !!companyId, pageId: !!pageId, pageName: !!pageName });
       return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -32,6 +32,7 @@ serve(async (req) => {
     }
 
     // Get the integration with user access token
+    console.log('meta-select-page: Looking up integration for company', companyId);
     const { data: integration, error: fetchError } = await supabase
       .from('performance_marketing_integrations')
       .select('*')
@@ -39,7 +40,13 @@ serve(async (req) => {
       .eq('platform', 'meta')
       .maybeSingle();
 
-    console.log('meta-select-page: Integration lookup:', { integration: !!integration, error: fetchError });
+    console.log('meta-select-page: Integration lookup result', { 
+      found: !!integration, 
+      integrationId: integration?.id,
+      hasAccessToken: !!integration?.access_token,
+      tokenLength: integration?.access_token?.length,
+      error: fetchError 
+    });
 
     if (fetchError) {
       console.error('meta-select-page: Fetch error:', fetchError);
@@ -50,7 +57,7 @@ serve(async (req) => {
     }
 
     if (!integration) {
-      console.error('meta-select-page: Integration not found');
+      console.error('meta-select-page: Integration not found for company', companyId);
       return new Response(JSON.stringify({ error: 'Integration not found. Please login with Facebook first.' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -82,9 +89,11 @@ serve(async (req) => {
       });
     }
 
+    console.log('meta-select-page: Found', pagesData.data?.length || 0, 'pages');
+
     const selectedPage = pagesData.data?.find((p: any) => p.id === pageId);
     if (!selectedPage) {
-      console.error('meta-select-page: Page not found in response');
+      console.error('meta-select-page: Page not found in response. Available pages:', pagesData.data?.map((p: any) => p.id));
       return new Response(JSON.stringify({ error: 'Page not found or no access' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -95,6 +104,14 @@ serve(async (req) => {
     // when the user token is a long-lived token
     const pageAccessToken = selectedPage.access_token;
     console.log('meta-select-page: Got page access token, length:', pageAccessToken?.length);
+
+    if (!pageAccessToken) {
+      console.error('meta-select-page: No page access token returned from Meta');
+      return new Response(JSON.stringify({ error: 'Failed to get page access token from Meta' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Subscribe to page webhooks for leadgen
     console.log('meta-select-page: Subscribing to leadgen webhook...');
@@ -124,8 +141,8 @@ serve(async (req) => {
     const tokenExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year
 
     // Update integration with page info AND page access token
-    console.log('meta-select-page: Updating integration record...');
-    const { error: updateError } = await supabase
+    console.log('meta-select-page: Updating integration record with page token...');
+    const { data: updateData, error: updateError } = await supabase
       .from('performance_marketing_integrations')
       .update({
         page_id: pageId,
@@ -136,7 +153,10 @@ serve(async (req) => {
         is_active: true,
         updated_at: new Date().toISOString()
       })
-      .eq('id', integration.id);
+      .eq('id', integration.id)
+      .select();
+
+    console.log('meta-select-page: Update result', { data: updateData, error: updateError });
 
     if (updateError) {
       console.error('meta-select-page: Update error:', updateError);
@@ -146,7 +166,40 @@ serve(async (req) => {
       });
     }
 
-    console.log('meta-select-page: Integration updated successfully');
+    // CRITICAL: Verify the page token was actually saved
+    console.log('meta-select-page: Verifying update was persisted...');
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('performance_marketing_integrations')
+      .select('id, access_token, page_id, page_name')
+      .eq('id', integration.id)
+      .single();
+
+    console.log('meta-select-page: Verification result', {
+      found: !!verifyData,
+      hasAccessToken: !!verifyData?.access_token,
+      tokenLength: verifyData?.access_token?.length,
+      pageId: verifyData?.page_id,
+      pageName: verifyData?.page_name,
+      verifyError
+    });
+
+    if (!verifyData || !verifyData.access_token || verifyData.access_token.length < 50) {
+      console.error('meta-select-page: CRITICAL - Page token not saved correctly!');
+      return new Response(JSON.stringify({ error: 'Failed to save page access token' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (verifyData.page_id !== pageId) {
+      console.error('meta-select-page: CRITICAL - Page ID mismatch!', { expected: pageId, actual: verifyData.page_id });
+      return new Response(JSON.stringify({ error: 'Failed to save page selection' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log('meta-select-page: SUCCESS - Integration updated with page token');
 
     // Build webhook URL
     const webhookUrl = `${supabaseUrl}/functions/v1/meta-lead-webhook`;
