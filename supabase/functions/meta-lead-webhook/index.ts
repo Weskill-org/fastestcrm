@@ -3,13 +3,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+// Global token used in Meta App Dashboard → Webhooks configuration.
+// Meta will send this back as `hub.verify_token` during verification.
+const GLOBAL_VERIFY_TOKEN = 'fastestcrm_meta_verify_2024';
 
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -26,26 +31,44 @@ serve(async (req) => {
 
       console.log('Meta webhook verification request:', { mode, token });
 
-      if (mode === 'subscribe') {
-        // Look up the integration with this verify token
-        const { data: integration } = await supabase
+      if (mode === 'subscribe' && challenge) {
+        // 1) Preferred path: accept our global verify token (works even if DB has 0 or many integrations)
+        if (token === GLOBAL_VERIFY_TOKEN) {
+          console.log('Webhook verified successfully (global token)');
+          return new Response(challenge, {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+          });
+        }
+
+        // 2) Backward compatible path: accept company-specific token stored in DB
+        const { data: integration, error: integrationError } = await supabase
           .from('performance_marketing_integrations')
           .select('id')
           .eq('platform', 'meta')
           .eq('webhook_verify_token', token)
-          .eq('is_active', true)
-          .single();
+          // Treat NULL as active; only exclude explicitly deactivated rows
+          .neq('is_active', false)
+          .limit(1)
+          .maybeSingle();
 
         if (integration) {
-          console.log('Webhook verified successfully');
-          return new Response(challenge, { 
+          console.log('Webhook verified successfully (integration token)');
+          return new Response(challenge, {
             status: 200,
-            headers: { 'Content-Type': 'text/plain' }
+            headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
           });
+        }
+
+        if (integrationError) {
+          console.error('Integration lookup error during webhook verification:', integrationError);
         }
       }
 
-      return new Response('Verification failed', { status: 403 });
+      return new Response('Verification failed', {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
     }
 
     // Handle lead notification (POST request)
