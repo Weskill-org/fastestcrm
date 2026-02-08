@@ -12,10 +12,13 @@ export default function MetaOAuthCallback() {
     if (error) {
       // Send error back to parent window
       if (window.opener) {
-        window.opener.postMessage({ 
-          type: 'META_OAUTH_CALLBACK', 
-          error: errorDescription || error 
-        }, window.location.origin);
+        window.opener.postMessage(
+          {
+            type: 'META_OAUTH_CALLBACK',
+            error: errorDescription || error,
+          },
+          '*'
+        );
         window.close();
       }
       return;
@@ -24,10 +27,13 @@ export default function MetaOAuthCallback() {
     if (code) {
       // Send code back to parent window
       if (window.opener) {
-        window.opener.postMessage({ 
-          type: 'META_OAUTH_CALLBACK', 
-          code 
-        }, window.location.origin);
+        window.opener.postMessage(
+          {
+            type: 'META_OAUTH_CALLBACK',
+            code,
+          },
+          '*'
+        );
         window.close();
       }
     }
