@@ -121,12 +121,28 @@ export default function GenericAllLeads() {
         queryFn: async () => {
             if (!company?.id) return null;
 
-            // Fetch owners (profiles)
-            const { data: ownersData } = await supabase
-                .from('profiles')
-                .select('id, full_name')
-                .eq('company_id', company.id)
-                .not('full_name', 'is', null);
+            // Fetch owners, products, and statuses in parallel to avoid waterfall
+            const [
+                { data: ownersData },
+                { data: products },
+                { data: statusesData }
+            ] = await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select('id, full_name')
+                    .eq('company_id', company.id)
+                    .not('full_name', 'is', null),
+                supabase
+                    .from('products')
+                    .select('name')
+                    .eq('company_id', company.id)
+                    .order('name'),
+                supabase
+                    .from('company_lead_statuses' as any)
+                    .select('label, value, category, order_index')
+                    .eq('company_id', company.id)
+                    .order('order_index')
+            ]);
 
             let activeOwners = ownersData || [];
             if (activeOwners.length > 0) {
@@ -139,18 +155,6 @@ export default function GenericAllLeads() {
                 const activeUserIds = new Set(rolesData?.map(r => r.user_id));
                 activeOwners = activeOwners.filter(o => activeUserIds.has(o.id));
             }
-
-            const { data: products } = await supabase
-                .from('products')
-                .select('name')
-                .eq('company_id', company.id)
-                .order('name');
-
-            const { data: statusesData } = await (supabase
-                .from('company_lead_statuses' as any)
-                .select('label, value, category, order_index')
-                .eq('company_id', company.id)
-                .order('order_index'));
 
             const statuses = statusesData && statusesData.length > 0
                 ? statusesData.map((s: any) => ({
