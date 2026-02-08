@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -45,7 +45,6 @@ interface FacebookPage {
 const META_APP_ID = '1222309222740033';
 
 // Use the already-deployed edge function URL as redirect_uri.
-// This is stable and avoids Meta rejecting new subdomains/custom domains.
 const META_OAUTH_REDIRECT_URI =
   'https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-oauth-callback';
 
@@ -54,6 +53,9 @@ const META_OAUTH_ALLOWED_ORIGINS = new Set([
   'https://uykdyqdeyilpulaqlqip.supabase.co',
   'https://fastestcrm.com',
 ]);
+
+// Timeout for OAuth flow (5 minutes)
+const OAUTH_TIMEOUT_MS = 5 * 60 * 1000;
 
 export function MetaAdsSetupDialog({
   isOpen,
@@ -74,6 +76,24 @@ export function MetaAdsSetupDialog({
     existingIntegration?.default_lead_status || 'new'
   );
   const [connectedPage, setConnectedPage] = useState(existingIntegration?.page_name || '');
+  
+  // Refs for cleanup
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isProcessingRef = useRef(false);
+
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    isProcessingRef.current = false;
+  }, []);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -86,13 +106,67 @@ export function MetaAdsSetupDialog({
       }
       setPages([]);
       setSelectedPageId('');
+      cleanup();
+    } else {
+      cleanup();
     }
-  }, [isOpen, existingIntegration]);
+  }, [isOpen, existingIntegration, cleanup]);
 
-  // Listen for OAuth callback message
+  // Handle OAuth callback - memoized to use in effects
+  const handleOAuthCallback = useCallback(async (code: string) => {
+    if (!company?.id || isProcessingRef.current) return;
+    
+    isProcessingRef.current = true;
+    cleanup();
+    
+    console.log('handleOAuthCallback: Processing code for company', company.id);
+
+    try {
+      const redirectUri = META_OAUTH_REDIRECT_URI;
+
+      console.log('handleOAuthCallback: Calling meta-oauth-callback edge function');
+      const { data, error } = await supabase.functions.invoke('meta-oauth-callback', {
+        body: {
+          code,
+          redirectUri,
+          companyId: company.id,
+          defaultStatus,
+        },
+      });
+
+      console.log('handleOAuthCallback: Response', { data, error });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.pages && data.pages.length > 0) {
+        setPages(data.pages);
+        setStep('select-page');
+        toast({
+          title: 'Connected!',
+          description: 'Now select a Facebook Page to receive leads from.',
+        });
+      } else {
+        toast({
+          title: 'No Pages Found',
+          description: 'You need a Facebook Page with Lead Ads to continue.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      console.error('OAuth callback error:', err);
+      toast({ title: 'Connection Failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+      isProcessingRef.current = false;
+    }
+  }, [company?.id, defaultStatus, toast, cleanup]);
+
+  // Listen for OAuth callback message via postMessage
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type !== 'META_OAUTH_CALLBACK') return;
+      
       // Accept messages from allowed origins only
       if (!META_OAUTH_ALLOWED_ORIGINS.has(event.origin)) {
         console.warn('Ignored postMessage from unexpected origin:', event.origin);
@@ -100,13 +174,17 @@ export function MetaAdsSetupDialog({
       }
 
       if (event.data?.code) {
-        console.log('Received OAuth callback with code');
+        console.log('Received OAuth callback via postMessage');
+        // Clear localStorage if present to prevent double processing
+        localStorage.removeItem('meta_oauth_code');
+        localStorage.removeItem('meta_oauth_timestamp');
         await handleOAuthCallback(event.data.code);
         return;
       }
 
       if (event.data?.error) {
         setIsLoading(false);
+        cleanup();
         toast({
           title: 'Facebook Login Failed',
           description: event.data.error,
@@ -117,26 +195,53 @@ export function MetaAdsSetupDialog({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [company?.id, defaultStatus]);
+  }, [handleOAuthCallback, toast, cleanup]);
 
-  // Also listen for storage events as a backup (cross-tab communication)
+  // Poll localStorage as fallback for cross-origin popup communication
   useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === 'meta_oauth_code' && event.newValue) {
-        console.log('Received OAuth code via storage event');
-        handleOAuthCallback(event.newValue);
-        localStorage.removeItem('meta_oauth_code');
+    if (!isLoading || step !== 'connect') return;
+
+    console.log('Starting localStorage polling for OAuth code...');
+    
+    pollIntervalRef.current = setInterval(() => {
+      const storedCode = localStorage.getItem('meta_oauth_code');
+      const timestamp = localStorage.getItem('meta_oauth_timestamp');
+      
+      if (storedCode && timestamp) {
+        const codeAge = Date.now() - parseInt(timestamp, 10);
+        
+        // Only accept codes less than 5 minutes old
+        if (codeAge < OAUTH_TIMEOUT_MS) {
+          console.log('Found OAuth code in localStorage, age:', codeAge, 'ms');
+          localStorage.removeItem('meta_oauth_code');
+          localStorage.removeItem('meta_oauth_timestamp');
+          handleOAuthCallback(storedCode);
+        } else {
+          // Code is too old, clean it up
+          console.log('Found stale OAuth code, removing');
+          localStorage.removeItem('meta_oauth_code');
+          localStorage.removeItem('meta_oauth_timestamp');
+        }
+      }
+    }, 1000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [company?.id, defaultStatus]);
+  }, [isLoading, step, handleOAuthCallback]);
 
   const handleFacebookLogin = () => {
     if (!company?.id) {
       toast({ title: 'Error', description: 'Company not found', variant: 'destructive' });
       return;
     }
+
+    // Clear any stale OAuth data
+    localStorage.removeItem('meta_oauth_code');
+    localStorage.removeItem('meta_oauth_timestamp');
 
     const redirectUri = META_OAUTH_REDIRECT_URI;
     const scope = [
@@ -162,46 +267,18 @@ export function MetaAdsSetupDialog({
     window.open(authUrl, 'meta-oauth', `width=${width},height=${height},left=${left},top=${top}`);
 
     setIsLoading(true);
-  };
 
-  const handleOAuthCallback = async (code: string) => {
-    if (!company?.id) return;
-
-    try {
-      const redirectUri = META_OAUTH_REDIRECT_URI;
-
-      const { data, error } = await supabase.functions.invoke('meta-oauth-callback', {
-        body: {
-          code,
-          redirectUri,
-          companyId: company.id,
-          defaultStatus,
-        },
-      });
-
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-
-      if (data.pages && data.pages.length > 0) {
-        setPages(data.pages);
-        setStep('select-page');
+    // Set timeout to prevent infinite loading state
+    timeoutRef.current = setTimeout(() => {
+      if (isLoading && step === 'connect') {
+        setIsLoading(false);
         toast({
-          title: 'Connected!',
-          description: 'Now select a Facebook Page to receive leads from.',
-        });
-      } else {
-        toast({
-          title: 'No Pages Found',
-          description: 'You need a Facebook Page with Lead Ads to continue.',
+          title: 'Connection Timeout',
+          description: 'The Facebook login took too long. Please try again.',
           variant: 'destructive',
         });
       }
-    } catch (err: any) {
-      console.error('OAuth callback error:', err);
-      toast({ title: 'Connection Failed', description: err.message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
+    }, OAUTH_TIMEOUT_MS);
   };
 
   const handleSelectPage = async () => {
