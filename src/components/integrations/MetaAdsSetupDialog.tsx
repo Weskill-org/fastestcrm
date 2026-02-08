@@ -93,7 +93,11 @@ export function MetaAdsSetupDialog({
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type !== 'META_OAUTH_CALLBACK') return;
-      if (!META_OAUTH_ALLOWED_ORIGINS.has(event.origin)) return;
+      // Accept messages from allowed origins only
+      if (!META_OAUTH_ALLOWED_ORIGINS.has(event.origin)) {
+        console.warn('Ignored postMessage from unexpected origin:', event.origin);
+        return;
+      }
 
       if (event.data?.code) {
         console.log('Received OAuth callback with code');
@@ -113,6 +117,19 @@ export function MetaAdsSetupDialog({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
+  }, [company?.id, defaultStatus]);
+
+  // Also listen for storage events as a backup (cross-tab communication)
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'meta_oauth_code' && event.newValue) {
+        console.log('Received OAuth code via storage event');
+        handleOAuthCallback(event.newValue);
+        localStorage.removeItem('meta_oauth_code');
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [company?.id, defaultStatus]);
 
   const handleFacebookLogin = () => {
@@ -195,6 +212,12 @@ export function MetaAdsSetupDialog({
 
     setIsLoading(true);
     try {
+      console.log('Calling meta-select-page with:', {
+        companyId: company.id,
+        pageId: selectedPageId,
+        pageName: selectedPage.name,
+      });
+
       const { data, error } = await supabase.functions.invoke('meta-select-page', {
         body: {
           companyId: company.id,
@@ -203,8 +226,16 @@ export function MetaAdsSetupDialog({
         },
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      console.log('meta-select-page response:', { data, error });
+
+      if (error) {
+        console.error('Edge function invocation error:', error);
+        throw error;
+      }
+      if (data?.error) {
+        console.error('Edge function returned error:', data.error);
+        throw new Error(data.error);
+      }
 
       setConnectedPage(selectedPage.name);
       setStep('success');
@@ -212,11 +243,11 @@ export function MetaAdsSetupDialog({
       // Invalidate queries to refresh integration status
       queryClient.invalidateQueries({ queryKey: ['performance-marketing-integrations'] });
 
-      toast({ title: 'Success!', description: data.message });
+      toast({ title: 'Success!', description: data?.message || 'Page connected successfully!' });
       onComplete?.();
     } catch (err: any) {
       console.error('Select page error:', err);
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to connect page', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
