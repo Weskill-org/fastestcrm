@@ -68,3 +68,9 @@ verify_jwt = true
 
 [functions.unlock-lead-attributes]
 verify_jwt = true
+
+[functions.meta-oauth-callback]
+verify_jwt = false
+
+[functions.meta-select-page]
+verify_jwt = false

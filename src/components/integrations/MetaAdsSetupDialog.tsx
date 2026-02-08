@@ -1,20 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Loader2, Facebook, CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
-import { Loader2, Copy, CheckCircle2, ExternalLink, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface MetaAdsSetupDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete: () => void;
+  onComplete?: () => void;
   existingIntegration?: {
     id: string;
     page_name: string | null;
@@ -23,301 +22,310 @@ interface MetaAdsSetupDialogProps {
   } | null;
 }
 
+type Step = 'connect' | 'select-page' | 'success';
+
+interface FacebookPage {
+  id: string;
+  name: string;
+}
+
+// Meta App ID - this is public/publishable
+const META_APP_ID = '679498251591152';
+
 export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingIntegration }: MetaAdsSetupDialogProps) {
+  const { toast } = useToast();
   const { company } = useCompany();
   const { statuses } = useLeadStatuses();
-  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
-  const [step, setStep] = useState(existingIntegration ? 3 : 1);
-  const [loading, setLoading] = useState(false);
-  const [accessToken, setAccessToken] = useState('');
-  const [pageId, setPageId] = useState('');
-  const [pageName, setPageName] = useState(existingIntegration?.page_name || '');
+  const [step, setStep] = useState<Step>('connect');
+  const [isLoading, setIsLoading] = useState(false);
+  const [pages, setPages] = useState<FacebookPage[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState('');
   const [defaultStatus, setDefaultStatus] = useState(existingIntegration?.default_lead_status || 'new');
-  const [webhookToken, setWebhookToken] = useState(existingIntegration?.webhook_verify_token || '');
-  const [copied, setCopied] = useState(false);
+  const [connectedPage, setConnectedPage] = useState(existingIntegration?.page_name || '');
 
-  // Generate webhook URL
-  const webhookUrl = `https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-lead-webhook`;
-
-  const generateVerifyToken = () => {
-    const token = crypto.randomUUID();
-    setWebhookToken(token);
-    return token;
-  };
-
-  const copyToClipboard = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSaveIntegration = async () => {
-    if (!company?.id) return;
-    
-    setLoading(true);
-    try {
-      const verifyToken = webhookToken || generateVerifyToken();
-      
-      const integrationData = {
-        company_id: company.id,
-        platform: 'meta',
-        is_active: true,
-        access_token: accessToken || null,
-        page_id: pageId || null,
-        page_name: pageName || 'Meta Ads',
-        default_lead_status: defaultStatus,
-        webhook_verify_token: verifyToken
-      };
-
-      if (existingIntegration?.id) {
-        const { error } = await supabase
-          .from('performance_marketing_integrations' as any)
-          .update(integrationData)
-          .eq('id', existingIntegration.id);
-        
-        if (error) throw error;
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      if (existingIntegration?.page_name) {
+        setStep('success');
+        setConnectedPage(existingIntegration.page_name);
       } else {
-        const { error } = await supabase
-          .from('performance_marketing_integrations' as any)
-          .insert(integrationData);
-        
-        if (error) throw error;
+        setStep('connect');
       }
+      setPages([]);
+      setSelectedPageId('');
+    }
+  }, [isOpen, existingIntegration]);
 
-      toast({
-        title: 'Meta Ads Integration Saved',
-        description: 'Your webhook is ready to receive leads.',
-      });
+  // Listen for OAuth callback message
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'META_OAUTH_CALLBACK' && event.data?.code) {
+        console.log('Received OAuth callback with code');
+        await handleOAuthCallback(event.data.code);
+      }
+      if (event.data?.type === 'META_OAUTH_CALLBACK' && event.data?.error) {
+        setIsLoading(false);
+        toast({ 
+          title: 'Facebook Login Failed', 
+          description: event.data.error, 
+          variant: 'destructive' 
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [company?.id, defaultStatus]);
+
+  const handleFacebookLogin = () => {
+    if (!company?.id) {
+      toast({ title: 'Error', description: 'Company not found', variant: 'destructive' });
+      return;
+    }
+
+    // Build OAuth URL with required permissions
+    const redirectUri = `${window.location.origin}/meta-oauth-callback`;
+    const scope = [
+      'pages_show_list',
+      'pages_read_engagement',
+      'pages_manage_metadata',
+      'pages_manage_ads',
+      'leads_retrieval',
+      'ads_management',
+      'business_management'
+    ].join(',');
+
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=${company.id}`;
+
+    // Open popup for OAuth
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    window.open(
+      authUrl,
+      'meta-oauth',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    setIsLoading(true);
+  };
+
+  const handleOAuthCallback = async (code: string) => {
+    if (!company?.id) return;
+
+    try {
+      const redirectUri = `${window.location.origin}/meta-oauth-callback`;
       
-      onComplete();
-      onOpenChange(false);
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+      const { data, error } = await supabase.functions.invoke('meta-oauth-callback', {
+        body: {
+          code,
+          redirectUri,
+          companyId: company.id,
+          defaultStatus
+        }
       });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      if (data.pages && data.pages.length > 0) {
+        setPages(data.pages);
+        setStep('select-page');
+        toast({ title: 'Connected!', description: 'Now select a Facebook Page to receive leads from.' });
+      } else {
+        toast({ 
+          title: 'No Pages Found', 
+          description: 'You need a Facebook Page with Lead Ads to continue.',
+          variant: 'destructive'
+        });
+      }
+    } catch (err: any) {
+      console.error('OAuth callback error:', err);
+      toast({ title: 'Connection Failed', description: err.message, variant: 'destructive' });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div className="space-y-4">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                To integrate with Meta Lead Ads, you need a Meta Business account with Lead Ads access.
-              </AlertDescription>
-            </Alert>
-            
-            <div className="space-y-4">
-              <h4 className="font-medium">Step 1: Create a Meta App</h4>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                <li>Go to <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary underline">Meta for Developers</a></li>
-                <li>Create a new app or use an existing one</li>
-                <li>Add the "Webhooks" product to your app</li>
-                <li>Add the "Marketing API" product for lead access</li>
-              </ol>
-              
-              <Button className="w-full" onClick={() => setStep(2)}>
-                Continue to Webhook Setup
-              </Button>
-            </div>
-          </div>
-        );
-        
-      case 2:
-        return (
-          <div className="space-y-4">
-            <h4 className="font-medium">Step 2: Configure Webhook</h4>
-            <p className="text-sm text-muted-foreground">
-              In your Meta App Dashboard, go to Webhooks and subscribe to the "leadgen" field with these details:
-            </p>
-            
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>Callback URL</Label>
-                <div className="flex gap-2">
-                  <Input value={webhookUrl} readOnly className="font-mono text-xs" />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => copyToClipboard(webhookUrl)}
-                  >
-                    {copied ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Verify Token</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={webhookToken} 
-                    readOnly 
-                    placeholder="Click generate to create token"
-                    className="font-mono text-xs" 
-                  />
-                  <Button variant="outline" onClick={() => generateVerifyToken()}>
-                    Generate
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => copyToClipboard(webhookToken)}
-                    disabled={!webhookToken}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <Alert>
-              <AlertDescription className="text-xs">
-                After configuring the webhook, subscribe your Facebook Page to the app to receive lead notifications.
-              </AlertDescription>
-            </Alert>
-            
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-              <Button className="flex-1" onClick={() => setStep(3)} disabled={!webhookToken}>
-                Continue to Settings
-              </Button>
-            </div>
-          </div>
-        );
-        
-      case 3:
-        return (
-          <div className="space-y-4">
-            <h4 className="font-medium">Step 3: Configure Lead Settings</h4>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="pageName">Facebook Page Name (for reference)</Label>
-                <Input
-                  id="pageName"
-                  value={pageName}
-                  onChange={(e) => setPageName(e.target.value)}
-                  placeholder="e.g., My Business Page"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="pageId">Facebook Page ID (optional)</Label>
-                <Input
-                  id="pageId"
-                  value={pageId}
-                  onChange={(e) => setPageId(e.target.value)}
-                  placeholder="e.g., 123456789"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Find this in your Facebook Page settings under "Page Transparency"
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Default Lead Status</Label>
-                <Select value={defaultStatus} onValueChange={setDefaultStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status for new leads" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statuses.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-2 h-2 rounded-full" 
-                            style={{ backgroundColor: status.color }}
-                          />
-                          {status.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Leads from Meta will be created with this status
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="accessToken">Page Access Token (optional)</Label>
-                <Input
-                  id="accessToken"
-                  type="password"
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  placeholder="Enter long-lived access token"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Required only if you want to fetch lead details from Meta API
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              {!existingIntegration && (
-                <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-              )}
-              <Button 
-                className="flex-1" 
-                onClick={handleSaveIntegration}
-                disabled={loading}
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {existingIntegration ? 'Update Integration' : 'Complete Setup'}
-              </Button>
-            </div>
-            
-            {existingIntegration && (
-              <div className="pt-4 border-t">
-                <p className="text-xs text-muted-foreground mb-2">Your Webhook URL:</p>
-                <div className="flex gap-2">
-                  <Input value={webhookUrl} readOnly className="font-mono text-xs" />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => copyToClipboard(webhookUrl)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
+  const handleSelectPage = async () => {
+    if (!selectedPageId || !company?.id) return;
+
+    const selectedPage = pages.find(p => p.id === selectedPageId);
+    if (!selectedPage) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('meta-select-page', {
+        body: {
+          companyId: company.id,
+          pageId: selectedPageId,
+          pageName: selectedPage.name
+        }
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setConnectedPage(selectedPage.name);
+      setStep('success');
+      
+      // Invalidate queries to refresh integration status
+      queryClient.invalidateQueries({ queryKey: ['performance-marketing-integrations'] });
+      
+      toast({ title: 'Success!', description: data.message });
+      onComplete?.();
+    } catch (err: any) {
+      console.error('Select page error:', err);
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <svg viewBox="0 0 36 36" className="w-6 h-6">
-              <defs>
-                <linearGradient id="meta-gradient-sm" x1="50%" y1="0%" x2="50%" y2="100%">
-                  <stop offset="0%" stopColor="#0668E1"/>
-                  <stop offset="100%" stopColor="#0080FB"/>
-                </linearGradient>
-              </defs>
-              <circle cx="18" cy="18" r="18" fill="url(#meta-gradient-sm)"/>
-            </svg>
-            Meta Lead Ads Integration
+            <Facebook className="h-5 w-5 text-blue-600" />
+            Connect Meta Lead Ads
           </DialogTitle>
           <DialogDescription>
-            Receive leads from Facebook and Instagram Lead Ads in real-time
+            {step === 'connect' && 'Login with Facebook to connect your Lead Ad forms.'}
+            {step === 'select-page' && 'Select the Facebook Page to receive leads from.'}
+            {step === 'success' && 'Your Meta Lead Ads are now connected!'}
           </DialogDescription>
         </DialogHeader>
-        
-        {renderStep()}
+
+        {step === 'connect' && (
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label>Default Lead Status</Label>
+              <Select value={defaultStatus} onValueChange={setDefaultStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status for new leads" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map(status => (
+                    <SelectItem key={status.value} value={status.value}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: status.color }}
+                        />
+                        {status.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Leads from Meta will be created with this status.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleFacebookLogin}
+              disabled={isLoading}
+              className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Facebook className="mr-2 h-4 w-4" />
+                  Continue with Facebook
+                </>
+              )}
+            </Button>
+
+            <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium">We'll request access to:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>Your Facebook Pages</li>
+                <li>Lead Ads forms & submissions</li>
+                <li>Page engagement data</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {step === 'select-page' && (
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label>Select Facebook Page</Label>
+              <Select value={selectedPageId} onValueChange={setSelectedPageId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a page" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pages.map(page => (
+                    <SelectItem key={page.id} value={page.id}>
+                      {page.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Lead form submissions from this page will sync to your CRM.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleSelectPage}
+              disabled={!selectedPageId || isLoading}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting Page...
+                </>
+              ) : (
+                'Connect Page'
+              )}
+            </Button>
+          </div>
+        )}
+
+        {step === 'success' && (
+          <div className="space-y-6 py-4 text-center">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg">Connected Successfully!</h3>
+              <p className="text-muted-foreground">
+                Leads from <span className="font-medium text-foreground">{connectedPage}</span> will now appear in your CRM automatically.
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left">
+              <div className="flex gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-800">
+                  <p className="font-medium mb-1">Important: Configure Meta Webhook</p>
+                  <p>To receive leads in real-time, configure the webhook URL in your Meta App Dashboard under Webhooks → Page → leadgen.</p>
+                </div>
+              </div>
+            </div>
+
+            <Button onClick={() => onOpenChange(false)} className="w-full">
+              Done
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

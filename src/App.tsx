@@ -39,6 +39,7 @@ import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
 import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
 import ManageProperties from "./industries/real_estate/pages/ManageProperties";
 import Report from "./pages/Report";
+import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const MainDomainRoutes = () => (
 
     <Route path="/platform" element={<PlatformAdmin />} />
     <Route path="/form/:id" element={<PublicForm />} />
+    <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
@@ -128,6 +130,7 @@ const SubdomainRoutes = () => (
       </Route>
 
       <Route path="/form/:id" element={<PublicForm />} />
+      <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </SubdomainAccessGuard>
