@@ -87,7 +87,7 @@ serve(async (req) => {
     }
 
     // Generate verify token for webhook
-    const verifyToken = crypto.randomUUID();
+    const verifyToken = 'fastestcrm_meta_verify_2024';
 
     // Update integration with page info
     const { error: updateError } = await supabase

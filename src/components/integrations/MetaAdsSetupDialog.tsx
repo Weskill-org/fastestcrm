@@ -86,8 +86,8 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
       return;
     }
 
-    // Build OAuth URL with required permissions
-    const redirectUri = `${window.location.origin}/meta-oauth-callback`;
+    // Use fixed redirect URI for fastestcrm.com (works from any subdomain)
+    const redirectUri = 'https://fastestcrm.com/meta-oauth-callback';
     const scope = [
       'pages_show_list',
       'pages_read_engagement',
@@ -119,7 +119,7 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
     if (!company?.id) return;
 
     try {
-      const redirectUri = `${window.location.origin}/meta-oauth-callback`;
+      const redirectUri = 'https://fastestcrm.com/meta-oauth-callback';
       
       const { data, error } = await supabase.functions.invoke('meta-oauth-callback', {
         body: {
@@ -311,12 +311,26 @@ export function MetaAdsSetupDialog({ isOpen, onOpenChange, onComplete, existingI
               </p>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left space-y-2">
               <div className="flex gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-800">
-                  <p className="font-medium mb-1">Important: Configure Meta Webhook</p>
-                  <p>To receive leads in real-time, configure the webhook URL in your Meta App Dashboard under Webhooks → Page → leadgen.</p>
+                <AlertCircle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-blue-800">
+                  <p className="font-medium">Webhook Configuration Required</p>
+                  <p className="mt-1">To receive leads in real-time, configure this webhook in your Meta App Dashboard:</p>
+                </div>
+              </div>
+              <div className="bg-white rounded p-2 space-y-1 text-xs font-mono">
+                <div>
+                  <p className="text-gray-600">URL:</p>
+                  <p className="text-gray-900 break-all">https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-lead-webhook</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Verify Token:</p>
+                  <p className="text-gray-900">fastestcrm_meta_verify_2024</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Field to Subscribe:</p>
+                  <p className="text-gray-900">leadgen</p>
                 </div>
               </div>
             </div>
