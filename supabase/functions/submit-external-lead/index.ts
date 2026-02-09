@@ -123,13 +123,16 @@ serve(async (req) => {
         if (creatorProfile?.company_id) {
             const { data: company } = await supabaseAdmin
                 .from('companies')
-                .select('custom_leads_table')
+                .select('custom_leads_table, industry')
                 .eq('id', creatorProfile.company_id)
                 .single();
 
             if (company?.custom_leads_table) {
                 targetTable = company.custom_leads_table;
                 console.log(`Using custom table ${targetTable} for form submission`);
+            } else if (company?.industry === 'real_estate') {
+                targetTable = 'leads_real_estate';
+                console.log(`Using industry table ${targetTable} for form submission`);
             }
         }
 
@@ -147,7 +150,8 @@ serve(async (req) => {
             form_id: form.id,
             status: "new",
             created_by_id: form.created_by_id,
-            sales_owner_id: form.created_by_id // Set sales_owner so creator can see the lead
+            sales_owner_id: form.created_by_id, // Set sales_owner so creator can see the lead
+            company_id: creatorProfile?.company_id // Ensure company_id is set
         };
 
         // Iterate through submitted data and map to known attributes
