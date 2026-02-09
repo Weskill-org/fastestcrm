@@ -12,6 +12,9 @@ import { useForm, useCreateForm, useUpdateForm } from '@/hooks/useForms';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Check, Copy, Code } from 'lucide-react';
 import { EDUCATION_LEAD_COLUMNS } from '@/industries/education/config';
 import { REAL_ESTATE_LEAD_COLUMNS } from '@/industries/real_estate/config';
 
@@ -67,6 +70,56 @@ export default function FormBuilder() {
     const { data: existingForm, isLoading } = useForm(id);
     const createForm = useCreateForm();
     const updateForm = useUpdateForm();
+    const { data: userRole } = useUserRole();
+
+    const [showApiInfo, setShowApiInfo] = useState(false);
+    const [copiedUrl, setCopiedUrl] = useState(false);
+    const [copiedJson, setCopiedJson] = useState(false);
+
+    const apiUrl = "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/submit-external-lead";
+    const canViewApiInfo = (userRole === 'company' || userRole === 'company_subadmin');
+
+    // Generate sample JSON payload based on current fields
+    const generateJsonPayload = () => {
+        const payload: any = {
+            formId: id || "YOUR_FORM_ID",
+            data: {}
+        };
+
+        fields.forEach(field => {
+            if (field.attribute) {
+                // Generate dummy data based on type/attribute
+                let dummyValue: any = "value";
+
+                if (field.attribute === 'email') dummyValue = "user@example.com";
+                else if (field.attribute === 'phone') dummyValue = "9876543210";
+                else if (field.attribute === 'whatsapp') dummyValue = "9876543210";
+                else if (field.type === 'number' || field.attribute.includes('budget') || field.attribute === 'cgpa') dummyValue = 123;
+                else if (field.attribute === 'name') dummyValue = "John Doe";
+                else if (field.attribute.includes('date')) dummyValue = "2024-01-01";
+
+                payload.data[field.attribute] = dummyValue;
+            }
+        });
+
+        // Add common UTM fields if not present as explicit fields
+        if (!Object.keys(payload.data).includes('utm_source')) payload.data.utm_source = "google";
+        if (!Object.keys(payload.data).includes('utm_medium')) payload.data.utm_medium = "cpc";
+
+        return JSON.stringify(payload, null, 2);
+    };
+
+    const copyToClipboard = (text: string, isUrl: boolean) => {
+        navigator.clipboard.writeText(text);
+        if (isUrl) {
+            setCopiedUrl(true);
+            setTimeout(() => setCopiedUrl(false), 2000);
+        } else {
+            setCopiedJson(true);
+            setTimeout(() => setCopiedJson(false), 2000);
+        }
+    };
+
 
     const [formName, setFormName] = useState('New Form');
     const [description, setDescription] = useState('');
@@ -163,10 +216,67 @@ export default function FormBuilder() {
                             <p className="text-muted-foreground">Design your lead capture form.</p>
                         </div>
                     </div>
-                    <Button onClick={handleSave} className="gradient-primary">
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Form
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {canViewApiInfo && id && (
+                            <Dialog open={showApiInfo} onOpenChange={setShowApiInfo}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" className="gap-2 border-dashed">
+                                        <Code className="h-4 w-4" />
+                                        API Info
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                                    <DialogHeader>
+                                        <DialogTitle>API Integration Details</DialogTitle>
+                                        <DialogDescription>
+                                            Use these details to integrate your external landing pages.
+                                        </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-6 py-4">
+                                        <div className="space-y-2">
+                                            <Label>API Endpoint URL</Label>
+                                            <div className="flex items-center gap-2">
+                                                <code className="flex-1 bg-muted p-3 rounded-md text-sm font-mono break-all">
+                                                    {apiUrl}
+                                                </code>
+                                                <Button size="icon" variant="outline" onClick={() => copyToClipboard(apiUrl, true)}>
+                                                    {copiedUrl ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label>Sample JSON Payload</Label>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-8 gap-2"
+                                                    onClick={() => copyToClipboard(generateJsonPayload(), false)}
+                                                >
+                                                    {copiedJson ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                                    {copiedJson ? 'Copied' : 'Copy JSON'}
+                                                </Button>
+                                            </div>
+                                            <div className="relative">
+                                                <pre className="bg-slate-950 text-slate-50 p-4 rounded-md text-sm font-mono overflow-auto max-h-[400px]">
+                                                    {generateJsonPayload()}
+                                                </pre>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-2">
+                                                Note: Ensure <code>formId</code> matches this form ID. Field keys must match the mapped attributes.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        )}
+                        <Button onClick={handleSave} className="gradient-primary">
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Form
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
