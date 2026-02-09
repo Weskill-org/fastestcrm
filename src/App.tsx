@@ -40,6 +40,8 @@ import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
 import ManageProperties from "./industries/real_estate/pages/ManageProperties";
 import Report from "./pages/Report";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +90,8 @@ const MainDomainRoutes = () => (
     <Route path="/platform" element={<PlatformAdmin />} />
     <Route path="/form/:id" element={<PublicForm />} />
     <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+    <Route path="/blog" element={<Blog />} />
+    <Route path="/blog/:slug" element={<BlogPost />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
