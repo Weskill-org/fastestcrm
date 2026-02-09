@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-// DashboardLayout removed
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Save, Trash, GripVertical, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Plus, Save, Trash, GripVertical, ArrowLeft, Eye, EyeOff, Check, Copy, Code } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm, useCreateForm, useUpdateForm } from '@/hooks/useForms';
 import { Switch } from '@/components/ui/switch';
@@ -14,9 +13,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Check, Copy, Code } from 'lucide-react';
 import { EDUCATION_LEAD_COLUMNS } from '@/industries/education/config';
 import { REAL_ESTATE_LEAD_COLUMNS } from '@/industries/real_estate/config';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 type FieldType = 'text' | 'email' | 'phone' | 'number' | 'textarea' | 'select';
 
@@ -46,6 +47,22 @@ export default function FormBuilder() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { company } = useCompany();
+    const { statuses: companyStatuses } = useLeadStatuses();
+
+    // Fetch company users for Lead Owner selection
+    const { data: companyUsers } = useQuery({
+        queryKey: ['company-users', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return [];
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, full_name, email')
+                .eq('company_id', company.id)
+                .eq('is_active', true);
+            return data || [];
+        },
+        enabled: !!company?.id
+    });
 
     // Dynamically determine available attributes based on industry
     const leadAttributes = (() => {
@@ -60,11 +77,28 @@ export default function FormBuilder() {
 
         // Map columns to form builder format
         const industryAttrs = columns
-            .filter((col: any) => col.key !== 'status') // Exclude status
+            //.filter((col: any) => col.key !== 'status') // Don't exclude status anymore
             .map((col: any) => ({ label: col.label, value: col.key }));
 
-        // Add common UTM fields
-        return [...industryAttrs, ...COMMON_UTM_ATTRIBUTES];
+        // Add common UTM fields and explicit Status field if not already there
+        const commonAttrs = [...COMMON_UTM_ATTRIBUTES];
+
+        // Ensure Status is available
+        if (!industryAttrs.find((a: any) => a.value === 'status')) {
+            commonAttrs.push({ label: 'Lead Status', value: 'status' });
+        }
+
+        // Ensure Lead Source is available
+        if (!industryAttrs.find((a: any) => a.value === 'lead_source')) {
+            commonAttrs.push({ label: 'Lead Source', value: 'lead_source' });
+        }
+
+        // Ensure Lead Owner is available
+        if (!industryAttrs.find((a: any) => a.value === 'sales_owner_id')) {
+            commonAttrs.push({ label: 'Lead Owner', value: 'sales_owner_id' });
+        }
+
+        return [...industryAttrs, ...commonAttrs];
     })();
 
     const { data: existingForm, isLoading } = useForm(id);
@@ -97,6 +131,7 @@ export default function FormBuilder() {
                 else if (field.type === 'number' || field.attribute.includes('budget') || field.attribute === 'cgpa') dummyValue = 123;
                 else if (field.attribute === 'name') dummyValue = "John Doe";
                 else if (field.attribute.includes('date')) dummyValue = "2024-01-01";
+                else if (field.attribute === 'status') dummyValue = "new";
 
                 payload.data[field.attribute] = dummyValue;
             }
@@ -392,12 +427,46 @@ export default function FormBuilder() {
                                         {field.hidden && (
                                             <div className="grid gap-2 p-3 bg-yellow-500/10 rounded-md">
                                                 <Label className="text-yellow-600">Default Value (Prefilled)</Label>
-                                                <Input
-                                                    value={field.defaultValue || ''}
-                                                    onChange={(e) => updateField(field.id, { defaultValue: e.target.value })}
-                                                    placeholder="Enter value to be submitted automatically"
-                                                    className="border-yellow-500/20"
-                                                />
+                                                {field.attribute === 'status' ? (
+                                                    <Select
+                                                        value={field.defaultValue || ''}
+                                                        onValueChange={(value) => updateField(field.id, { defaultValue: value })}
+                                                    >
+                                                        <SelectTrigger className="border-yellow-500/20">
+                                                            <SelectValue placeholder="Select Status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {companyStatuses?.map((status) => (
+                                                                <SelectItem key={status.value} value={status.value}>
+                                                                    {status.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : field.attribute === 'sales_owner_id' ? (
+                                                    <Select
+                                                        value={field.defaultValue || ''}
+                                                        onValueChange={(value) => updateField(field.id, { defaultValue: value })}
+                                                    >
+                                                        <SelectTrigger className="border-yellow-500/20">
+                                                            <SelectValue placeholder="Select Lead Owner" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {companyUsers?.map((user) => (
+                                                                <SelectItem key={user.id} value={user.id}>
+                                                                    {user.full_name || user.email}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : (
+                                                    <Input
+                                                        value={field.defaultValue || ''}
+                                                        onChange={(e) => updateField(field.id, { defaultValue: e.target.value })}
+                                                        placeholder="Enter value to be submitted automatically"
+                                                        className="border-yellow-500/20"
+                                                    />
+                                                )}
                                                 <p className="text-xs text-muted-foreground">This value will be submitted with the form but hidden from the user.</p>
                                             </div>
                                         )}

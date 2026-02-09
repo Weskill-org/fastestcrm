@@ -35,6 +35,8 @@ import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
 
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { StatusReminderDialog } from './StatusReminderDialog';
+import { CompanyLeadStatus } from '@/hooks/useLeadStatuses';
 
 const formSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -57,6 +59,9 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
     const updateLead = useUpdateLead();
     const { products } = useProducts();
     const { statuses } = useLeadStatuses();
+    const [statusReminderOpen, setStatusReminderOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
+    const [reminderAt, setReminderAt] = useState<Date | null>(null);
 
     // Get unique categories
     const categories = Array.from(new Set(products?.map(p => p.category) || [])).sort();
@@ -93,8 +98,39 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 product_category: (lead as any).product_category || '', // Cast because type might not be updated yet
                 product_purchased: lead.product_purchased || '',
             });
+            setReminderAt((lead as any).reminder_at ? new Date((lead as any).reminder_at) : null);
         }
     }, [lead, form]);
+
+    const handleStatusChange = (newStatusValue: string) => {
+        const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+        if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived')) {
+            setPendingStatus(newStatus);
+            setStatusReminderOpen(true);
+            // Don't update form yet
+        } else {
+            form.setValue('status', newStatusValue);
+            setReminderAt(null); // Clear reminder if switch to simple status? Or keep? Let's clear for now to avoid stale reminders.
+        }
+    };
+
+    const handleReminderConfirm = (date: Date | null, sendNotification: boolean) => {
+        if (pendingStatus) {
+            form.setValue('status', pendingStatus.value);
+            setReminderAt(date);
+            // You might want to save 'sendNotification' somewhere too if backend supports it. 
+            // For now we just use the date.
+        }
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+    };
+
+    const handleReminderCancel = () => {
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+        // Form status remains unchanged
+    };
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         if (!lead) return;
@@ -109,7 +145,9 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 status: values.status as any,
                 lead_source: values.lead_source || null,
                 product_category: values.product_category || null,
+                product_category: values.product_category || null,
                 product_purchased: values.product_purchased || null, // This stores the Product Name
+                reminder_at: reminderAt ? reminderAt.toISOString() : null, // Add reminder_at
             });
             toast.success('Lead updated successfully');
             onOpenChange(false);
@@ -201,7 +239,11 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select
+                                        onValueChange={handleStatusChange}
+                                        value={field.value}
+                                        defaultValue={field.value}
+                                    >
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select a status" />
@@ -282,6 +324,16 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                     </form>
                 </Form>
             </DialogContent>
+
+            {pendingStatus && (
+                <StatusReminderDialog
+                    open={statusReminderOpen}
+                    onOpenChange={setStatusReminderOpen}
+                    status={pendingStatus}
+                    onConfirm={handleReminderConfirm}
+                    onCancel={handleReminderCancel}
+                />
+            )}
         </Dialog>
     );
 }

@@ -47,6 +47,8 @@ interface CompanyLeadStatus {
     sub_statuses: string[];
     order_index: number;
     is_active: boolean;
+    status_type: 'simple' | 'date_derived' | 'time_derived';
+    web_push_enabled: boolean;
 }
 
 export default function ManageStatuses() {
@@ -62,6 +64,8 @@ export default function ManageStatuses() {
         label: '',
         color: '#3B82F6',
         category: 'interested',
+        status_type: 'simple',
+        web_push_enabled: false,
     });
 
     const { data: statuses, isLoading, refetch } = useQuery({
@@ -82,7 +86,13 @@ export default function ManageStatuses() {
 
     const handleOpenAdd = () => {
         setEditingStatus(null);
-        setFormData({ label: '', color: '#3B82F6', category: 'interested' });
+        setFormData({
+            label: '',
+            color: '#3B82F6',
+            category: 'interested',
+            status_type: 'simple',
+            web_push_enabled: false
+        });
         setIsAddDialogOpen(true);
     };
 
@@ -92,6 +102,8 @@ export default function ManageStatuses() {
             label: status.label,
             color: status.color,
             category: status.category as any,
+            status_type: status.status_type || 'simple',
+            web_push_enabled: status.web_push_enabled || false,
         });
         setIsAddDialogOpen(true);
     };
@@ -113,6 +125,8 @@ export default function ManageStatuses() {
                 value: editingStatus ? editingStatus.value : value, // Keep original value if editing to avoid breaking old data references, or decide if value should update? Usually value stays stable.
                 color: formData.color,
                 category: formData.category,
+                status_type: formData.status_type,
+                web_push_enabled: formData.web_push_enabled,
                 // For new items, put at end. better logic needed for true reordering but simple append works for now.
                 order_index: editingStatus ? editingStatus.order_index : (statuses?.length || 0),
             };
@@ -123,7 +137,11 @@ export default function ManageStatuses() {
                     .update({
                         label: payload.label,
                         color: payload.color,
-                        category: payload.category
+                        label: payload.label,
+                        color: payload.color,
+                        category: payload.category,
+                        status_type: payload.status_type,
+                        web_push_enabled: payload.web_push_enabled
                     })
                     .eq('id', editingStatus.id);
                 if (error) throw error;
@@ -188,6 +206,7 @@ export default function ManageStatuses() {
                                     <TableHead className="w-[50px]"></TableHead>
                                     <TableHead>Label</TableHead>
                                     <TableHead>Category</TableHead>
+                                    <TableHead>Type</TableHead>
                                     <TableHead>Color</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -277,6 +296,34 @@ export default function ManageStatuses() {
                                     Determines how this status is counted in analytics.
                                 </p>
                             </div>
+
+                            <div className="space-y-2">
+                                <Label>Status Type</Label>
+                                <Select
+                                    value={formData.status_type}
+                                    onValueChange={(val) => setFormData({ ...formData, status_type: val as any })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="simple">Simple (No extra action)</SelectItem>
+                                        <SelectItem value="date_derived">Date Derived (Set Date)</SelectItem>
+                                        <SelectItem value="time_derived">Time Derived (Set Timer)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {formData.status_type !== 'simple' && (
+                                <div className="flex items-center space-x-2 border p-3 rounded-md">
+                                    <Switch
+                                        id="web-push"
+                                        checked={formData.web_push_enabled}
+                                        onCheckedChange={(checked) => setFormData({ ...formData, web_push_enabled: checked })}
+                                    />
+                                    <Label htmlFor="web-push">Enable Web Push Notification</Label>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label>Color</Label>

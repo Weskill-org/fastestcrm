@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCompany } from '@/hooks/useCompany';
+import { NotificationsBell } from './NotificationsBell';
 
 const primaryNavItems = [
   { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
@@ -90,6 +91,7 @@ export default function MobileBottomNav() {
                   <p className="text-xs text-muted-foreground">Fastest CRM by Upmarking.com</p>
                 </div>
               </div>
+              <NotificationsBell />
               <button
                 onClick={() => setIsMenuOpen(false)}
                 className="p-2 rounded-lg hover:bg-accent"

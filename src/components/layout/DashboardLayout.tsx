@@ -4,10 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useReminderPolling } from '@/hooks/useReminderPolling';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
+import { NotificationsBell } from './NotificationsBell';
 const navItems = [{
   icon: LayoutDashboard,
   label: 'Dashboard',
@@ -116,6 +118,7 @@ export default function DashboardLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  useReminderPolling(); // Start polling for reminders
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
@@ -198,6 +201,9 @@ export default function DashboardLayout({
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
+        <div className="flex justify-end mb-2">
+          <NotificationsBell />
+        </div>
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
             <span className="text-sm font-medium text-primary">

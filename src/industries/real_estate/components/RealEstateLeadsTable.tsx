@@ -38,8 +38,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { RealEstateEditLeadDialog } from './RealEstateEditLeadDialog';
 import { RealEstateLeadDetailsDialog } from './RealEstateLeadDetailsDialog';
-import { SiteVisitDateTimeDialog } from './SiteVisitDateTimeDialog';
 import { SiteVisitCameraDialog } from './SiteVisitCameraDialog';
+import { StatusReminderDialog } from '@/components/leads/StatusReminderDialog';
+import { CompanyLeadStatus } from '@/hooks/useLeadStatuses';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
 
@@ -84,6 +85,7 @@ export interface RealEstateLead {
   payment_link: string | null;
   created_at: string;
   updated_at: string;
+  reminder_at: string | null;
   // Joined fields
   pre_sales_owner?: { full_name: string | null } | null;
   sales_owner?: { full_name: string | null } | null;
@@ -117,9 +119,10 @@ export function RealEstateLeadsTable({
   const { company } = useCompany();
   const [editingLead, setEditingLead] = useState<RealEstateLead | null>(null);
   const [viewingLead, setViewingLead] = useState<RealEstateLead | null>(null);
-  const [siteVisitDialogLead, setSiteVisitDialogLead] = useState<RealEstateLead | null>(null);
+
   const [cameraDialogLead, setCameraDialogLead] = useState<RealEstateLead | null>(null);
-  const [pendingStatus, setPendingStatus] = useState<{ leadId: string; status: string } | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<{ leadId: string; status: CompanyLeadStatus } | null>(null);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // New state for Notes editing
@@ -240,18 +243,34 @@ export function RealEstateLeadsTable({
   };
 
 
-  const handleStatusChange = async (leadId: string, newStatus: string, metadata?: Record<string, any>) => {
-    // Check if status requires date/time input
-    if ((newStatus === 'site_visit' || newStatus === 'request_callback') && !metadata) {
+  const handleStatusChange = async (leadId: string, newStatusValue: string, metadata?: Record<string, any>) => {
+    const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+    // Check if status requires date/time input (Derived Status)
+    if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived') && !metadata) {
       setPendingStatus({ leadId, status: newStatus });
-      setSiteVisitDialogLead(leads.find(l => l.id === leadId) || null);
+      setReminderDialogOpen(true);
       return;
     }
 
     try {
-      const updateData: any = { status: newStatus };
+      const updateData: any = { status: newStatusValue };
       if (metadata) {
-        updateData.status_metadata = metadata;
+        // If metadata is passed (e.g. reminder info), merge it or set it.
+        // For reminder_at, it's a separate column now.
+        if (metadata.reminder_at) {
+          updateData.reminder_at = metadata.reminder_at;
+          delete metadata.reminder_at; // Don't store in metadata if column exists
+        }
+        if (Object.keys(metadata).length > 0) {
+          updateData.status_metadata = metadata;
+        }
+      } else {
+        // If changing to a simple status, maybe clear reminder_at?
+        // Logic: If status is simple, we probably don't need a reminder.
+        if (newStatus && newStatus.status_type === 'simple') {
+          updateData.reminder_at = null;
+        }
       }
 
       const { error } = await supabase
@@ -270,19 +289,21 @@ export function RealEstateLeadsTable({
     }
   };
 
-  const handleSiteVisitConfirm = async (dateTime: Date) => {
-    if (!pendingStatus || !siteVisitDialogLead) return;
+  const handleReminderConfirm = async (dateTime: Date | null, sendNotification: boolean) => {
+    if (!pendingStatus) return;
 
-    const metadata: Record<string, any> = {
-      scheduled_at: dateTime.toISOString(),
-    };
-
-    if (pendingStatus.status === 'request_callback') {
-      metadata.rcb_display = `RCB - ${format(dateTime, 'dd MMM yyyy, hh:mm a')} `;
+    const metadata: Record<string, any> = {};
+    if (dateTime) {
+      metadata.reminder_at = dateTime.toISOString();
     }
 
-    await handleStatusChange(pendingStatus.leadId, pendingStatus.status, metadata);
-    setSiteVisitDialogLead(null);
+    await handleStatusChange(pendingStatus.leadId, pendingStatus.status.value, metadata);
+    setReminderDialogOpen(false);
+    setPendingStatus(null);
+  };
+
+  const handleReminderCancel = () => {
+    setReminderDialogOpen(false);
     setPendingStatus(null);
   };
 
@@ -308,10 +329,18 @@ export function RealEstateLeadsTable({
     const status = statuses.find(s => s.value === lead.status);
     const label = status?.label || lead.status;
 
+    if (lead.reminder_at && (status?.status_type === 'date_derived' || status?.status_type === 'time_derived')) {
+      try {
+        return `${label} - ${format(new Date(lead.reminder_at), 'dd MMM, hh:mm a')}`;
+      } catch (e) {
+        return label;
+      }
+    }
+
+    // Legacy fallback
     if (lead.status === 'request_callback' && lead.status_metadata?.rcb_display) {
       return lead.status_metadata.rcb_display;
     }
-
     if (lead.status === 'site_visit' && lead.status_metadata?.scheduled_at) {
       return `Site Visit - ${format(new Date(lead.status_metadata.scheduled_at), 'dd MMM, hh:mm a')} `;
     }
@@ -377,6 +406,8 @@ export function RealEstateLeadsTable({
               </TableHead>
               <TableHead className="font-semibold min-w-[150px]">Name</TableHead>
               <TableHead className="font-semibold min-w-[150px]">Contact</TableHead>
+              <TableHead className="font-semibold min-w-[120px]">Property Name</TableHead>
+              <TableHead className="font-semibold min-w-[120px]">Lead Source</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Property Type</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Budget</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Location</TableHead>
@@ -417,6 +448,8 @@ export function RealEstateLeadsTable({
                     )}
                   </div>
                 </TableCell>
+                <TableCell className="align-top py-3">{lead.property_name || '-'}</TableCell>
+                <TableCell className="align-top py-3">{lead.lead_source || '-'}</TableCell>
                 <TableCell className="align-top py-3">
                   <Badge variant="outline">{lead.property_type || '-'}</Badge>
                 </TableCell>
@@ -647,17 +680,15 @@ export function RealEstateLeadsTable({
         owners={owners}
       />
 
-      <SiteVisitDateTimeDialog
-        open={!!siteVisitDialogLead}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSiteVisitDialogLead(null);
-            setPendingStatus(null);
-          }
-        }}
-        statusType={pendingStatus?.status === 'request_callback' ? 'callback' : 'site_visit'}
-        onConfirm={handleSiteVisitConfirm}
-      />
+      {pendingStatus && (
+        <StatusReminderDialog
+          open={reminderDialogOpen}
+          onOpenChange={setReminderDialogOpen}
+          status={pendingStatus.status}
+          onConfirm={handleReminderConfirm}
+          onCancel={handleReminderCancel}
+        />
+      )}
 
       <SiteVisitCameraDialog
         open={!!cameraDialogLead}

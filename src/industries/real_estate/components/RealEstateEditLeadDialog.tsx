@@ -32,6 +32,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { REAL_ESTATE_PROPERTY_TYPES, REAL_ESTATE_PURPOSES } from '../config';
 import type { RealEstateLead } from './RealEstateLeadsTable';
+import { StatusReminderDialog } from '@/components/leads/StatusReminderDialog';
+import { CompanyLeadStatus } from '@/hooks/useLeadStatuses';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -59,14 +61,17 @@ interface RealEstateEditLeadDialogProps {
   onSuccess: () => void;
 }
 
-export function RealEstateEditLeadDialog({ 
-  open, 
-  onOpenChange, 
+export function RealEstateEditLeadDialog({
+  open,
+  onOpenChange,
   lead,
-  onSuccess 
+  onSuccess
 }: RealEstateEditLeadDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { statuses } = useLeadStatuses();
+  const [statusReminderOpen, setStatusReminderOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
+  const [reminderAt, setReminderAt] = useState<Date | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -110,8 +115,35 @@ export function RealEstateEditLeadDialog({
         status: lead.status,
         lead_source: lead.lead_source || '',
       });
+      setReminderAt(lead.reminder_at ? new Date(lead.reminder_at) : null);
     }
   }, [lead, form]);
+
+  const handleStatusChange = (newStatusValue: string) => {
+    const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+    if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived')) {
+      setPendingStatus(newStatus);
+      setStatusReminderOpen(true);
+    } else {
+      form.setValue('status', newStatusValue);
+      setReminderAt(null);
+    }
+  };
+
+  const handleReminderConfirm = (date: Date | null, sendNotification: boolean) => {
+    if (pendingStatus) {
+      form.setValue('status', pendingStatus.value);
+      setReminderAt(date);
+    }
+    setStatusReminderOpen(false);
+    setPendingStatus(null);
+  };
+
+  const handleReminderCancel = () => {
+    setStatusReminderOpen(false);
+    setPendingStatus(null);
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!lead) return;
@@ -137,6 +169,7 @@ export function RealEstateEditLeadDialog({
           notes: values.notes || null,
           status: values.status,
           lead_source: values.lead_source || null,
+          reminder_at: reminderAt ? reminderAt.toISOString() : null,
         })
         .eq('id', lead.id);
 
@@ -395,7 +428,10 @@ export function RealEstateEditLeadDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select
+                    onValueChange={handleStatusChange}
+                    value={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select status" />
@@ -421,10 +457,10 @@ export function RealEstateEditLeadDialog({
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Add any notes about this lead..."
                       className="min-h-[100px]"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -438,6 +474,16 @@ export function RealEstateEditLeadDialog({
           </form>
         </Form>
       </DialogContent>
-    </Dialog>
+
+      {pendingStatus && (
+        <StatusReminderDialog
+          open={statusReminderOpen}
+          onOpenChange={setStatusReminderOpen}
+          status={pendingStatus}
+          onConfirm={handleReminderConfirm}
+          onCancel={handleReminderCancel}
+        />
+      )}
+    </Dialog >
   );
 }

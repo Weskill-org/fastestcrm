@@ -21,7 +21,8 @@ const ALLOWED_ATTRIBUTES = [
     // Common / Education
     "name", "email", "phone", "whatsapp", "college", "graduating_year",
     "branch", "domain", "cgpa", "state", "preferred_language", "company",
-    "batch_month", "utm_source", "utm_medium", "utm_campaign", "notes",
+    "batch_month", "utm_source", "utm_medium", "utm_campaign", "notes", "status",
+    "lead_source", "sales_owner_id",
 
     // Real Estate
     "property_type", "budget_min", "budget_max", "preferred_location",

@@ -12,6 +12,8 @@ export interface CompanyLeadStatus {
     sub_statuses: string[];
     order_index: number;
     is_active: boolean;
+    status_type: 'simple' | 'date_derived' | 'time_derived';
+    web_push_enabled: boolean;
 }
 
 export function useLeadStatuses() {
