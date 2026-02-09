@@ -18,17 +18,14 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-const signupSchema = loginSchema.extend({
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
-});
+
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
-  const [isSignUp, setIsSignUp] = useState(searchParams.get('mode') === 'signup');
+
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -53,11 +50,7 @@ export default function Auth() {
   const validateForm = () => {
     setErrors({});
     try {
-      if (isSignUp) {
-        signupSchema.parse({ email, password, fullName });
-      } else {
-        loginSchema.parse({ email, password });
-      }
+      loginSchema.parse({ email, password });
       return true;
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -120,37 +113,13 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await signUp(email, password, fullName);
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast({
-              title: 'Account exists',
-              description: 'This email is already registered. Please sign in instead.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: 'Sign up failed',
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
-        } else {
-          toast({
-            title: 'Account created!',
-            description: 'Please check your email to verify your account.',
-          });
-        }
-      } else {
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({
-            title: 'Sign in failed',
-            description: 'Invalid email or password. Please try again.',
-            variant: 'destructive',
-          });
-        }
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({
+          title: 'Sign in failed',
+          description: 'Invalid email or password. Please try again.',
+          variant: 'destructive',
+        });
       }
     } finally {
       setLoading(false);
@@ -184,9 +153,9 @@ export default function Auth() {
             {/* Company logo or default logo based on subdomain */}
             {applyBranding && logoUrl ? (
               <div className="mx-auto w-16 h-16 rounded-xl overflow-hidden mb-4 border border-border/50 bg-background/50">
-                <img 
-                  src={logoUrl} 
-                  alt={companyName || 'Company logo'} 
+                <img
+                  src={logoUrl}
+                  alt={companyName || 'Company logo'}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -199,7 +168,7 @@ export default function Auth() {
                 <span className="text-xl font-bold text-primary-foreground">L³</span>
               </div>
             )}
-            
+
             {/* Company name badge for subdomain */}
             {applyBranding && companyName && (
               <div className="mb-2">
@@ -208,24 +177,18 @@ export default function Auth() {
                 </span>
               </div>
             )}
-            
+
             <CardTitle className="text-2xl">
               {isForgotPassword
                 ? 'Reset your password'
-                : isSignUp
-                  ? 'Create your account'
-                  : 'Welcome back'}
+                : 'Welcome back'}
             </CardTitle>
             <CardDescription>
               {isForgotPassword
                 ? 'Enter your email to receive a reset link'
-                : isSignUp
-                  ? applyBranding 
-                    ? `Join ${companyName} on Fastest CRM`
-                    : 'Start managing your leads with AI'
-                  : applyBranding
-                    ? `Sign in to ${companyName}'s workspace`
-                    : 'Sign in to access your CRM dashboard'}
+                : applyBranding
+                  ? `Sign in to ${companyName}'s workspace`
+                  : 'Sign in to access your CRM dashboard'}
             </CardDescription>
           </CardHeader>
 
@@ -270,22 +233,7 @@ export default function Auth() {
             ) : (
               <>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {isSignUp && (
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
-                        id="fullName"
-                        placeholder="John Doe"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        disabled={loading}
-                        className={errors.fullName ? 'border-destructive' : ''}
-                      />
-                      {errors.fullName && (
-                        <p className="text-sm text-destructive">{errors.fullName}</p>
-                      )}
-                    </div>
-                  )}
+                  {/* Full Name input removed */}
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -306,15 +254,13 @@ export default function Auth() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
-                      {!isSignUp && (
-                        <button
-                          type="button"
-                          onClick={() => setIsForgotPassword(true)}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Forgot password?
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotPassword(true)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
                     </div>
                     <Input
                       id="password"
@@ -336,20 +282,12 @@ export default function Auth() {
                     disabled={loading}
                   >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSignUp ? 'Create Account' : 'Sign In'}
+                    Sign In
                   </Button>
                 </form>
 
                 <div className="mt-6 text-center text-sm">
-                  <span className="text-muted-foreground">
-                    {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-                  </span>{' '}
-                  <button
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {isSignUp ? 'Sign in' : 'Sign up'}
-                  </button>
+                  {/* Signup removed as per request */}
                 </div>
               </>
             )}

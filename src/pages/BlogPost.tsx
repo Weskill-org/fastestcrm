@@ -103,9 +103,9 @@ export default function BlogPost() {
                         <p className="text-muted-foreground mb-6">
                             See how Fastest CRM can help you automate your sales process and grow faster.
                         </p>
-                        <Link to="/auth?mode=signup">
+                        <Link to="/register-company">
                             <Button size="lg" className="gradient-primary">
-                                Start Your Free Trial
+                                Register Your Company
                             </Button>
                         </Link>
                     </div>

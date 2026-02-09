@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Users, Phone, CreditCard, Workflow,
-  Brain, ArrowRight, Zap, Target, TrendingUp
+  Brain, ArrowRight, Zap, Target, TrendingUp, Menu, X
 } from 'lucide-react';
 
 const features = [
@@ -45,29 +46,57 @@ const benefits = [
 ];
 
 export default function Landing() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground font-sans">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src="/fastestcrmlogo.png" alt="Fastest CRM" className="w-10 h-10 object-contain" />
-            <span className="text-xl font-bold">Fastest CRM</span>
+            <span className="text-xl font-bold tracking-tight">Fastest CRM</span>
           </div>
-          <div className="flex items-center gap-4">
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-4">
             <Link to="/blog">
-              <Button variant="ghost" size="sm">Blog</Button>
+              <Button variant="ghost" size="sm" className="hover:bg-primary/5 hover:text-primary transition-colors">Blog</Button>
             </Link>
             <Link to="/auth">
-              <Button variant="ghost" size="sm">Login</Button>
+              <Button variant="ghost" size="sm" className="hover:bg-primary/5 hover:text-primary transition-colors">Login</Button>
             </Link>
             <Link to="/register-company">
-              <Button size="sm" className="gradient-primary">
+              <Button size="sm" className="gradient-primary hover:opacity-90 transition-opacity shadow-md">
                 Register Company
               </Button>
             </Link>
           </div>
+
+          {/* Mobile Menu Toggle */}
+          <div className="md:hidden">
+            <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile Navigation Content */}
+        {isMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 right-0 bg-background/95 backdrop-blur-md border-b border-border/50 p-6 flex flex-col gap-4 animate-in slide-in-from-top-4 duration-300 shadow-xl">
+            <Link to="/blog" onClick={() => setIsMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start text-lg">Blog</Button>
+            </Link>
+            <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start text-lg">Login</Button>
+            </Link>
+            <Link to="/register-company" onClick={() => setIsMenuOpen(false)}>
+              <Button className="w-full gradient-primary text-lg h-12">
+                Register Company
+              </Button>
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -98,9 +127,9 @@ export default function Landing() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
-            <Link to="/auth?mode=signup">
+            <Link to="/register-company">
               <Button size="lg" className="h-14 px-10 text-lg rounded-full gradient-primary hover:opacity-90 transition-all shadow-xl hover:shadow-2xl hover:shadow-primary/20">
-                Start Free Trial
+                Register Your Company
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
@@ -303,7 +332,7 @@ export default function Landing() {
             </div>
 
             <p className="text-sm text-muted-foreground text-center md:text-right">
-              © {new Date().getFullYear()} Fastest CRM by Upmarking.com.<br />Built with ❤️ for Indian Sales Teams.
+              © 2025-∞ Fastest CRM by <a href="https://upmarking.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Upmarking.com</a>.<br />Built for Fastest Sales Teams.
             </p>
           </div>
         </div>
