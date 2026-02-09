@@ -11,27 +11,20 @@ import { toast } from 'sonner';
 import { useForm, useCreateForm, useUpdateForm } from '@/hooks/useForms';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
+import { EDUCATION_LEAD_COLUMNS } from '@/industries/education/config';
+import { REAL_ESTATE_LEAD_COLUMNS } from '@/industries/real_estate/config';
 
 type FieldType = 'text' | 'email' | 'phone' | 'number' | 'textarea' | 'select';
 
 // List of available columns in the leads table for mapping
-const LEAD_ATTRIBUTES = [
-    { label: 'Name', value: 'name' },
-    { label: 'Email', value: 'email' },
-    { label: 'Phone', value: 'phone' },
-    { label: 'College', value: 'college' },
-    { label: 'Branch', value: 'branch' },
-    { label: 'Graduating Year', value: 'graduating_year' },
-    { label: 'CGPA', value: 'cgpa' },
-    { label: 'Company', value: 'company' },
-    { label: 'Domain', value: 'domain' },
-    { label: 'LinkedIn Profile', value: 'linkedin' }, // Assuming this might be added or mapped to a generic field
-    { label: 'State', value: 'state' },
-    { label: 'Preferred Language', value: 'preferred_language' },
-    { label: 'WhatsApp', value: 'whatsapp' },
+// Core attributes shared across all industries
+// UTM fields are commonly needed but might not be in the industry config
+const COMMON_UTM_ATTRIBUTES = [
     { label: 'UTM Source', value: 'utm_source' },
     { label: 'UTM Medium', value: 'utm_medium' },
     { label: 'UTM Campaign', value: 'utm_campaign' },
+    { label: 'Notes', value: 'notes' },
 ];
 
 interface FormField {
@@ -49,6 +42,27 @@ export default function FormBuilder() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { company } = useCompany();
+
+    // Dynamically determine available attributes based on industry
+    const leadAttributes = (() => {
+        let columns;
+
+        if (company?.industry === 'real_estate') {
+            columns = REAL_ESTATE_LEAD_COLUMNS;
+        } else {
+            // Default to Education / Generic if no industry or education
+            columns = EDUCATION_LEAD_COLUMNS;
+        }
+
+        // Map columns to form builder format
+        const industryAttrs = columns
+            .filter((col: any) => col.key !== 'status') // Exclude status
+            .map((col: any) => ({ label: col.label, value: col.key }));
+
+        // Add common UTM fields
+        return [...industryAttrs, ...COMMON_UTM_ATTRIBUTES];
+    })();
 
     const { data: existingForm, isLoading } = useForm(id);
     const createForm = useCreateForm();
@@ -234,7 +248,7 @@ export default function FormBuilder() {
                                                         <SelectValue placeholder="Select attribute" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {LEAD_ATTRIBUTES.map((attr) => (
+                                                        {leadAttributes.map((attr) => (
                                                             <SelectItem key={attr.value} value={attr.value}>
                                                                 {attr.label}
                                                             </SelectItem>
