@@ -121,38 +121,50 @@ export default function GenericAllLeads() {
         queryFn: async () => {
             if (!company?.id) return null;
 
-            // Fetch owners (profiles)
-            const { data: ownersData } = await supabase
-                .from('profiles')
-                .select('id, full_name')
-                .eq('company_id', company.id)
-                .not('full_name', 'is', null);
+            // Fetch independent data in parallel
+            const [activeOwners, products, statusesData] = await Promise.all([
+                // Fetch owners (profiles)
+                (async () => {
+                    const { data: ownersData } = await supabase
+                        .from('profiles')
+                        .select('id, full_name')
+                        .eq('company_id', company.id)
+                        .not('full_name', 'is', null);
 
-            let activeOwners = ownersData || [];
-            if (activeOwners.length > 0) {
-                const ownerIds = activeOwners.map(o => o.id);
-                const { data: rolesData } = await supabase
-                    .from('user_roles')
-                    .select('user_id')
-                    .in('user_id', ownerIds);
+                    let owners = ownersData || [];
+                    if (owners.length > 0) {
+                        const ownerIds = owners.map(o => o.id);
+                        const { data: rolesData } = await supabase
+                            .from('user_roles')
+                            .select('user_id')
+                            .in('user_id', ownerIds);
 
-                const activeUserIds = new Set(rolesData?.map(r => r.user_id));
-                activeOwners = activeOwners.filter(o => activeUserIds.has(o.id));
-            }
+                        const activeUserIds = new Set(rolesData?.map(r => r.user_id));
+                        owners = owners.filter(o => activeUserIds.has(o.id));
+                    }
+                    return owners;
+                })(),
+                // Fetch products
+                (async () => {
+                    const { data } = await supabase
+                        .from('products')
+                        .select('name')
+                        .eq('company_id', company.id)
+                        .order('name');
+                    return (data as any[]) || [];
+                })(),
+                // Fetch statuses
+                (async () => {
+                    const { data } = await (supabase
+                        .from('company_lead_statuses' as any)
+                        .select('label, value, category, order_index')
+                        .eq('company_id', company.id)
+                        .order('order_index'));
+                    return data || [];
+                })()
+            ]);
 
-            const { data: products } = await supabase
-                .from('products')
-                .select('name')
-                .eq('company_id', company.id)
-                .order('name');
-
-            const { data: statusesData } = await (supabase
-                .from('company_lead_statuses' as any)
-                .select('label, value, category, order_index')
-                .eq('company_id', company.id)
-                .order('order_index'));
-
-            const statuses = statusesData && statusesData.length > 0
+            const statuses = statusesData.length > 0
                 ? statusesData.map((s: any) => ({
                     label: s.label,
                     value: s.value,
@@ -162,7 +174,7 @@ export default function GenericAllLeads() {
 
             return {
                 owners: activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id })),
-                products: Array.from(new Set(((products as any[]) || []).map(p => p.name))).map(name => ({ label: name, value: name })),
+                products: Array.from(new Set(products.map((p: any) => p.name))).map(name => ({ label: name, value: name })),
                 statuses: statuses
             };
         },
