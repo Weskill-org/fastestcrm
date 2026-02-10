@@ -18,6 +18,23 @@ import { REAL_ESTATE_LEAD_COLUMNS } from '@/industries/real_estate/config';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type FieldType = 'text' | 'email' | 'phone' | 'number' | 'textarea' | 'select';
 
@@ -40,6 +57,169 @@ interface FormField {
     hidden: boolean;
     defaultValue?: string;
     options?: string[]; // For select fields
+}
+
+interface SortableFieldProps {
+    field: FormField;
+    leadAttributes: { label: string; value: string }[];
+    companyStatuses: any[];
+    companyUsers: any[];
+    updateField: (id: string, updates: Partial<FormField>) => void;
+    removeField: (id: string) => void;
+}
+
+function SortableField({ field, leadAttributes, companyStatuses, companyUsers, updateField, removeField }: SortableFieldProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: field.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 1 : 0,
+        position: isDragging ? 'relative' as const : undefined,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`flex items-start gap-4 p-4 rounded-lg border ${field.hidden ? 'border-dashed border-yellow-500/50 bg-yellow-500/5' : 'border-border bg-card/50'}`}
+        >
+            <div {...attributes} {...listeners} className="mt-3 cursor-move touch-none">
+                <GripVertical className="h-5 w-5 text-muted-foreground" />
+            </div>
+
+            <div className="flex-1 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                        <Label>Field Label</Label>
+                        <Input
+                            value={field.label}
+                            onChange={(e) => updateField(field.id, { label: e.target.value })}
+                            placeholder="e.g., Full Name"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Field Type</Label>
+                        <Select
+                            value={field.type}
+                            onValueChange={(value) => updateField(field.id, { type: value as FieldType })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="phone">Phone</SelectItem>
+                                <SelectItem value="number">Number</SelectItem>
+                                <SelectItem value="textarea">Text Area</SelectItem>
+                                <SelectItem value="select">Dropdown</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                        <Label>Map to Database Column</Label>
+                        <Select
+                            value={field.attribute}
+                            onValueChange={(value) => updateField(field.id, { attribute: value })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select attribute" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {leadAttributes.map((attr) => (
+                                    <SelectItem key={attr.value} value={attr.value}>
+                                        {attr.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex items-center gap-6 mt-8">
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                checked={field.required}
+                                onCheckedChange={(checked) => updateField(field.id, { required: checked })}
+                                disabled={field.hidden}
+                            />
+                            <Label>Required</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                checked={field.hidden}
+                                onCheckedChange={(checked) => updateField(field.id, { hidden: checked, required: checked ? false : field.required })}
+                            />
+                            <Label className="flex items-center gap-1">
+                                {field.hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                Hidden
+                            </Label>
+                        </div>
+                    </div>
+                </div>
+
+                {field.hidden && (
+                    <div className="grid gap-2 p-3 bg-yellow-500/10 rounded-md">
+                        <Label className="text-yellow-600">Default Value (Prefilled)</Label>
+                        {field.attribute === 'status' ? (
+                            <Select
+                                value={field.defaultValue || ''}
+                                onValueChange={(value) => updateField(field.id, { defaultValue: value })}
+                            >
+                                <SelectTrigger className="border-yellow-500/20">
+                                    <SelectValue placeholder="Select Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {companyStatuses?.map((status) => (
+                                        <SelectItem key={status.value} value={status.value}>
+                                            {status.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : field.attribute === 'sales_owner_id' ? (
+                            <Select
+                                value={field.defaultValue || ''}
+                                onValueChange={(value) => updateField(field.id, { defaultValue: value })}
+                            >
+                                <SelectTrigger className="border-yellow-500/20">
+                                    <SelectValue placeholder="Select Lead Owner" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {companyUsers?.map((user) => (
+                                        <SelectItem key={user.id} value={user.id}>
+                                            {user.full_name || user.email}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Input
+                                value={field.defaultValue || ''}
+                                onChange={(e) => updateField(field.id, { defaultValue: e.target.value })}
+                                placeholder="Enter value to be submitted automatically"
+                                className="border-yellow-500/20"
+                            />
+                        )}
+                        <p className="text-xs text-muted-foreground">This value will be submitted with the form but hidden from the user.</p>
+                    </div>
+                )}
+            </div>
+            <Button variant="ghost" size="icon" className="text-destructive mt-1" onClick={() => removeField(field.id)}>
+                <Trash className="h-4 w-4" />
+            </Button>
+        </div>
+    );
 }
 
 export default function FormBuilder() {
@@ -173,6 +353,29 @@ export default function FormBuilder() {
             }
         }
     }, [existingForm]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setFields((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    };
 
     const addField = () => {
         const newField: FormField = {
@@ -348,134 +551,28 @@ export default function FormBuilder() {
                             <CardDescription>Add and configure fields for your form.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {fields.map((field, index) => (
-                                <div key={field.id} className={`flex items-start gap-4 p-4 rounded-lg border ${field.hidden ? 'border-dashed border-yellow-500/50 bg-yellow-500/5' : 'border-border bg-card/50'}`}>
-                                    <GripVertical className="h-5 w-5 text-muted-foreground mt-3 cursor-move" />
-                                    <div className="flex-1 space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="grid gap-2">
-                                                <Label>Field Label</Label>
-                                                <Input
-                                                    value={field.label}
-                                                    onChange={(e) => updateField(field.id, { label: e.target.value })}
-                                                    placeholder="e.g., Full Name"
-                                                />
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label>Field Type</Label>
-                                                <Select
-                                                    value={field.type}
-                                                    onValueChange={(value) => updateField(field.id, { type: value as FieldType })}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="text">Text</SelectItem>
-                                                        <SelectItem value="email">Email</SelectItem>
-                                                        <SelectItem value="phone">Phone</SelectItem>
-                                                        <SelectItem value="number">Number</SelectItem>
-                                                        <SelectItem value="textarea">Text Area</SelectItem>
-                                                        <SelectItem value="select">Dropdown</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="grid gap-2">
-                                                <Label>Map to Database Column</Label>
-                                                <Select
-                                                    value={field.attribute}
-                                                    onValueChange={(value) => updateField(field.id, { attribute: value })}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select attribute" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {leadAttributes.map((attr) => (
-                                                            <SelectItem key={attr.value} value={attr.value}>
-                                                                {attr.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div className="flex items-center gap-6 mt-8">
-                                                <div className="flex items-center gap-2">
-                                                    <Switch
-                                                        checked={field.required}
-                                                        onCheckedChange={(checked) => updateField(field.id, { required: checked })}
-                                                        disabled={field.hidden}
-                                                    />
-                                                    <Label>Required</Label>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Switch
-                                                        checked={field.hidden}
-                                                        onCheckedChange={(checked) => updateField(field.id, { hidden: checked, required: checked ? false : field.required })}
-                                                    />
-                                                    <Label className="flex items-center gap-1">
-                                                        {field.hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                                                        Hidden
-                                                    </Label>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {field.hidden && (
-                                            <div className="grid gap-2 p-3 bg-yellow-500/10 rounded-md">
-                                                <Label className="text-yellow-600">Default Value (Prefilled)</Label>
-                                                {field.attribute === 'status' ? (
-                                                    <Select
-                                                        value={field.defaultValue || ''}
-                                                        onValueChange={(value) => updateField(field.id, { defaultValue: value })}
-                                                    >
-                                                        <SelectTrigger className="border-yellow-500/20">
-                                                            <SelectValue placeholder="Select Status" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {companyStatuses?.map((status) => (
-                                                                <SelectItem key={status.value} value={status.value}>
-                                                                    {status.label}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                ) : field.attribute === 'sales_owner_id' ? (
-                                                    <Select
-                                                        value={field.defaultValue || ''}
-                                                        onValueChange={(value) => updateField(field.id, { defaultValue: value })}
-                                                    >
-                                                        <SelectTrigger className="border-yellow-500/20">
-                                                            <SelectValue placeholder="Select Lead Owner" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {companyUsers?.map((user) => (
-                                                                <SelectItem key={user.id} value={user.id}>
-                                                                    {user.full_name || user.email}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                ) : (
-                                                    <Input
-                                                        value={field.defaultValue || ''}
-                                                        onChange={(e) => updateField(field.id, { defaultValue: e.target.value })}
-                                                        placeholder="Enter value to be submitted automatically"
-                                                        className="border-yellow-500/20"
-                                                    />
-                                                )}
-                                                <p className="text-xs text-muted-foreground">This value will be submitted with the form but hidden from the user.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="text-destructive mt-1" onClick={() => removeField(field.id)}>
-                                        <Trash className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={fields.map(f => f.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {fields.map((field) => (
+                                        <SortableField
+                                            key={field.id}
+                                            field={field}
+                                            leadAttributes={leadAttributes}
+                                            companyStatuses={companyStatuses || []}
+                                            companyUsers={companyUsers || []}
+                                            updateField={updateField}
+                                            removeField={removeField}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </DndContext>
 
                             <Button variant="outline" className="w-full border-dashed" onClick={addField}>
                                 <Plus className="h-4 w-4 mr-2" />
@@ -487,4 +584,5 @@ export default function FormBuilder() {
             </div>
         </>
     );
+
 }

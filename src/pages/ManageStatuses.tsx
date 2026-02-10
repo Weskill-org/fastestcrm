@@ -35,7 +35,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Plus, Edit2, Trash2, GripVertical, Save, RefreshCw } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CompanyLeadStatus {
     id: string;
@@ -51,13 +68,79 @@ interface CompanyLeadStatus {
     web_push_enabled: boolean;
 }
 
+interface SortableRowProps {
+    status: CompanyLeadStatus;
+    handleOpenEdit: (status: CompanyLeadStatus) => void;
+    handleDelete: (id: string) => void;
+}
+
+function SortableRow({ status, handleOpenEdit, handleDelete }: SortableRowProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: status.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 1 : 0,
+        position: isDragging ? 'relative' as const : undefined,
+    };
+
+    return (
+        <TableRow ref={setNodeRef} style={style}>
+            <TableCell>
+                <div {...attributes} {...listeners} className="cursor-move touch-none">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                </div>
+            </TableCell>
+            <TableCell className="font-medium">
+                <Badge variant="outline" style={{ borderColor: status.color, color: status.color }}>
+                    {status.label}
+                </Badge>
+            </TableCell>
+            <TableCell>
+                <Badge variant="secondary" className="capitalize">
+                    {status.category.replace('_', ' ')}
+                </Badge>
+            </TableCell>
+            <TableCell>
+                {status.status_type === 'date_derived' ? 'Date Derived' :
+                    status.status_type === 'time_derived' ? 'Time Derived' : 'Simple'}
+            </TableCell>
+            <TableCell>
+                <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: status.color }} />
+                    <span className="text-xs text-muted-foreground uppercase">{status.color}</span>
+                </div>
+            </TableCell>
+            <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(status)}>
+                        <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(status.id)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+            </TableCell>
+        </TableRow>
+    );
+}
+
 export default function ManageStatuses() {
     const { company, isCompanyAdmin } = useCompany();
     const { user } = useAuth();
+    const queryClient = useQueryClient();
 
     const [isaddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [editingStatus, setEditingStatus] = useState<CompanyLeadStatus | null>(null);
     const [saving, setSaving] = useState(false);
+    const [localStatuses, setLocalStatuses] = useState<CompanyLeadStatus[]>([]);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -84,6 +167,73 @@ export default function ManageStatuses() {
         enabled: !!company?.id
     });
 
+    useEffect(() => {
+        if (statuses) {
+            setLocalStatuses(statuses);
+        }
+    }, [statuses]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setLocalStatuses((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Update order_index for all items
+                const updates = newItems.map((item, index) => ({
+                    id: item.id,
+                    order_index: index,
+                }));
+
+                // Optimistically update backend
+                updateOrder(updates);
+
+                return newItems;
+            });
+        }
+    };
+
+    const updateOrder = async (updates: { id: string, order_index: number }[]) => {
+        try {
+            // We can't do a bulk update easily with supabase js client without rpc or loop
+            // For now, let's use a loop, but perform it quietly
+            // Or better, trigger a background promise
+            // Ideally we should have an RPC for this, but for <20 items standard loop is fine
+
+            // Using Promise.all for parallel updates
+            await Promise.all(updates.map(update =>
+                supabase
+                    .from('company_lead_statuses' as any)
+                    .update({ order_index: update.order_index })
+                    .eq('id', update.id)
+            ));
+
+            // Invalidate query to ensure sync
+            queryClient.invalidateQueries({ queryKey: ['company-lead-statuses'] });
+            toast.success('Order updated');
+
+        } catch (error) {
+            console.error('Failed to update order', error);
+            toast.error('Failed to save new order');
+            refetch(); // convert back on error
+        }
+    };
+
+
     const handleOpenAdd = () => {
         setEditingStatus(null);
         setFormData({
@@ -108,6 +258,10 @@ export default function ManageStatuses() {
         setIsAddDialogOpen(true);
     };
 
+    // ... handleSave ... is unchanged basically, but we should make sure order_index is correct for new items.
+    // The previous implementation was: order_index: editingStatus ? editingStatus.order_index : (statuses?.length || 0),
+    // This is still fine as it appends to the end.
+
     const handleSave = async () => {
         if (!company || !user) return;
         if (!formData.label.trim()) {
@@ -122,12 +276,11 @@ export default function ManageStatuses() {
             const payload = {
                 company_id: company.id,
                 label: formData.label.trim(),
-                value: editingStatus ? editingStatus.value : value, // Keep original value if editing to avoid breaking old data references, or decide if value should update? Usually value stays stable.
+                value: editingStatus ? editingStatus.value : value,
                 color: formData.color,
                 category: formData.category,
                 status_type: formData.status_type,
                 web_push_enabled: formData.web_push_enabled,
-                // For new items, put at end. better logic needed for true reordering but simple append works for now.
                 order_index: editingStatus ? editingStatus.order_index : (statuses?.length || 0),
             };
 
@@ -135,8 +288,6 @@ export default function ManageStatuses() {
                 const { error } = await supabase
                     .from('company_lead_statuses' as any)
                     .update({
-                        label: payload.label,
-                        color: payload.color,
                         label: payload.label,
                         color: payload.color,
                         category: payload.category,
@@ -200,60 +351,46 @@ export default function ManageStatuses() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[50px]"></TableHead>
-                                    <TableHead>Label</TableHead>
-                                    <TableHead>Category</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Color</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {statuses?.map((status) => (
-                                    <TableRow key={status.id}>
-                                        <TableCell>
-                                            <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            <Badge variant="outline" style={{ borderColor: status.color, color: status.color }}>
-                                                {status.label}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary" className="capitalize">
-                                                {status.category.replace('_', ' ')}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: status.color }} />
-                                                <span className="text-xs text-muted-foreground uppercase">{status.color}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(status)}>
-                                                    <Edit2 className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(status.id)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {statuses?.length === 0 && (
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                            No statuses defined.
-                                        </TableCell>
+                                        <TableHead className="w-[50px]"></TableHead>
+                                        <TableHead>Label</TableHead>
+                                        <TableHead>Category</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Color</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    <SortableContext
+                                        items={localStatuses.map(s => s.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {localStatuses.map((status) => (
+                                            <SortableRow
+                                                key={status.id}
+                                                status={status}
+                                                handleOpenEdit={handleOpenEdit}
+                                                handleDelete={handleDelete}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                    {localStatuses.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                No statuses defined.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </DndContext>
                     </CardContent>
                 </Card>
 
