@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Phone, Mail, MoreHorizontal, MapPin, FileText, Camera } from 'lucide-react';
+import { Phone, Mail, MoreHorizontal, MapPin, Camera } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,6 +94,11 @@ export interface RealEstateLead {
   post_sales_owner?: { full_name: string | null } | null;
 }
 
+interface ColumnConfigItem {
+  id: string;
+  visible: boolean;
+}
+
 interface RealEstateLeadsTableProps {
   leads: RealEstateLead[];
   loading: boolean;
@@ -101,6 +106,7 @@ interface RealEstateLeadsTableProps {
   onSelectionChange: (selected: Set<string>) => void;
   owners?: { label: string; value: string }[];
   onRefetch: () => void;
+  columnConfig?: ColumnConfigItem[];
 }
 
 interface ProfileLevel {
@@ -115,7 +121,8 @@ export function RealEstateLeadsTable({
   selectedLeads,
   onSelectionChange,
   owners = [],
-  onRefetch
+  onRefetch,
+  columnConfig
 }: RealEstateLeadsTableProps) {
   const { statuses, getStatusColor } = useLeadStatuses();
   const { company } = useCompany();
@@ -152,36 +159,6 @@ export function RealEstateLeadsTable({
     enabled: !!company?.id
   });
 
-  // Flatten profiling config for Select options
-  const profileOptions = useMemo(() => {
-    if (!profilingConfig?.levels) return [];
-
-    const options: { label: string; value: string; path: string[] }[] = [];
-
-    // Recursive function to build paths
-    const traverse = (levels: ProfileLevel[], currentPath: string[], currentLabels: string[]) => {
-      levels.forEach(level => {
-        const newPath = [...currentPath, level.id];
-        const newLabels = [...currentLabels, level.label];
-
-        // If it's a leaf node or has no children (or based on business logic, maybe any node can be selected?)
-        // Assuming we select leaf nodes or nodes that represent a complete profile state
-        if (level.children.length === 0) {
-          options.push({
-            label: newLabels.join(' > '),
-            value: JSON.stringify(newPath), // Store path as value
-            path: newLabels
-          });
-        } else {
-          traverse(level.children, newPath, newLabels);
-        }
-      });
-    };
-
-    traverse(profilingConfig.levels, [], []);
-    return options;
-  }, [profilingConfig]);
-
   const handleUpdateField = async (leadId: string, field: keyof RealEstateLead, value: any) => {
     try {
       const { error } = await supabase
@@ -191,7 +168,7 @@ export function RealEstateLeadsTable({
 
       if (error) throw error;
       toast.success(`${field.toString().replace(/_/g, ' ')} updated`);
-      onRefetch(); // Verify if we want full refetch or optimistic update. Refetch is safer.
+      onRefetch();
     } catch (error) {
       console.error(`Error updating ${field}: `, error);
       toast.error(`Failed to update ${field} `);
@@ -201,38 +178,13 @@ export function RealEstateLeadsTable({
   const handleProfileChange = async (leadId: string, pathJson: string) => {
     try {
       const pathIds = JSON.parse(pathJson);
-      // Reconstruct the profile object. 
-      // We don't know the exact schema of `lead_profile` JSON required by backend/logic, 
-      // but typically it preserves the structure or keys. 
-      // Based on `ManageLeadProfiling`, it seems tree based.
-      // Based on `RealEstateLeadDetailsDialog`, it renders key-value pairs.
-      // We'll try to map the config levels to keys if possible, or just store a flat object?
-      // The details dialog iterates `Object.entries`.
-      // Let's create a map like { "Level 1": "Value 1", "Level 2": "Value 2" }
-
       const newProfile: Record<string, any> = {};
 
       let currentLevels = profilingConfig?.levels;
       pathIds.forEach((id: string, index: number) => {
         const levelNode = currentLevels?.find(l => l.id === id);
         if (levelNode) {
-          // We need a key for this level. The config doesn't seem to have explicit "Category Names" for levels other than the node labels themselves.
-          // But usually, the top level is "Category", next "Type", etc.
-          // Let's just use generic keys or the node parents? 
-          // Actually, looking at the previous stored data in details dialog (if any), it showed "key: value".
-          // Let's assume we store the path content.
-          // To make it look good, let's use the ID or a generated key 'level_${index}'? 
-          // OR, maybe the user wants the path.
-          // Let's use the Level Label as Value, and maybe "Category", "Sub Category", "Specification" as keys if we can infer?
-          // Since we don't have metadata for keys, let's use a flat structure with numeric keys? No that's ugly.
-          // Let's use the node ID as key? No.
-          // Let's use the structure: { [levelNode.label]: "Selected" } ? No confusing.
-
-          // BEST GUESS: The `lead_profile` should reflect the selection path. 
-          // Let's store: { "Selection": "Path > To > Item" } ? Too simple. 
-          // Let's store { "Level 1": "Residential", "Level 2": "2 BHK" ... }
           newProfile[`Level ${index + 1} `] = levelNode.label;
-
           currentLevels = levelNode.children;
         }
       });
@@ -259,18 +211,14 @@ export function RealEstateLeadsTable({
     try {
       const updateData: any = { status: newStatusValue };
       if (metadata) {
-        // If metadata is passed (e.g. reminder info), merge it or set it.
-        // For reminder_at, it's a separate column now.
         if (metadata.reminder_at) {
           updateData.reminder_at = metadata.reminder_at;
-          delete metadata.reminder_at; // Don't store in metadata if column exists
+          delete metadata.reminder_at;
         }
         if (Object.keys(metadata).length > 0) {
           updateData.status_metadata = metadata;
         }
       } else {
-        // If changing to a simple status, maybe clear reminder_at?
-        // Logic: If status is simple, we probably don't need a reminder.
         if (newStatus && newStatus.status_type === 'simple') {
           updateData.reminder_at = null;
         }
@@ -310,24 +258,6 @@ export function RealEstateLeadsTable({
     setPendingStatus(null);
   };
 
-  const getOwnerName = (ownerId: string | null, ownerObj?: { full_name: string | null } | null) => {
-    if (ownerObj?.full_name) return ownerObj.full_name;
-    if (!ownerId) return '-';
-    return owners.find(o => o.value === ownerId)?.label || 'Unknown';
-  };
-
-  const formatBudget = (min: number | null, max: number | null) => {
-    if (!min && !max) return '-';
-    const formatNum = (n: number) => {
-      if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)} Cr`;
-      if (n >= 100000) return `₹${(n / 100000).toFixed(1)} L`;
-      return `₹${n.toLocaleString()} `;
-    };
-    if (min && max) return `${formatNum(min)} - ${formatNum(max)} `;
-    if (min) return `${formatNum(min)} +`;
-    return `Up to ${formatNum(max!)} `;
-  };
-
   const getStatusDisplay = (lead: RealEstateLead) => {
     const status = statuses.find(s => s.value === lead.status);
     const label = status?.label || lead.status;
@@ -350,6 +280,372 @@ export function RealEstateLeadsTable({
 
     return label;
   };
+
+  const formatBudget = (min: number | null, max: number | null) => {
+    if (!min && !max) return '-';
+    const formatNum = (n: number) => {
+      if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)} Cr`;
+      if (n >= 100000) return `₹${(n / 100000).toFixed(1)} L`;
+      return `₹${n.toLocaleString()} `;
+    };
+    if (min && max) return `${formatNum(min)} - ${formatNum(max)} `;
+    if (min) return `${formatNum(min)} +`;
+    return `Up to ${formatNum(max!)} `;
+  };
+
+  // Define Column Renderers
+  const columnDefinitions: Record<string, { label: string, minWidth?: string, render: (lead: RealEstateLead) => React.ReactNode }> = {
+    name: {
+      label: 'Name',
+      minWidth: 'min-w-[150px]',
+      render: (lead) => <div className="font-medium">{lead.name}</div>
+    },
+    contact: {
+      label: 'Contact',
+      minWidth: 'min-w-[150px]',
+      render: (lead) => (
+        <div className="flex flex-col gap-1">
+          {lead.phone && (
+            <span className="flex items-center gap-1 text-muted-foreground text-xs">
+              <Phone className="h-3 w-3" /> {lead.phone}
+            </span>
+          )}
+          {lead.email && (
+            <span className="flex items-center gap-1 text-muted-foreground text-xs">
+              <Mail className="h-3 w-3" /> {lead.email}
+            </span>
+          )}
+        </div>
+      )
+    },
+    property_name: {
+      label: 'Property Name',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => lead.property_name || '-'
+    },
+    lead_source: {
+      label: 'Lead Source',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => lead.lead_source || '-'
+    },
+    property_type: {
+      label: 'Property Type',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => <Badge variant="outline">{lead.property_type || '-'}</Badge>
+    },
+    budget: {
+      label: 'Budget',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => formatBudget(lead.budget_min, lead.budget_max)
+    },
+    location: {
+      label: 'Location',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => lead.preferred_location ? (
+        <span className="flex items-center gap-1 text-sm">
+          <MapPin className="h-3 w-3" /> {lead.preferred_location}
+        </span>
+      ) : '-'
+    },
+    lead_profile: {
+      label: 'Lead Profile',
+      minWidth: 'min-w-[200px]',
+      render: (lead) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-8 w-full justify-start px-2 font-normal text-xs border-transparent hover:border-input focus:border-input p-0"
+            >
+              {lead.lead_profile && Object.keys(lead.lead_profile).length > 0 ? (
+                <span className="truncate">{Object.values(lead.lead_profile).filter(Boolean).join(' > ')}</span>
+              ) : <span className="text-muted-foreground opacity-50">Select Profile</span>}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[200px]">
+            {profilingConfig?.levels?.map((level) => {
+              const renderLevel = (currLevel: ProfileLevel, path: string[]) => {
+                const newPath = [...path, currLevel.id];
+                if (currLevel.children && currLevel.children.length > 0) {
+                  return (
+                    <DropdownMenuSub key={currLevel.id}>
+                      <DropdownMenuSubTrigger className="text-xs">
+                        {currLevel.label}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {currLevel.children.map(child => renderLevel(child, newPath))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  );
+                }
+                return (
+                  <DropdownMenuItem
+                    key={currLevel.id}
+                    className="text-xs"
+                    onClick={() => handleProfileChange(lead.id, JSON.stringify(newPath))}
+                  >
+                    {currLevel.label}
+                  </DropdownMenuItem>
+                );
+              };
+              return renderLevel(level, []);
+            }) || <div className="p-2 text-xs text-muted-foreground">No profiles configured</div>}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
+    status: {
+      label: 'Status',
+      minWidth: 'min-w-[150px]',
+      render: (lead) => (
+        <Select
+          value={lead.status}
+          onValueChange={(value) => handleStatusChange(lead.id, value)}
+        >
+          <SelectTrigger
+            className="w-[140px] h-8 text-white border-0 text-xs"
+            style={{ backgroundColor: getStatusColor(lead.status) }}
+          >
+            <SelectValue>{getStatusDisplay(lead)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {statuses.map((status) => (
+              <SelectItem
+                key={status.id}
+                value={status.value}
+                className="capitalize"
+              >
+                {status.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    },
+    pre_sales_owner: {
+      label: 'Pre-Sales',
+      minWidth: 'min-w-[150px]',
+      render: (lead) => (
+        <Select
+          value={lead.pre_sales_owner_id || 'unassigned'}
+          onValueChange={(val) => handleUpdateField(lead.id, 'pre_sales_owner_id', val === 'unassigned' ? null : val)}
+        >
+          <SelectTrigger className="h-8 w-full border-transparent hover:border-input focus:border-input bg-transparent text-xs p-0 px-2 justify-start font-normal">
+            {lead.pre_sales_owner?.full_name || owners.find(o => o.value === lead.pre_sales_owner_id)?.label || <span className="text-muted-foreground opacity-50">Assign</span>}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {owners.map(o => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    },
+    sales_owner: {
+      label: 'Sales',
+      minWidth: 'min-w-[150px]',
+      render: (lead) => (
+        <Select
+          value={lead.sales_owner_id || 'unassigned'}
+          onValueChange={(val) => handleUpdateField(lead.id, 'sales_owner_id', val === 'unassigned' ? null : val)}
+        >
+          <SelectTrigger className="h-8 w-full border-transparent hover:border-input focus:border-input bg-transparent text-xs p-0 px-2 justify-start font-normal">
+            {lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || <span className="text-muted-foreground opacity-50">Assign</span>}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {owners.map(o => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    },
+    post_sales_owner: {
+      label: 'Post-Sales',
+      minWidth: 'min-w-[150px]',
+      render: (lead) => (
+        <Select
+          value={lead.post_sales_owner_id || 'unassigned'}
+          onValueChange={(val) => handleUpdateField(lead.id, 'post_sales_owner_id', val === 'unassigned' ? null : val)}
+        >
+          <SelectTrigger className="h-8 w-full border-transparent hover:border-input focus:border-input bg-transparent text-xs p-0 px-2 justify-start font-normal">
+            {lead.post_sales_owner?.full_name || owners.find(o => o.value === lead.post_sales_owner_id)?.label || <span className="text-muted-foreground opacity-50">Assign</span>}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {owners.map(o => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    },
+    notes: {
+      label: 'Notes',
+      minWidth: 'min-w-[200px]',
+      render: (lead) => (
+        <Textarea
+          className="min-h-[60px] text-xs resize-none border-transparent hover:border-input focus:border-input bg-transparent p-2 shadow-none"
+          placeholder="Add notes..."
+          value={notesBuffer[lead.id] !== undefined ? notesBuffer[lead.id] : (lead.notes || '')}
+          onChange={(e) => setNotesBuffer(prev => ({ ...prev, [lead.id]: e.target.value }))}
+          onBlur={(e) => {
+            if (lead.notes !== e.target.value) {
+              handleUpdateField(lead.id, 'notes', e.target.value);
+            }
+            const newBuffer = { ...notesBuffer };
+            delete newBuffer[lead.id];
+            setNotesBuffer(newBuffer);
+          }}
+        />
+      )
+    },
+    created_at: {
+      label: 'Date',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => <span className="text-sm">{format(new Date(lead.created_at), 'MMM d, yyyy')}</span>
+    },
+    site_visit: {
+      label: 'Site Visit',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => (
+        <Button
+          variant={lead.site_visit_photos && lead.site_visit_photos.length > 0 ? "outline" : "secondary"}
+          size="sm"
+          className="h-8 text-xs gap-1"
+          onClick={() => setCameraDialogLead(lead)}
+        >
+          <Camera className="h-3 w-3" />
+          {lead.site_visit_photos && lead.site_visit_photos.length > 0 ? 'View/Add' : 'Record'}
+        </Button>
+      )
+    },
+    // New available columns
+    email: {
+      label: 'Email',
+      minWidth: 'min-w-[150px]',
+      render: (lead) => lead.email ? (
+        <span className="flex items-center gap-1 text-muted-foreground text-xs">
+          <Mail className="h-3 w-3" /> {lead.email}
+        </span>
+      ) : '-'
+    },
+    phone: {
+      label: 'Phone',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => lead.phone ? (
+        <span className="flex items-center gap-1 text-muted-foreground text-xs">
+          <Phone className="h-3 w-3" /> {lead.phone}
+        </span>
+      ) : '-'
+    },
+    whatsapp: {
+      label: 'WhatsApp',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => lead.whatsapp ? (
+        <a
+          href={`https://wa.me/${lead.whatsapp}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-green-600 hover:text-green-700 text-xs"
+        >
+          <Phone className="h-3 w-3" /> {lead.whatsapp}
+        </a>
+      ) : '-'
+    },
+    budget_min: {
+      label: 'Min Budget',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => formatBudget(lead.budget_min, null)
+    },
+    budget_max: {
+      label: 'Max Budget',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => formatBudget(null, lead.budget_max)
+    },
+    property_size: {
+      label: 'Property Size',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => lead.property_size || '-'
+    },
+    possession_timeline: {
+      label: 'Possession',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => lead.possession_timeline || '-'
+    },
+    broker_name: {
+      label: 'Broker Name',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => lead.broker_name || '-'
+    },
+    unit_number: {
+      label: 'Unit No.',
+      minWidth: 'min-w-[80px]',
+      render: (lead) => lead.unit_number || '-'
+    },
+    deal_value: {
+      label: 'Deal Value',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => lead.deal_value ? `₹${lead.deal_value.toLocaleString()}` : '-'
+    },
+    commission_percentage: {
+      label: 'Commission %',
+      minWidth: 'min-w-[80px]',
+      render: (lead) => lead.commission_percentage ? `${lead.commission_percentage}%` : '-'
+    },
+    commission_amount: {
+      label: 'Commission Amount',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => lead.commission_amount ? `₹${lead.commission_amount.toLocaleString()}` : '-'
+    },
+    revenue_projected: {
+      label: 'Revenue Projected',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => lead.revenue_projected ? `₹${lead.revenue_projected.toLocaleString()}` : '-'
+    },
+    revenue_received: {
+      label: 'Revenue Received',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => lead.revenue_received ? `₹${lead.revenue_received.toLocaleString()}` : '-'
+    },
+    updated_at: {
+      label: 'Last Updated',
+      minWidth: 'min-w-[120px]',
+      render: (lead) => <span className="text-xs text-muted-foreground">{format(new Date(lead.updated_at), 'MMM d, yyyy')}</span>
+    },
+    purpose: {
+      label: 'Purpose',
+      minWidth: 'min-w-[100px]',
+      render: (lead) => lead.purpose || '-'
+    }
+  };
+
+
+  const visibleColumnIds = useMemo(() => {
+    if (!columnConfig) {
+      // Old default order
+      return [
+        'name',
+        'contact',
+        'property_name',
+        'lead_source',
+        'property_type',
+        'budget',
+        'location',
+        'lead_profile',
+        'status',
+        'pre_sales_owner',
+        'sales_owner',
+        'post_sales_owner',
+        'notes',
+        'created_at',
+        'site_visit'
+      ];
+    }
+    return columnConfig.filter(c => c.visible).map(c => c.id).filter(id => columnDefinitions[id]);
+  }, [columnConfig]);
 
   if (loading) {
     return (
@@ -407,21 +703,11 @@ export function RealEstateLeadsTable({
                   onChange={toggleAll}
                 />
               </TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Name</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Contact</TableHead>
-              <TableHead className="font-semibold min-w-[120px]">Property Name</TableHead>
-              <TableHead className="font-semibold min-w-[120px]">Lead Source</TableHead>
-              <TableHead className="font-semibold min-w-[120px]">Property Type</TableHead>
-              <TableHead className="font-semibold min-w-[120px]">Budget</TableHead>
-              <TableHead className="font-semibold min-w-[120px]">Location</TableHead>
-              <TableHead className="font-semibold min-w-[200px]">Lead Profile</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Status</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Pre-Sales</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Sales</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Post-Sales</TableHead>
-              <TableHead className="font-semibold min-w-[200px]">Notes</TableHead>
-              <TableHead className="font-semibold min-w-[120px]">Date</TableHead>
-              <TableHead className="font-semibold min-w-[100px]">Site Visit</TableHead>
+              {visibleColumnIds.map(colId => (
+                <TableHead key={colId} className={`font-semibold ${columnDefinitions[colId]?.minWidth || ''}`}>
+                  {columnDefinitions[colId]?.label}
+                </TableHead>
+              ))}
               <TableHead className="font-semibold w-[50px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -436,191 +722,13 @@ export function RealEstateLeadsTable({
                     onChange={() => toggleOne(lead.id)}
                   />
                 </TableCell>
-                <TableCell className="font-medium align-top py-3">{lead.name}</TableCell>
-                <TableCell className="align-top py-3">
-                  <div className="flex flex-col gap-1">
-                    {lead.phone && (
-                      <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                        <Phone className="h-3 w-3" /> {lead.phone}
-                      </span>
-                    )}
-                    {lead.email && (
-                      <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                        <Mail className="h-3 w-3" /> {lead.email}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="align-top py-3">{lead.property_name || '-'}</TableCell>
-                <TableCell className="align-top py-3">{lead.lead_source || '-'}</TableCell>
-                <TableCell className="align-top py-3">
-                  <Badge variant="outline">{lead.property_type || '-'}</Badge>
-                </TableCell>
-                <TableCell className="align-top py-3">{formatBudget(lead.budget_min, lead.budget_max)}</TableCell>
-                <TableCell className="align-top py-3">
-                  {lead.preferred_location ? (
-                    <span className="flex items-center gap-1 text-sm">
-                      <MapPin className="h-3 w-3" /> {lead.preferred_location}
-                    </span>
-                  ) : '-'}
-                </TableCell>
-                {/* Lead Profile: Nested Dropdown Edit */}
-                <TableCell className="align-top py-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="h-8 w-full justify-start px-2 font-normal text-xs border-transparent hover:border-input focus:border-input p-0"
-                      >
-                        {lead.lead_profile && Object.keys(lead.lead_profile).length > 0 ? (
-                          <span className="truncate">{Object.values(lead.lead_profile).filter(Boolean).join(' > ')}</span>
-                        ) : <span className="text-muted-foreground opacity-50">Select Profile</span>}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[200px]">
-                      {profilingConfig?.levels?.map((level) => {
-                        const renderLevel = (currLevel: ProfileLevel, path: string[]) => {
-                          const newPath = [...path, currLevel.id];
-                          if (currLevel.children && currLevel.children.length > 0) {
-                            return (
-                              <DropdownMenuSub key={currLevel.id}>
-                                <DropdownMenuSubTrigger className="text-xs">
-                                  {currLevel.label}
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent>
-                                  {currLevel.children.map(child => renderLevel(child, newPath))}
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                            );
-                          }
-                          return (
-                            <DropdownMenuItem
-                              key={currLevel.id}
-                              className="text-xs"
-                              onClick={() => handleProfileChange(lead.id, JSON.stringify(newPath))}
-                            >
-                              {currLevel.label}
-                            </DropdownMenuItem>
-                          );
-                        };
-                        return renderLevel(level, []);
-                      }) || <div className="p-2 text-xs text-muted-foreground">No profiles configured</div>}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
 
-                <TableCell className="align-top py-3">
-                  <Select
-                    value={lead.status}
-                    onValueChange={(value) => handleStatusChange(lead.id, value)}
-                  >
-                    <SelectTrigger
-                      className="w-[140px] h-8 text-white border-0 text-xs"
-                      style={{ backgroundColor: getStatusColor(lead.status) }}
-                    >
-                      <SelectValue>{getStatusDisplay(lead)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statuses.map((status) => (
-                        <SelectItem
-                          key={status.id}
-                          value={status.value}
-                          className="capitalize"
-                        >
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
+                {visibleColumnIds.map(colId => (
+                  <TableCell key={colId} className="align-top py-3">
+                    {columnDefinitions[colId]?.render(lead)}
+                  </TableCell>
+                ))}
 
-                {/* Pre-Sales Owner: Inline Edit */}
-                <TableCell className="align-top py-3">
-                  <Select
-                    value={lead.pre_sales_owner_id || 'unassigned'}
-                    onValueChange={(val) => handleUpdateField(lead.id, 'pre_sales_owner_id', val === 'unassigned' ? null : val)}
-                  >
-                    <SelectTrigger className="h-8 w-full border-transparent hover:border-input focus:border-input bg-transparent text-xs p-0 px-2 justify-start font-normal">
-                      {lead.pre_sales_owner?.full_name || owners.find(o => o.value === lead.pre_sales_owner_id)?.label || <span className="text-muted-foreground opacity-50">Assign</span>}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {owners.map(o => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* Sales Owner: Inline Edit */}
-                <TableCell className="align-top py-3">
-                  <Select
-                    value={lead.sales_owner_id || 'unassigned'}
-                    onValueChange={(val) => handleUpdateField(lead.id, 'sales_owner_id', val === 'unassigned' ? null : val)}
-                  >
-                    <SelectTrigger className="h-8 w-full border-transparent hover:border-input focus:border-input bg-transparent text-xs p-0 px-2 justify-start font-normal">
-                      {lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || <span className="text-muted-foreground opacity-50">Assign</span>}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {owners.map(o => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* Post-Sales Owner: Inline Edit */}
-                <TableCell className="align-top py-3">
-                  <Select
-                    value={lead.post_sales_owner_id || 'unassigned'}
-                    onValueChange={(val) => handleUpdateField(lead.id, 'post_sales_owner_id', val === 'unassigned' ? null : val)}
-                  >
-                    <SelectTrigger className="h-8 w-full border-transparent hover:border-input focus:border-input bg-transparent text-xs p-0 px-2 justify-start font-normal">
-                      {lead.post_sales_owner?.full_name || owners.find(o => o.value === lead.post_sales_owner_id)?.label || <span className="text-muted-foreground opacity-50">Assign</span>}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {owners.map(o => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-
-                {/* Notes: Inline Edit */}
-                <TableCell className="align-top py-3">
-                  <Textarea
-                    className="min-h-[60px] text-xs resize-none border-transparent hover:border-input focus:border-input bg-transparent p-2 shadow-none"
-                    placeholder="Add notes..."
-                    value={notesBuffer[lead.id] !== undefined ? notesBuffer[lead.id] : (lead.notes || '')}
-                    onChange={(e) => setNotesBuffer(prev => ({ ...prev, [lead.id]: e.target.value }))}
-                    onBlur={(e) => {
-                      if (lead.notes !== e.target.value) {
-                        handleUpdateField(lead.id, 'notes', e.target.value);
-                      }
-                      // Clear buffer to revert to props if update fails (or clean up memory), but mostly to sync with refetch
-                      const newBuffer = { ...notesBuffer };
-                      delete newBuffer[lead.id];
-                      setNotesBuffer(newBuffer);
-                    }}
-                  />
-                </TableCell>
-
-                <TableCell className="align-top py-3 text-sm">
-                  {format(new Date(lead.created_at), 'MMM d, yyyy')}
-                </TableCell>
-                <TableCell className="align-top py-3">
-                  <Button
-                    variant={lead.site_visit_photos && lead.site_visit_photos.length > 0 ? "outline" : "secondary"}
-                    size="sm"
-                    className="h-8 text-xs gap-1"
-                    onClick={() => setCameraDialogLead(lead)}
-                  >
-                    <Camera className="h-3 w-3" />
-                    {lead.site_visit_photos && lead.site_visit_photos.length > 0 ? 'View/Add' : 'Record'}
-                  </Button>
-                </TableCell>
                 <TableCell className="align-top py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

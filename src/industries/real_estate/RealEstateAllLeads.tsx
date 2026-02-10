@@ -24,6 +24,7 @@ import { REAL_ESTATE_PROPERTY_TYPES } from './config';
 import { MobileLeadsHeader } from '@/components/leads/MobileLeadsHeader';
 import { SwipeableLeadCard } from '@/components/leads/SwipeableLeadCard';
 import { FloatingAddButton } from '@/components/leads/FloatingAddButton';
+import { ColumnConfigDialog } from '@/components/leads/ColumnConfigDialog';
 
 export default function RealEstateAllLeads() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +42,44 @@ export default function RealEstateAllLeads() {
   const { company } = useCompany();
   const { data: userRole } = useUserRole();
   const isMobile = useIsMobile();
+  const [configOpen, setConfigOpen] = useState(false);
+
+  const defaultColumns = [
+    { id: 'name', label: 'Name' },
+    { id: 'contact', label: 'Contact' },
+    { id: 'property_name', label: 'Property Name' },
+    { id: 'lead_source', label: 'Lead Source' },
+    { id: 'property_type', label: 'Property Type' },
+    { id: 'budget', label: 'Budget' },
+    { id: 'location', label: 'Location' },
+    { id: 'lead_profile', label: 'Lead Profile' },
+    { id: 'status', label: 'Status' },
+    { id: 'pre_sales_owner', label: 'Pre-Sales' },
+    { id: 'sales_owner', label: 'Sales' },
+    { id: 'post_sales_owner', label: 'Post-Sales' },
+    { id: 'notes', label: 'Notes' },
+    { id: 'created_at', label: 'Date' },
+    { id: 'site_visit', label: 'Site Visit' },
+    // Hidden by default
+    { id: 'email', label: 'Email', defaultHidden: true },
+    { id: 'phone', label: 'Phone', defaultHidden: true },
+    { id: 'whatsapp', label: 'WhatsApp', defaultHidden: true },
+    { id: 'budget_min', label: 'Min Budget', defaultHidden: true },
+    { id: 'budget_max', label: 'Max Budget', defaultHidden: true },
+    { id: 'property_size', label: 'Property Size', defaultHidden: true },
+    { id: 'possession_timeline', label: 'Possession', defaultHidden: true },
+    { id: 'broker_name', label: 'Broker Name', defaultHidden: true },
+    { id: 'unit_number', label: 'Unit No.', defaultHidden: true },
+    { id: 'deal_value', label: 'Deal Value', defaultHidden: true },
+    { id: 'commission_percentage', label: 'Commission %', defaultHidden: true },
+    { id: 'commission_amount', label: 'Commission Amount', defaultHidden: true },
+    { id: 'revenue_projected', label: 'Revenue Projected', defaultHidden: true },
+    { id: 'revenue_received', label: 'Revenue Received', defaultHidden: true },
+    { id: 'updated_at', label: 'Last Updated', defaultHidden: true },
+    { id: 'purpose', label: 'Purpose', defaultHidden: true }
+  ];
+
+  const columnConfig = (company as any)?.features?.table_configs?.['real_estate_leads'];
 
   // Hierarchy Check
   const { accessibleUserIds, canViewAll, loading: hierarchyLoading } = useHierarchy();
@@ -200,6 +239,7 @@ export default function RealEstateAllLeads() {
               <RealEstateAddLeadDialog />
             </div>
           ) : null}
+          onEditLayout={userRole === 'company' || userRole === 'company_subadmin' ? () => setConfigOpen(true) : undefined}
         />
 
         {/* Mobile Card View */}
@@ -236,6 +276,7 @@ export default function RealEstateAllLeads() {
                 onSelectionChange={setSelectedLeads}
                 owners={filterOptions?.owners || []}
                 onRefetch={refetch}
+                columnConfig={columnConfig}
               />
             </CardContent>
           </Card>
@@ -302,6 +343,13 @@ export default function RealEstateAllLeads() {
       <RealEstateAddLeadDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
+      />
+
+      <ColumnConfigDialog
+        open={configOpen}
+        onOpenChange={setConfigOpen}
+        tableId="real_estate_leads"
+        defaultColumns={defaultColumns}
       />
     </>
   );

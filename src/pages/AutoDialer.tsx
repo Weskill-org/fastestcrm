@@ -11,6 +11,9 @@ import { Database } from '@/integrations/supabase/types';
 
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+
 export default function AutoDialer() {
     const [isDialing, setIsDialing] = useState(false);
     const [currentLeadIndex, setCurrentLeadIndex] = useState(0);
@@ -19,8 +22,48 @@ export default function AutoDialer() {
     const [dialingQueue, setDialingQueue] = useState<any[]>([]); // Store the snapshot of leads
     const phoneLinkRef = useRef<HTMLAnchorElement>(null);
 
-    // Fetch only 'new' leads for auto-dialer
-    const { data: leadsData, isLoading } = useLeads({ statusFilter: 'new' });
+    // Status Filter State
+    const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(['new']));
+
+    // Fetch available statuses
+    const { statuses: companyStatuses } = useLeadStatuses();
+
+    // Prepare filter options - Ensure 'new' is always present
+    const statusOptions = (() => {
+        const options = companyStatuses.map(s => ({
+            label: s.label,
+            value: s.value,
+            group: s.category
+        }));
+
+        // Check if 'new' is already in the list
+        if (!options.find(o => o.value === 'new')) {
+            options.unshift({
+                label: 'New',
+                value: 'new',
+                group: 'new'
+            });
+        }
+        return options;
+    })();
+
+
+    // Fetch leads based on selected statuses
+    // If nothing selected (shouldn't happen with default), fallback to 'new' or empty array?
+    // Let's assume user clearing all means "show nothing" or "show all"?
+    // Context implies filtering by selected. If Set is empty, we probably shouldn't fetch everything by default in dialer context unless specified.
+    // However, usually empty filter means "all" or "none".
+    // useLeads expects string or string[].
+    const statusFilterArg = selectedStatuses.size > 0 ? Array.from(selectedStatuses) : 'new'; // Fallback to 'new' if empty to be safe/sane default? Or maybe empty array?
+    // If I pass empty array to useLeads, it might return nothing or everything depending on implementation.
+    // Looking at useLeads: if (statusFilter.length > 0) query.in(...).
+    // So if empty array, no status filter applied -> All leads.
+    // For Auto Dialer, we DON'T want all leads (like 'won', 'lost').
+    // Safe default is 'new'.
+
+    const { data: leadsData, isLoading } = useLeads({
+        statusFilter: Array.from(selectedStatuses).length > 0 ? Array.from(selectedStatuses) : ['new']
+    });
     const liveLeads = leadsData?.leads || []; // Rename to liveLeads
     const updateLead = useUpdateLead();
 
@@ -140,6 +183,14 @@ export default function AutoDialer() {
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-4">
+                                    {!isDialing && (
+                                        <MultiSelectFilter
+                                            title="Status"
+                                            options={statusOptions}
+                                            selectedValues={selectedStatuses}
+                                            onSelectionChange={setSelectedStatuses}
+                                        />
+                                    )}
                                     {isDialing && (
                                         <Button variant="destructive" size="sm" onClick={stopDialing}>
                                             <Pause className="h-4 w-4 mr-1" /> Stop
@@ -204,7 +255,7 @@ export default function AutoDialer() {
                             ) : (
                                 <div className="text-center py-12">
                                     <p className="text-muted-foreground mb-6">
-                                        {liveLeads?.length || 0} 'New' leads queued for dialing. Click start to begin.
+                                        {liveLeads?.length || 0} leads with selected status(es) queued for dialing. Click start to begin.
                                     </p>
                                     <Button size="lg" onClick={startDialing} disabled={!liveLeads || liveLeads.length === 0} className="gradient-primary text-lg px-8">
                                         <Play className="mr-2 h-5 w-5" /> Start Auto Dial

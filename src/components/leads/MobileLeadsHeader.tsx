@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, X, Plus, Upload, Trash2, Users } from 'lucide-react';
+import { Search, Filter, X, Plus, Upload, Trash2, Users, Settings2 } from 'lucide-react';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
 import {
   Sheet,
@@ -45,6 +45,7 @@ interface MobileLeadsHeaderProps {
   addButton?: ReactNode;
   uploadButton?: ReactNode;
   canDelete?: boolean;
+  onEditLayout?: () => void;
 }
 
 export function MobileLeadsHeader({
@@ -66,13 +67,14 @@ export function MobileLeadsHeader({
   onAssign,
   addButton,
   uploadButton,
-  canDelete = false
+  canDelete = false,
+  onEditLayout
 }: MobileLeadsHeaderProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
-  
-  const hasActiveFilters = selectedOwners.size > 0 || 
-    selectedStatuses.size > 0 || 
-    selectedProducts.size > 0 || 
+
+  const hasActiveFilters = selectedOwners.size > 0 ||
+    selectedStatuses.size > 0 ||
+    selectedProducts.size > 0 ||
     selectedPropertyTypes.size > 0;
 
   const clearAllFilters = () => {
@@ -93,11 +95,22 @@ export function MobileLeadsHeader({
         <div className="flex items-center gap-2 shrink-0">
           {/* Mobile: Show compact buttons */}
           <div className="flex md:hidden gap-2">
+            {onEditLayout && (
+              <Button variant="outline" size="icon" onClick={onEditLayout}>
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            )}
             {uploadButton}
             {addButton}
           </div>
           {/* Desktop: Show full buttons */}
           <div className="hidden md:flex gap-2">
+            {onEditLayout && (
+              <Button variant="outline" onClick={onEditLayout}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                Columns
+              </Button>
+            )}
             {uploadButton}
             {addButton}
           </div>
@@ -135,7 +148,7 @@ export function MobileLeadsHeader({
             className="pl-9"
           />
         </div>
-        
+
         {/* Mobile Filter Sheet */}
         <div className="md:hidden">
           <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -206,8 +219,8 @@ export function MobileLeadsHeader({
                 )}
               </div>
               <div className="mt-6">
-                <Button 
-                  className="w-full" 
+                <Button
+                  className="w-full"
                   onClick={() => setFiltersOpen(false)}
                 >
                   Apply Filters

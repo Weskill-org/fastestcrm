@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Tables } from '@/integrations/supabase/types';
 import {
   Table,
@@ -48,17 +48,21 @@ type Lead = Tables<'leads'> & {
   lead_history?: any[] | null;
 };
 
+interface ColumnConfigItem {
+  id: string;
+  visible: boolean;
+}
+
 interface LeadsTableProps {
   leads: Lead[];
   loading: boolean;
   selectedLeads: Set<string>;
   onSelectionChange: (selected: Set<string>) => void;
   owners?: { label: string; value: string }[];
+  columnConfig?: ColumnConfigItem[];
 }
 
-
-
-export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, owners = [] }: LeadsTableProps) {
+export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, owners = [], columnConfig }: LeadsTableProps) {
   const { products } = useProducts();
   const updateLead = useUpdateLead();
   const { data: userRole } = useUserRole();
@@ -104,11 +108,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     }
   };
 
-
-
   const handleCreatePaymentLink = async (lead: Lead) => {
-
-
     if (!lead.product_purchased) {
       toast.error('Please select a specific product to create a payment link');
       return;
@@ -175,6 +175,184 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     }
   };
 
+  // Define Column Renderers
+  const columnDefinitions: Record<string, { label: string, render: (lead: Lead) => React.ReactNode }> = {
+    name: {
+      label: 'Name',
+      render: (lead) => <div className="font-medium">{lead.name}</div>
+    },
+    email: {
+      label: 'Email',
+      render: (lead) => lead.email ? (
+        <span className="flex items-center gap-1 text-muted-foreground">
+          <Mail className="h-3 w-3" /> {lead.email}
+        </span>
+      ) : null
+    },
+    phone: {
+      label: 'Phone Number',
+      render: (lead) => lead.phone ? (
+        <span className="flex items-center gap-1 text-muted-foreground">
+          <Phone className="h-3 w-3" /> {lead.phone}
+        </span>
+      ) : null
+    },
+    college: {
+      label: 'College',
+      render: (lead) => lead.college || '-'
+    },
+    lead_source: {
+      label: 'Lead Source',
+      render: (lead) => lead.lead_source || '-'
+    },
+    status: {
+      label: 'Status',
+      render: (lead) => (
+        <Select
+          defaultValue={lead.status}
+          onValueChange={(value) => handleStatusChange(lead.id, value)}
+        >
+          <SelectTrigger
+            className="w-[140px] h-8 text-white border-0"
+            style={{ backgroundColor: getStatusColor(lead.status) }}
+          >
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {statuses.map((status) => (
+              <SelectItem
+                key={status.id}
+                value={status.value}
+                className="capitalize"
+              >
+                {status.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    },
+    owner: {
+      label: 'Owner',
+      render: (lead) => lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'
+    },
+    created_at: {
+      label: 'Date',
+      render: (lead) => format(new Date(lead.created_at), 'MMM d, yyyy')
+    },
+    product_purchased: {
+      label: 'Product',
+      render: (lead) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-[180px] h-8 justify-between px-3 text-sm font-normal text-muted-foreground">
+              <span className="truncate text-foreground">
+                {lead.product_purchased
+                  ? `${(lead as any).product_category ? `${(lead as any).product_category} - ` : ''}${lead.product_purchased}`
+                  : "Select Product"}
+              </span>
+              <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[200px]">
+            {Array.from(new Set((products || []).map(p => p.category))).sort().map(category => (
+              <DropdownMenuSub key={category}>
+                <DropdownMenuSubTrigger className="cursor-pointer">
+                  {category}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-[200px]">
+                  {products
+                    ?.filter(p => p.category === category)
+                    .map(product => (
+                      <DropdownMenuItem
+                        key={product.id}
+                        onClick={() => handleProductChange(lead.id, product.name)}
+                        className="cursor-pointer"
+                      >
+                        {product.name}
+                      </DropdownMenuItem>
+                    ))
+                  }
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
+    payment_link: {
+      label: 'Payment Link',
+      render: (lead) => lead.payment_link ? (
+        <Button
+          variant={lead.status === 'paid' ? 'default' : 'outline'}
+          size="sm"
+          className={`h-8 ${lead.status === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(lead.payment_link!);
+              toast.success('Link copied to clipboard');
+            } catch (err) {
+              console.error('Failed to copy:', err);
+              toast.error('Failed to copy link');
+            }
+          }}
+        >
+          {lead.status === 'paid' ? 'Paid' : 'Copy Link'}
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8"
+          onClick={() => handleCreatePaymentLink(lead)}
+        >
+          Create Link
+        </Button>
+      )
+    },
+    whatsapp: {
+      label: 'WhatsApp',
+      render: (lead) => lead.whatsapp ? (
+        <a
+          href={`https://wa.me/${lead.whatsapp}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-green-600 hover:text-green-700"
+        >
+          <Phone className="h-3 w-3" /> {lead.whatsapp}
+        </a>
+      ) : '-'
+    },
+    updated_at: {
+      label: 'Last Updated',
+      render: (lead) => format(new Date(lead.updated_at), 'MMM d, yyyy')
+    },
+    company_id: {
+      label: 'Company ID',
+      render: (lead) => <span className="text-xs text-muted-foreground">{lead.company_id || '-'}</span>
+    }
+  };
+
+  const visibleColumnIds = useMemo(() => {
+    if (!columnConfig) {
+      // Default order
+      return [
+        'name',
+        'email',
+        'phone',
+        'college',
+        'lead_source',
+        'status',
+        'owner',
+        'created_at',
+        'product_purchased',
+        'payment_link'
+      ];
+    }
+    return columnConfig.filter(c => c.visible).map(c => c.id).filter(id => columnDefinitions[id]);
+  }, [columnConfig]);
+
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -231,16 +409,11 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
                   onChange={toggleAll}
                 />
               </TableHead>
-              <TableHead className="font-semibold">Name</TableHead>
-              <TableHead className="font-semibold">Email</TableHead>
-              <TableHead className="font-semibold">Phone Number</TableHead>
-              <TableHead className="font-semibold">College</TableHead>
-              <TableHead className="font-semibold">Lead Source</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold">Owner</TableHead>
-              <TableHead className="font-semibold">Date</TableHead>
-              <TableHead className="font-semibold">Product</TableHead>
-              <TableHead className="font-semibold">Payment Link</TableHead>
+              {visibleColumnIds.map(colId => (
+                <TableHead key={colId} className="font-semibold">
+                  {columnDefinitions[colId]?.label}
+                </TableHead>
+              ))}
               <TableHead className="font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -255,119 +428,13 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
                     onChange={() => toggleOne(lead.id)}
                   />
                 </TableCell>
-                <TableCell className="font-medium">{lead.name}</TableCell>
-                <TableCell>
-                  {lead.email && (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Mail className="h-3 w-3" /> {lead.email}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {lead.phone && (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Phone className="h-3 w-3" /> {lead.phone}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>{lead.college || '-'}</TableCell>
-                <TableCell>{lead.lead_source || '-'}</TableCell>
-                <TableCell>
-                  <Select
-                    defaultValue={lead.status}
-                    onValueChange={(value) => handleStatusChange(lead.id, value)}
-                  >
-                    <SelectTrigger
-                      className="w-[140px] h-8 text-white border-0"
-                      style={{ backgroundColor: getStatusColor(lead.status) }}
-                    >
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statuses.map((status) => (
-                        <SelectItem
-                          key={status.id}
-                          value={status.value}
-                          className="capitalize"
-                        >
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  {lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'}
-                </TableCell>
-                <TableCell>
-                  {format(new Date(lead.created_at), 'MMM d, yyyy')}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-[180px] h-8 justify-between px-3 text-sm font-normal text-muted-foreground">
-                        <span className="truncate text-foreground">
-                          {lead.product_purchased
-                            ? `${(lead as any).product_category ? `${(lead as any).product_category} - ` : ''}${lead.product_purchased}`
-                            : "Select Product"}
-                        </span>
-                        <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-[200px]">
-                      {Array.from(new Set((products || []).map(p => p.category))).sort().map(category => (
-                        <DropdownMenuSub key={category}>
-                          <DropdownMenuSubTrigger className="cursor-pointer">
-                            {category}
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent className="w-[200px]">
-                            {products
-                              ?.filter(p => p.category === category)
-                              .map(product => (
-                                <DropdownMenuItem
-                                  key={product.id}
-                                  onClick={() => handleProductChange(lead.id, product.name)}
-                                  className="cursor-pointer"
-                                >
-                                  {product.name}
-                                </DropdownMenuItem>
-                              ))
-                            }
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-                <TableCell>
-                  {lead.payment_link ? (
-                    <Button
-                      variant={lead.status === 'paid' ? 'default' : 'outline'}
-                      size="sm"
-                      className={`h-8 ${lead.status === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(lead.payment_link!);
-                          toast.success('Link copied to clipboard');
-                        } catch (err) {
-                          console.error('Failed to copy:', err);
-                          toast.error('Failed to copy link');
-                        }
-                      }}
-                    >
-                      {lead.status === 'paid' ? 'Paid' : 'Copy Link'}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8"
-                      onClick={() => handleCreatePaymentLink(lead)}
-                    >
-                      Create Link
-                    </Button>
-                  )}
-                </TableCell>
+
+                {visibleColumnIds.map(colId => (
+                  <TableCell key={colId}>
+                    {columnDefinitions[colId]?.render(lead)}
+                  </TableCell>
+                ))}
+
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

@@ -24,6 +24,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EditLeadDialog } from '@/components/leads/EditLeadDialog';
 import { LeadDetailsDialog } from '@/components/leads/LeadDetailsDialog';
+import { ColumnConfigDialog } from '@/components/leads/ColumnConfigDialog';
 
 import { useSearchParams } from 'react-router-dom';
 
@@ -50,6 +51,25 @@ export default function GenericAllLeads() {
     const [editingLead, setEditingLead] = useState<any>(null);
     const [viewingLead, setViewingLead] = useState<any>(null);
     const { tableName } = useLeadsTable();
+    const [configOpen, setConfigOpen] = useState(false);
+
+    const defaultColumns = [
+        { id: 'name', label: 'Name' },
+        { id: 'email', label: 'Email' },
+        { id: 'phone', label: 'Phone Number' },
+        { id: 'college', label: 'College' },
+        { id: 'lead_source', label: 'Lead Source' },
+        { id: 'status', label: 'Status' },
+        { id: 'owner', label: 'Owner' },
+        { id: 'created_at', label: 'Date' },
+        { id: 'product_purchased', label: 'Product' },
+        { id: 'payment_link', label: 'Payment Link' },
+        { id: 'whatsapp', label: 'WhatsApp', defaultHidden: true },
+        { id: 'updated_at', label: 'Last Updated', defaultHidden: true },
+        { id: 'company_id', label: 'Company ID', defaultHidden: true }
+    ];
+
+    const columnConfig = (company as any)?.features?.table_configs?.['all_leads'];
 
     // Effect to sync debounced search to URL
     useEffect(() => {
@@ -265,6 +285,7 @@ export default function GenericAllLeads() {
                     canDelete={userRole === 'company' || userRole === 'company_subadmin'}
                     uploadButton={<UploadLeadsDialog />}
                     addButton={!isMobile ? <AddLeadDialog /> : null}
+                    onEditLayout={userRole === 'company' || userRole === 'company_subadmin' ? () => setConfigOpen(true) : undefined}
                 />
 
                 {/* Mobile Card View */}
@@ -300,6 +321,7 @@ export default function GenericAllLeads() {
                                 selectedLeads={selectedLeads}
                                 onSelectionChange={setSelectedLeads}
                                 owners={filterOptions?.owners || []}
+                                columnConfig={columnConfig}
                             />
                         </CardContent>
                     </Card>
@@ -365,6 +387,13 @@ export default function GenericAllLeads() {
             <AddLeadDialog
                 open={addDialogOpen}
                 onOpenChange={setAddDialogOpen}
+            />
+
+            <ColumnConfigDialog
+                open={configOpen}
+                onOpenChange={setConfigOpen}
+                tableId="all_leads"
+                defaultColumns={defaultColumns}
             />
         </>
     );
