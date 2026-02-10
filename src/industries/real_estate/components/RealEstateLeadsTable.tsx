@@ -41,6 +41,7 @@ import { RealEstateLeadDetailsDialog } from './RealEstateLeadDetailsDialog';
 import { SiteVisitCameraDialog } from './SiteVisitCameraDialog';
 import { StatusReminderDialog } from '@/components/leads/StatusReminderDialog';
 import { CompanyLeadStatus } from '@/hooks/useLeadStatuses';
+import { LeadHistoryDialog } from '@/components/leads/LeadHistoryDialog';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
 
@@ -86,6 +87,7 @@ export interface RealEstateLead {
   created_at: string;
   updated_at: string;
   reminder_at: string | null;
+  lead_history?: any[] | null;
   // Joined fields
   pre_sales_owner?: { full_name: string | null } | null;
   sales_owner?: { full_name: string | null } | null;
@@ -119,6 +121,7 @@ export function RealEstateLeadsTable({
   const { company } = useCompany();
   const [editingLead, setEditingLead] = useState<RealEstateLead | null>(null);
   const [viewingLead, setViewingLead] = useState<RealEstateLead | null>(null);
+  const [viewingHistoryLead, setViewingHistoryLead] = useState<RealEstateLead | null>(null);
 
   const [cameraDialogLead, setCameraDialogLead] = useState<RealEstateLead | null>(null);
   const [pendingStatus, setPendingStatus] = useState<{ leadId: string; status: CompanyLeadStatus } | null>(null);
@@ -629,6 +632,9 @@ export function RealEstateLeadsTable({
                       <DropdownMenuItem onClick={() => setViewingLead(lead)}>
                         View Details
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setViewingHistoryLead(lead)}>
+                        View History
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setEditingLead(lead)}>
                         Edit Lead
                       </DropdownMenuItem>
@@ -678,6 +684,12 @@ export function RealEstateLeadsTable({
         onOpenChange={(open) => !open && setViewingLead(null)}
         lead={viewingLead}
         owners={owners}
+      />
+
+      <LeadHistoryDialog
+        open={!!viewingHistoryLead}
+        onOpenChange={(open) => !open && setViewingHistoryLead(null)}
+        lead={viewingHistoryLead as any}
       />
 
       {pendingStatus && (

@@ -38,12 +38,14 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { EditLeadDialog } from './EditLeadDialog';
 import { LeadDetailsDialog } from './LeadDetailsDialog';
+import { LeadHistoryDialog } from './LeadHistoryDialog';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 
 type Lead = Tables<'leads'> & {
   sales_owner?: {
     full_name: string | null;
   } | null;
+  lead_history?: any[] | null;
 };
 
 interface LeadsTableProps {
@@ -62,6 +64,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
   const { data: userRole } = useUserRole();
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
+  const [viewingHistoryLead, setViewingHistoryLead] = useState<Lead | null>(null);
   const { statuses, getStatusColor } = useLeadStatuses();
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
@@ -376,6 +379,9 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
                       <DropdownMenuItem onClick={() => setViewingLead(lead)}>
                         View Details
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setViewingHistoryLead(lead)}>
+                        View History
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setEditingLead(lead)}>
                         Edit Lead
                       </DropdownMenuItem>
@@ -418,6 +424,12 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
         onOpenChange={(open) => !open && setViewingLead(null)}
         lead={viewingLead}
         owners={owners}
+      />
+
+      <LeadHistoryDialog
+        open={!!viewingHistoryLead}
+        onOpenChange={(open) => !open && setViewingHistoryLead(null)}
+        lead={viewingHistoryLead}
       />
     </>
   );
