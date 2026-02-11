@@ -16,6 +16,21 @@ interface QueryRequest {
     offset?: number;
 }
 
+// Helper function to convert BigInt to string for JSON serialization
+function convertBigIntToString(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'bigint') return obj.toString();
+    if (Array.isArray(obj)) return obj.map(convertBigIntToString);
+    if (typeof obj === 'object') {
+        const converted: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+            converted[key] = convertBigIntToString(value);
+        }
+        return converted;
+    }
+    return obj;
+}
+
 serve(async (req) => {
     if (req.method === "OPTIONS") {
         return new Response(null, { headers: corsHeaders });
@@ -86,7 +101,13 @@ serve(async (req) => {
              WHERE table_schema = 'public' 
              ORDER BY table_name`
                     );
-                    break;
+
+                    await client.end();
+
+                    return new Response(
+                        JSON.stringify({ data: convertBigIntToString(result.rows) }),
+                        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                    );
 
                 case 'get_schema':
                     if (!tableName) {
@@ -100,15 +121,23 @@ serve(async (req) => {
              ORDER BY ordinal_position`,
                         [tableName]
                     );
-                    break;
+
+                    await client.end();
+
+                    return new Response(
+                        JSON.stringify({ data: convertBigIntToString(result.rows) }),
+                        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                    );
 
                 case 'query_data':
                     if (!tableName) {
                         throw new Error("Table name required for query_data action");
                     }
 
-                    // Build dynamic query with filters
-                    let query = `SELECT * FROM ${tableName}`;
+                    // Sanitize and quote table name for CockroachDB
+                    const sanitizedTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
+                    // Build dynamic query with filters - use double quotes for table name
+                    let query = `SELECT * FROM "${sanitizedTableName}"`;
                     const params: any[] = [];
                     const conditions: string[] = [];
                     let paramIndex = 1;
@@ -126,7 +155,7 @@ serve(async (req) => {
 
                         if (schemaResult.rows.length > 0) {
                             const phoneColumn = (schemaResult.rows[0] as any).column_name;
-                            conditions.push(`${phoneColumn}::text ILIKE $${paramIndex}`);
+                            conditions.push(`"${phoneColumn}"::text ILIKE $${paramIndex}`);
                             params.push(`%${phoneSearch}%`);
                             paramIndex++;
                         }
@@ -138,7 +167,7 @@ serve(async (req) => {
                             if (value !== null && value !== undefined && value !== '') {
                                 // Sanitize column name (basic protection)
                                 const sanitizedColumn = column.replace(/[^a-zA-Z0-9_]/g, '');
-                                conditions.push(`${sanitizedColumn}::text ILIKE $${paramIndex}`);
+                                conditions.push(`"${sanitizedColumn}"::text ILIKE $${paramIndex}`);
                                 params.push(`%${value}%`);
                                 paramIndex++;
                             }
@@ -153,7 +182,16 @@ serve(async (req) => {
                     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
                     params.push(limit + 1, offset); // Fetch one extra to check for more
 
-                    result = await client.queryObject(query, params);
+                    console.log('Executing query:', query);
+                    console.log('Query params:', params);
+
+                    try {
+                        result = await client.queryObject(query, params);
+                    } catch (queryError: any) {
+                        console.error('Database query error:', queryError);
+                        await client.end();
+                        throw new Error(`Database query failed: ${queryError.message}`);
+                    }
 
                     // Check if there are more results
                     const hasMore = result.rows.length > limit;
@@ -163,7 +201,7 @@ serve(async (req) => {
 
                     return new Response(
                         JSON.stringify({
-                            data: records,
+                            data: convertBigIntToString(records),
                             hasMore,
                             limit,
                             offset
@@ -178,16 +216,6 @@ serve(async (req) => {
                     throw new Error(`Unknown action: ${action}`);
             }
 
-            await client.end();
-
-            return new Response(
-                JSON.stringify({ data: result.rows }),
-                {
-                    status: 200,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" }
-                }
-            );
-
         } catch (dbError: any) {
             await client.end();
             throw new Error(`Database error: ${dbError.message}`);
@@ -196,7 +224,11 @@ serve(async (req) => {
     } catch (error: any) {
         console.error("Query bigdata SQL error:", error);
         return new Response(
-            JSON.stringify({ error: error.message || "Internal server error" }),
+            JSON.stringify({
+                error: error.message || "Internal server error",
+                details: error.toString(),
+                stack: error.stack
+            }),
             {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" }

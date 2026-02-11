@@ -41,13 +41,33 @@ export default function BigdataSQL() {
         queryKey: ['bigdata-tables'],
         queryFn: async () => {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error('No session');
+            if (!session) {
+                console.error('No session found');
+                throw new Error('No session');
+            }
 
+            console.log('Calling query-bigdata-sql with action: list_tables');
             const response = await supabase.functions.invoke('query-bigdata-sql', {
                 body: { action: 'list_tables' }
             });
 
-            if (response.error) throw response.error;
+            console.log('Edge Function Response:', response);
+
+            if (response.error) {
+                console.error('Edge Function error:', response.error);
+                throw response.error;
+            }
+
+            if (response.data?.error) {
+                console.error('Edge Function returned error:', response.data.error);
+                toast({
+                    title: "Error",
+                    description: response.data.error,
+                    variant: "destructive"
+                });
+                throw new Error(response.data.error);
+            }
+
             return response.data.data as { table_name: string }[];
         },
         enabled: !companyLoading && isCompanyAdmin // Only run query if admin
