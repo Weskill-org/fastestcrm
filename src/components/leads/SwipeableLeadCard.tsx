@@ -29,6 +29,7 @@ interface SwipeableLeadCardProps {
   onCreatePaymentLink?: () => void;
   owners?: { label: string; value: string }[];
   variant?: 'education' | 'real_estate';
+  visibleAttributes?: { id: string; label: string }[];
 }
 
 export function SwipeableLeadCard({
@@ -41,7 +42,8 @@ export function SwipeableLeadCard({
   onCall,
   onCreatePaymentLink,
   owners = [],
-  variant = 'education'
+  variant = 'education',
+  visibleAttributes
 }: SwipeableLeadCardProps) {
   const { statuses, getStatusColor } = useLeadStatuses();
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -51,6 +53,47 @@ export function SwipeableLeadCard({
 
   const SWIPE_THRESHOLD = 80;
   const MAX_SWIPE = 120;
+
+  // Render Helper
+  const renderField = (lead: any, columnId: string) => {
+    switch (columnId) {
+      case 'lead_source': return lead.lead_source;
+      case 'college': return lead.college;
+      case 'product_purchased': return lead.product_purchased;
+      case 'payment_link': return lead.payment_link ? <a href={lead.payment_link} target="_blank" className="text-blue-500 underline">Link</a> : null;
+      case 'whatsapp': return lead.whatsapp;
+      case 'owner': return lead.sales_owner?.full_name;
+      case 'updated_at': return lead.updated_at ? format(new Date(lead.updated_at), 'MMM d') : null;
+      case 'company_id': return lead.company_id;
+
+      // Real Estate
+      case 'property_name': return lead.property_name;
+      case 'property_type': return lead.property_type;
+      case 'budget': return formatBudget(lead.budget_min, lead.budget_max);
+      case 'location': return lead.preferred_location;
+      case 'lead_profile': return lead.lead_profile;
+      case 'pre_sales_owner': return getOwnerName(lead.pre_sales_owner_id, lead.pre_sales_owner);
+      case 'sales_owner': return getOwnerName(lead.sales_owner_id, lead.sales_owner);
+      case 'post_sales_owner': return getOwnerName(lead.post_sales_owner_id, lead.post_sales_owner);
+      case 'notes': return lead.notes;
+      case 'site_visit': return lead.site_visit ? format(new Date(lead.site_visit), 'MMM d, h:mm a') : null;
+      case 'budget_min': return lead.budget_min;
+      case 'budget_max': return lead.budget_max;
+      case 'property_size': return lead.property_size;
+      case 'possession_timeline': return lead.possession_timeline;
+      case 'broker_name': return lead.broker_name;
+      case 'unit_number': return lead.unit_number;
+      case 'deal_value': return lead.deal_value;
+      case 'commission_percentage': return lead.commission_percentage;
+      case 'commission_amount': return lead.commission_amount;
+      case 'revenue_projected': return lead.revenue_projected;
+      case 'revenue_received': return lead.revenue_received;
+      case 'purpose': return lead.purpose;
+      case 'created_at': return lead.created_at ? format(new Date(lead.created_at), 'MMM d') : null;
+
+      default: return lead[columnId];
+    }
+  };
 
   const handleTouchStart = (e: TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -62,7 +105,7 @@ export function SwipeableLeadCard({
     if (!isSwipeActive) return;
     currentX.current = e.touches[0].clientX;
     const diff = currentX.current - startX.current;
-    
+
     // Allow both left and right swipes
     const clampedDiff = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, diff));
     setSwipeOffset(clampedDiff);
@@ -70,7 +113,7 @@ export function SwipeableLeadCard({
 
   const handleTouchEnd = () => {
     setIsSwipeActive(false);
-    
+
     if (swipeOffset > SWIPE_THRESHOLD && lead.phone) {
       // Swipe right - Call
       window.location.href = `tel:${lead.phone}`;
@@ -80,7 +123,7 @@ export function SwipeableLeadCard({
       const nextIndex = (currentIndex + 1) % statuses.length;
       onStatusChange(statuses[nextIndex].value);
     }
-    
+
     // Reset swipe
     setSwipeOffset(0);
   };
@@ -109,7 +152,7 @@ export function SwipeableLeadCard({
   return (
     <div className="relative overflow-hidden rounded-lg">
       {/* Left swipe action (Call) */}
-      <div 
+      <div
         className={cn(
           "absolute inset-y-0 left-0 flex items-center justify-center bg-green-500 transition-opacity",
           swipeOffset > 20 ? "opacity-100" : "opacity-0"
@@ -120,7 +163,7 @@ export function SwipeableLeadCard({
       </div>
 
       {/* Right swipe action (Change Status) */}
-      <div 
+      <div
         className={cn(
           "absolute inset-y-0 right-0 flex items-center justify-center bg-blue-500 transition-opacity",
           swipeOffset < -20 ? "opacity-100" : "opacity-0"
@@ -131,12 +174,12 @@ export function SwipeableLeadCard({
       </div>
 
       {/* Main Card */}
-      <div 
+      <div
         className={cn(
           "bg-card border border-border p-4 space-y-3 transition-transform",
           isSelected && "ring-2 ring-primary"
         )}
-        style={{ 
+        style={{
           transform: `translateX(${swipeOffset}px)`,
           transition: isSwipeActive ? 'none' : 'transform 0.3s ease-out'
         }}
@@ -215,66 +258,78 @@ export function SwipeableLeadCard({
           )}
         </div>
 
-        {/* Industry-specific fields */}
-        {variant === 'real_estate' ? (
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              {lead.property_type && (
-                <Badge variant="outline" className="text-xs">
-                  {lead.property_type}
-                </Badge>
-              )}
-              {formatBudget(lead.budget_min, lead.budget_max) && (
-                <Badge variant="secondary" className="text-xs">
-                  {formatBudget(lead.budget_min, lead.budget_max)}
-                </Badge>
-              )}
-              {lead.preferred_location && (
-                <Badge variant="outline" className="text-xs">
-                  📍 {lead.preferred_location}
-                </Badge>
-              )}
-            </div>
-            {/* Owners row for real estate */}
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div>
-                <span className="text-muted-foreground">Pre-Sales:</span>
-                <p className="font-medium truncate">{getOwnerName(lead.pre_sales_owner_id, lead.pre_sales_owner)}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Sales:</span>
-                <p className="font-medium truncate">{getOwnerName(lead.sales_owner_id, lead.sales_owner)}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Post-Sales:</span>
-                <p className="font-medium truncate">{getOwnerName(lead.post_sales_owner_id, lead.post_sales_owner)}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {lead.college && (
-              <Badge variant="outline" className="text-xs">
-                <Building2 className="h-3 w-3 mr-1" />
-                {lead.college}
-              </Badge>
-            )}
-            {lead.product_purchased && (
-              <Badge variant="secondary" className="text-xs">
-                {lead.product_purchased}
-              </Badge>
-            )}
-            {lead.sales_owner?.full_name && (
-              <Badge variant="outline" className="text-xs">
-                Owner: {lead.sales_owner.full_name}
-              </Badge>
-            )}
-          </div>
-        )}
+        {/* Dynamic Fields based on visibleAttributes */}
+        <div className="flex flex-wrap gap-2 text-xs">
+          {visibleAttributes && visibleAttributes.length > 0 ? (
+            visibleAttributes.map((col) => {
+              // Skip fixed fields that are already shown elsewhere
+              if (['name', 'contact', 'status', 'email', 'phone', 'actions'].includes(col.id)) return null;
+
+              const val = renderField(lead, col.id);
+              if (!val) return null;
+
+              return (
+                <div key={col.id} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md">
+                  <span className="text-muted-foreground font-medium">{col.label}:</span>
+                  <span>{val}</span>
+                </div>
+              );
+            })
+          ) : (
+            // Fallback to legacy variant logic if no columns provided
+            variant === 'real_estate' ? (
+              <>
+                {lead.property_type && (
+                  <Badge variant="outline" className="text-xs">
+                    {lead.property_type}
+                  </Badge>
+                )}
+                {formatBudget(lead.budget_min, lead.budget_max) && (
+                  <Badge variant="secondary" className="text-xs">
+                    {formatBudget(lead.budget_min, lead.budget_max)}
+                  </Badge>
+                )}
+                {lead.preferred_location && (
+                  <Badge variant="outline" className="text-xs">
+                    📍 {lead.preferred_location}
+                  </Badge>
+                )}
+                {/* Owners */}
+                <div className="w-full grid grid-cols-2 gap-2 mt-1">
+                  {lead.pre_sales_owner && (
+                    <div><span className="text-muted-foreground">Pre:</span> {getOwnerName(lead.pre_sales_owner_id, lead.pre_sales_owner)}</div>
+                  )}
+                  {lead.sales_owner && (
+                    <div><span className="text-muted-foreground">Sales:</span> {getOwnerName(lead.sales_owner_id, lead.sales_owner)}</div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {lead.college && (
+                  <Badge variant="outline" className="text-xs">
+                    <Building2 className="h-3 w-3 mr-1" />
+                    {lead.college}
+                  </Badge>
+                )}
+                {lead.product_purchased && (
+                  <Badge variant="secondary" className="text-xs">
+                    {lead.product_purchased}
+                  </Badge>
+                )}
+                {lead.sales_owner?.full_name && (
+                  <Badge variant="outline" className="text-xs">
+                    Owner: {lead.sales_owner.full_name}
+                  </Badge>
+                )}
+              </>
+            )
+          )}
+        </div>
 
         {/* Status Badge */}
         <div className="flex items-center justify-between">
-          <Badge 
+          <Badge
             className="text-white text-xs"
             style={{ backgroundColor: statusColor }}
           >

@@ -15,6 +15,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { EditLeadDialog } from '@/components/leads/EditLeadDialog';
 import { LeadDetailsDialog } from '@/components/leads/LeadDetailsDialog';
 import { toast } from 'sonner';
+import { useUserRole } from '@/hooks/useUserRole';
+import { ColumnConfigDialog } from '@/components/leads/ColumnConfigDialog';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
 
 type Lead = Tables<'leads'> & {
@@ -27,12 +29,68 @@ export default function Paid() {
     const { company } = useCompany();
     const isMobile = useIsMobile();
     const [searchQuery, setSearchQuery] = useState('');
+    const [configOpen, setConfigOpen] = useState(false);
+    const { data: userRole } = useUserRole();
     const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
     const [editingLead, setEditingLead] = useState<any>(null);
     const [viewingLead, setViewingLead] = useState<any>(null);
     const { tableName } = useLeadsTable();
 
     const isRealEstate = company?.industry === 'real_estate';
+
+    const genericDefaultColumns = [
+        { id: 'name', label: 'Name' },
+        { id: 'email', label: 'Email' },
+        { id: 'phone', label: 'Phone Number' },
+        { id: 'college', label: 'College' },
+        { id: 'lead_source', label: 'Lead Source' },
+        { id: 'status', label: 'Status' },
+        { id: 'owner', label: 'Owner' },
+        { id: 'created_at', label: 'Date' },
+        { id: 'product_purchased', label: 'Product' },
+        { id: 'payment_link', label: 'Payment Link' },
+        { id: 'whatsapp', label: 'WhatsApp', defaultHidden: true },
+        { id: 'updated_at', label: 'Last Updated', defaultHidden: true },
+        { id: 'company_id', label: 'Company ID', defaultHidden: true }
+    ];
+
+    const realEstateDefaultColumns = [
+        { id: 'name', label: 'Name' },
+        { id: 'contact', label: 'Contact' },
+        { id: 'property_name', label: 'Property Name' },
+        { id: 'lead_source', label: 'Lead Source' },
+        { id: 'property_type', label: 'Property Type' },
+        { id: 'budget', label: 'Budget' },
+        { id: 'location', label: 'Location' },
+        { id: 'lead_profile', label: 'Lead Profile' },
+        { id: 'status', label: 'Status' },
+        { id: 'pre_sales_owner', label: 'Pre-Sales' },
+        { id: 'sales_owner', label: 'Sales' },
+        { id: 'post_sales_owner', label: 'Post-Sales' },
+        { id: 'notes', label: 'Notes' },
+        { id: 'created_at', label: 'Date' },
+        { id: 'site_visit', label: 'Site Visit' },
+        // Hidden by default
+        { id: 'email', label: 'Email', defaultHidden: true },
+        { id: 'phone', label: 'Phone', defaultHidden: true },
+        { id: 'whatsapp', label: 'WhatsApp', defaultHidden: true },
+        { id: 'budget_min', label: 'Min Budget', defaultHidden: true },
+        { id: 'budget_max', label: 'Max Budget', defaultHidden: true },
+        { id: 'property_size', label: 'Property Size', defaultHidden: true },
+        { id: 'possession_timeline', label: 'Possession', defaultHidden: true },
+        { id: 'broker_name', label: 'Broker Name', defaultHidden: true },
+        { id: 'unit_number', label: 'Unit No.', defaultHidden: true },
+        { id: 'deal_value', label: 'Deal Value', defaultHidden: true },
+        { id: 'commission_percentage', label: 'Commission %', defaultHidden: true },
+        { id: 'commission_amount', label: 'Commission Amount', defaultHidden: true },
+        { id: 'revenue_projected', label: 'Revenue Projected', defaultHidden: true },
+        { id: 'revenue_received', label: 'Revenue Received', defaultHidden: true },
+        { id: 'updated_at', label: 'Last Updated', defaultHidden: true },
+        { id: 'purpose', label: 'Purpose', defaultHidden: true }
+    ];
+
+    const defaultColumns = isRealEstate ? realEstateDefaultColumns : genericDefaultColumns;
+    const columnConfig = (company as any)?.features?.table_configs?.['paid_leads'];
 
     // Fetch confirmed 'paid' statuses
     const { data: paidStatuses } = useQuery({
@@ -131,6 +189,17 @@ export default function Paid() {
         );
     }
 
+    const visibleColumns = defaultColumns.filter(col => {
+        if (!columnConfig) return !col.defaultHidden;
+        const configItem = columnConfig.find((c: any) => c.id === col.id);
+        return configItem ? configItem.visible : !col.defaultHidden;
+    }).sort((a, b) => {
+        if (!columnConfig) return 0;
+        const indexA = columnConfig.findIndex((c: any) => c.id === a.id);
+        const indexB = columnConfig.findIndex((c: any) => c.id === b.id);
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+    });
+
     return (
         <>
             <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
@@ -140,10 +209,11 @@ export default function Paid() {
                     onSearchChange={setSearchQuery}
                     filterOptions={owners ? { owners } : undefined}
                     selectedCount={selectedLeads.size}
+                    onEditLayout={userRole === 'company' || userRole === 'company_subadmin' ? () => setConfigOpen(true) : undefined}
                 />
 
                 {/* Mobile Card View */}
-                {isMobile ? (
+                {isMobile && (
                     <div className="space-y-3">
                         {leads.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground">
@@ -159,14 +229,16 @@ export default function Paid() {
                                     onViewDetails={() => setViewingLead(lead)}
                                     onEdit={() => setEditingLead(lead)}
                                     onStatusChange={(status) => handleStatusChange(lead.id, status)}
-                                    owners={owners}
                                     variant={isRealEstate ? 'real_estate' : 'education'}
+                                    visibleAttributes={visibleColumns}
                                 />
                             ))
                         )}
                     </div>
-                ) : (
-                    /* Desktop Table View */
+                )}
+
+                {/* Desktop Table View */}
+                {!isMobile && (
                     <Card>
                         <CardContent className="pt-6">
                             {isRealEstate ? (
@@ -177,6 +249,7 @@ export default function Paid() {
                                     onSelectionChange={setSelectedLeads}
                                     owners={owners}
                                     onRefetch={realEstateLeadsQuery.refetch}
+                                    columnConfig={columnConfig}
                                 />
                             ) : (
                                 <LeadsTable
@@ -185,6 +258,7 @@ export default function Paid() {
                                     selectedLeads={selectedLeads}
                                     onSelectionChange={setSelectedLeads}
                                     owners={owners}
+                                    columnConfig={columnConfig}
                                 />
                             )}
                         </CardContent>
@@ -192,17 +266,13 @@ export default function Paid() {
                 )}
             </div>
 
-            <EditLeadDialog
-                open={!!editingLead}
-                onOpenChange={(open) => !open && setEditingLead(null)}
-                lead={editingLead}
-            />
+            {/* ... (dialogs) */}
 
-            <LeadDetailsDialog
-                open={!!viewingLead}
-                onOpenChange={(open) => !open && setViewingLead(null)}
-                lead={viewingLead}
-                owners={owners || []}
+            <ColumnConfigDialog
+                open={configOpen}
+                onOpenChange={setConfigOpen}
+                tableId="paid_leads"
+                defaultColumns={defaultColumns}
             />
         </>
     );

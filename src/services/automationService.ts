@@ -1,16 +1,17 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export type TriggerType = 'lead_created' | 'status_changed' | 'tag_added';
-export type ActionType = 'send_email' | 'webhook' | 'create_task';
+export type TriggerType = 'lead_created' | 'status_changed' | 'tag_added' | 'form_submitted';
+export type ActionType = 'send_email' | 'webhook' | 'create_task' | 'assign_lead';
 
 export interface Automation {
     id: string;
+    company_id?: string;
     name: string;
     trigger_type: TriggerType;
     trigger_config: Record<string, any>;
     action_type: ActionType;
-    action_config: Record<string, any>;
+    action_config: Record<string, any>; // { distribution_logic: 'round_robin' | 'random', target_users: string[] }
     is_active: boolean;
     created_at: string;
 }

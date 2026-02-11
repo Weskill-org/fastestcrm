@@ -261,6 +261,17 @@ export default function GenericAllLeads() {
         );
     }
 
+    const visibleColumns = defaultColumns.filter(col => {
+        if (!columnConfig) return !col.defaultHidden;
+        const configItem = columnConfig.find((c: any) => c.id === col.id);
+        return configItem ? configItem.visible : !col.defaultHidden;
+    }).sort((a, b) => {
+        if (!columnConfig) return 0;
+        const indexA = columnConfig.findIndex((c: any) => c.id === a.id);
+        const indexB = columnConfig.findIndex((c: any) => c.id === b.id);
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+    });
+
     return (
         <>
             <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
@@ -307,6 +318,7 @@ export default function GenericAllLeads() {
                                     onStatusChange={(status) => handleStatusChange(lead.id, status)}
                                     owners={filterOptions?.owners}
                                     variant="education"
+                                    visibleAttributes={visibleColumns}
                                 />
                             ))
                         )}
