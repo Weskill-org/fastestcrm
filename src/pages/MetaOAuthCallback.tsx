@@ -12,12 +12,12 @@ export default function MetaOAuthCallback() {
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
 
-    console.log('MetaOAuthCallback: Processing', { hasCode: !!code, error });
+
 
     if (error) {
       setStatus('error');
       setMessage(errorDescription || error);
-      
+
       // Send error back to parent window
       if (window.opener) {
         window.opener.postMessage(
@@ -34,14 +34,11 @@ export default function MetaOAuthCallback() {
     }
 
     if (code) {
-      console.log('MetaOAuthCallback: Got code, storing and sending to opener');
-      
       // CRITICAL: Always store in localStorage as backup
       // This ensures the parent window can retrieve the code even if postMessage fails
       try {
         localStorage.setItem('meta_oauth_code', code);
         localStorage.setItem('meta_oauth_timestamp', Date.now().toString());
-        console.log('MetaOAuthCallback: Stored code in localStorage');
       } catch (e) {
         console.error('MetaOAuthCallback: Failed to store in localStorage', e);
       }
@@ -56,21 +53,18 @@ export default function MetaOAuthCallback() {
             },
             '*'
           );
-          console.log('MetaOAuthCallback: Sent postMessage to opener');
           setStatus('success');
           setMessage('Connected! This window will close automatically.');
         } catch (e) {
           console.error('MetaOAuthCallback: postMessage failed', e);
         }
-        
+
         // Delay close to ensure message is sent and localStorage is read
         setTimeout(() => {
-          console.log('MetaOAuthCallback: Closing window');
           window.close();
         }, 1500);
       } else {
         // No opener - user may have navigated here directly or opener was lost
-        console.warn('MetaOAuthCallback: No window.opener found');
         setStatus('success');
         setMessage('Authorization complete! You can close this window and return to the app.');
       }
@@ -95,8 +89,8 @@ export default function MetaOAuthCallback() {
         <p className="text-muted-foreground">{message}</p>
         {status !== 'processing' && (
           <p className="text-xs text-muted-foreground">
-            {status === 'success' 
-              ? 'This window will close automatically.' 
+            {status === 'success'
+              ? 'This window will close automatically.'
               : 'You can close this window and try again.'}
           </p>
         )}

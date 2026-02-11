@@ -6,7 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, Database } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
 
 const navItems = [{
@@ -85,6 +85,11 @@ const navItems = [{
     label: 'Statuses',
     path: '/dashboard/statuses'
 }, {
+    icon: Database,
+    label: 'Bigdata SQL',
+    path: '/dashboard/bigdata-sql',
+    adminOnly: true
+}, {
     icon: Settings,
     label: 'Settings',
     path: '/dashboard/settings'
@@ -137,6 +142,9 @@ export default function AppLayout() {
         }
         if (item.label === 'Statuses') {
             return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
+        }
+        if (item.label === 'Bigdata SQL') {
+            return isCompanyAdmin;
         }
         return true;
     });

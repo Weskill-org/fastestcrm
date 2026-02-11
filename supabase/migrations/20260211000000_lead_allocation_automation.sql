@@ -26,6 +26,44 @@ CREATE TABLE IF NOT EXISTS public.automation_logs (
 ALTER TABLE public.automations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.automation_logs ENABLE ROW LEVEL SECURITY;
 
+-- RLS Policies for automations
+DROP POLICY IF EXISTS "Users can view their own automations" ON public.automations;
+CREATE POLICY "Users can view their own automations"
+    ON public.automations FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own automations" ON public.automations;
+CREATE POLICY "Users can insert their own automations"
+    ON public.automations FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own automations" ON public.automations;
+CREATE POLICY "Users can update their own automations"
+    ON public.automations FOR UPDATE
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own automations" ON public.automations;
+CREATE POLICY "Users can delete their own automations"
+    ON public.automations FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- RLS Policies for automation_logs
+DROP POLICY IF EXISTS "Users can view logs for their own automations" ON public.automation_logs;
+CREATE POLICY "Users can view logs for their own automations"
+    ON public.automation_logs FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.automations
+            WHERE public.automations.id = public.automation_logs.automation_id
+            AND public.automations.user_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "System can insert automation logs" ON public.automation_logs;
+CREATE POLICY "System can insert automation logs"
+    ON public.automation_logs FOR INSERT
+    WITH CHECK (true);
+
 -- 1. Add company_id and distribution logic support to automations
 ALTER TABLE public.automations 
 ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id);

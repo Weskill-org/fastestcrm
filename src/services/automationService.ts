@@ -36,6 +36,21 @@ export const automationService = {
     },
 
     async createAutomation(params: CreateAutomationParams) {
+        // Get current user
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData.user) throw new Error('User not authenticated');
+
+        // Get user's company_id from profiles table
+        const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', userData.user.id)
+            .single();
+
+        if (profileError || !profileData?.company_id) {
+            throw new Error('Company not found for user');
+        }
+
         const { data, error } = await (supabase
             .from('automations' as any)
             .insert({
@@ -44,7 +59,8 @@ export const automationService = {
                 trigger_config: params.trigger_config,
                 action_type: params.action_type,
                 action_config: params.action_config,
-                user_id: (await supabase.auth.getUser()).data.user?.id
+                user_id: userData.user.id,
+                company_id: profileData.company_id
             })
             .select()
             .single() as any);

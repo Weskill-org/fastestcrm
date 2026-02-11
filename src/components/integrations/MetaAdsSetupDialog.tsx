@@ -119,12 +119,9 @@ export function MetaAdsSetupDialog({
     isProcessingRef.current = true;
     cleanup();
 
-    console.log('handleOAuthCallback: Processing code for company', company.id);
-
     try {
       const redirectUri = META_OAUTH_REDIRECT_URI;
 
-      console.log('handleOAuthCallback: Calling meta-oauth-callback edge function');
       const { data, error } = await supabase.functions.invoke('meta-oauth-callback', {
         body: {
           code,
@@ -133,8 +130,6 @@ export function MetaAdsSetupDialog({
           defaultStatus,
         },
       });
-
-      console.log('handleOAuthCallback: Response', { data, error });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -174,7 +169,6 @@ export function MetaAdsSetupDialog({
       }
 
       if (event.data?.code) {
-        console.log('Received OAuth callback via postMessage');
         // Clear localStorage if present to prevent double processing
         localStorage.removeItem('meta_oauth_code');
         localStorage.removeItem('meta_oauth_timestamp');
@@ -201,8 +195,6 @@ export function MetaAdsSetupDialog({
   useEffect(() => {
     if (!isLoading || step !== 'connect') return;
 
-    console.log('Starting localStorage polling for OAuth code...');
-
     pollIntervalRef.current = setInterval(() => {
       const storedCode = localStorage.getItem('meta_oauth_code');
       const timestamp = localStorage.getItem('meta_oauth_timestamp');
@@ -212,13 +204,11 @@ export function MetaAdsSetupDialog({
 
         // Only accept codes less than 5 minutes old
         if (codeAge < OAUTH_TIMEOUT_MS) {
-          console.log('Found OAuth code in localStorage, age:', codeAge, 'ms');
           localStorage.removeItem('meta_oauth_code');
           localStorage.removeItem('meta_oauth_timestamp');
           handleOAuthCallback(storedCode);
         } else {
           // Code is too old, clean it up
-          console.log('Found stale OAuth code, removing');
           localStorage.removeItem('meta_oauth_code');
           localStorage.removeItem('meta_oauth_timestamp');
         }
@@ -289,12 +279,6 @@ export function MetaAdsSetupDialog({
 
     setIsLoading(true);
     try {
-      console.log('Calling meta-select-page with:', {
-        companyId: company.id,
-        pageId: selectedPageId,
-        pageName: selectedPage.name,
-      });
-
       const { data, error } = await supabase.functions.invoke('meta-select-page', {
         body: {
           companyId: company.id,
@@ -302,8 +286,6 @@ export function MetaAdsSetupDialog({
           pageName: selectedPage.name,
         },
       });
-
-      console.log('meta-select-page response:', { data, error });
 
       if (error) {
         console.error('Edge function invocation error:', error);

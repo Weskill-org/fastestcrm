@@ -10,7 +10,6 @@ export function useReminderPolling() {
 
         const checkReminders = async () => {
             try {
-                console.log('Checking for due reminders...');
                 await supabase.functions.invoke('process-reminders');
             } catch (error) {
                 console.error('Error triggering reminder check:', error);
