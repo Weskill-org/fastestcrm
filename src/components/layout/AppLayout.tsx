@@ -196,7 +196,10 @@ export default function AppLayout() {
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                 {filteredNavItems.map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
                     <item.icon className="h-4 w-4" />
-                    {item.label}
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {item.label === 'Bigdata SQL' && (
+                        <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">New</span>
+                    )}
                 </button>)}
             </nav>
 

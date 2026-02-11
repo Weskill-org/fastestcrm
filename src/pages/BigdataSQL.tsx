@@ -9,8 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Download, Search, Database, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Loader2, Download, Search, Database, ChevronLeft, ChevronRight, Filter, Lock } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { UnlockFeatureModal } from '@/components/features/UnlockFeatureModal';
 
 interface TableSchema {
     column_name: string;
@@ -25,15 +27,19 @@ interface QueryResponse {
     offset?: number;
 }
 
+const BIGDATA_SQL_UNLOCK_PRICE = 100000; // ₹1,00,000
+
 export default function BigdataSQL() {
     const { user } = useAuth();
     const { isCompanyAdmin, loading: companyLoading } = useCompany();
     const { toast } = useToast();
+    const { data: featureAccess, isLoading: accessLoading } = useFeatureAccess('bigdata_sql');
 
     const [selectedTable, setSelectedTable] = useState<string>('');
     const [phoneSearch, setPhoneSearch] = useState('');
     const [filters, setFilters] = useState<Record<string, string>>({});
     const [page, setPage] = useState(0);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [limit] = useState(25);
 
     // Fetch available tables - call hook unconditionally
@@ -214,6 +220,54 @@ export default function BigdataSQL() {
             description: `Downloading ${tableData.data.length} records from current page...`
         });
     };
+
+    // Show locked state if feature not unlocked
+    if (!accessLoading && !featureAccess?.isUnlocked) {
+        return (
+            <div className="p-8">
+                <UnlockFeatureModal
+                    isOpen={showUnlockModal}
+                    onClose={() => setShowUnlockModal(false)}
+                    featureName="bigdata_sql"
+                    featureDisplayName="Bigdata SQL"
+                    amount={BIGDATA_SQL_UNLOCK_PRICE}
+                />
+
+                <Card className="max-w-2xl mx-auto">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Lock className="h-6 w-6" />
+                            Bigdata SQL - Premium Feature
+                        </CardTitle>
+                        <CardDescription>
+                            Query and export data from external databases
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p>This premium feature allows you to:</p>
+                        <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+                            <li>Connect to external CockroachDB databases</li>
+                            <li>Query tables with advanced filters</li>
+                            <li>Export data to CSV</li>
+                            <li>Search by phone numbers</li>
+                            <li>View live data from your external databases</li>
+                        </ul>
+
+                        <div className="pt-4 border-t">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-lg font-semibold">Unlock Price:</span>
+                                <span className="text-2xl font-bold text-primary">₹{BIGDATA_SQL_UNLOCK_PRICE.toLocaleString('en-IN')}</span>
+                            </div>
+                            <Button onClick={() => setShowUnlockModal(true)} className="w-full" size="lg">
+                                <Lock className="h-4 w-4 mr-2" />
+                                Unlock Feature
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 space-y-6">
