@@ -62,7 +62,7 @@ export function RealEstateAddLeadDialog({ open: controlledOpen, onOpenChange, tr
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled ? (onOpenChange || (() => {})) : setInternalOpen;
+  const setOpen = isControlled ? (onOpenChange || (() => { })) : setInternalOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { company } = useCompany();
@@ -121,9 +121,9 @@ export function RealEstateAddLeadDialog({ open: controlledOpen, onOpenChange, tr
       queryClient.invalidateQueries({ queryKey: ['real-estate-leads'] });
       setOpen(false);
       form.reset();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding lead:', error);
-      toast.error('Failed to add lead');
+      toast.error(error.message || 'Failed to add lead. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -349,10 +349,10 @@ export function RealEstateAddLeadDialog({ open: controlledOpen, onOpenChange, tr
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Add any notes..."
                       className="min-h-[80px]"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
