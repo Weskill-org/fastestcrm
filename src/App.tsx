@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,104 +9,56 @@ import { SubdomainProvider } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
 import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
 import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import RegisterCompany from "./pages/RegisterCompany";
-import Dashboard from "./pages/Dashboard";
-import AllLeads from "./pages/AllLeads";
-import LGDashboard from "./pages/LGDashboard";
-import Interested from "./pages/Interested";
-import Paid from "./pages/Paid";
-import PendingPayments from "./pages/PendingPayments";
-import AutoDialer from "./pages/AutoDialer";
-import AIInsights from "./pages/AIInsights";
-import Team from "./pages/Team";
-import Automations from "./pages/Automations";
-import Integrations from "./pages/Integrations";
-import Settings from "./pages/Settings";
-import Forms from "./pages/Forms";
-import FormResponses from "./pages/FormResponses";
-import FormBuilder from "./pages/FormBuilder";
-import PublicForm from "./pages/PublicForm";
-import ResetPassword from "./pages/ResetPassword";
-import ManageCompany from "./pages/ManageCompany";
-import ManageStatuses from "./pages/ManageStatuses";
-import ManageProducts from "./pages/ManageProducts";
-import PlatformAdmin from "./pages/PlatformAdmin";
-import NotFound from "./pages/NotFound";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
-import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
-import ManageProperties from "./industries/real_estate/pages/ManageProperties";
-import Report from "./pages/Report";
-import MetaOAuthCallback from "./pages/MetaOAuthCallback";
-import Blog from "./pages/Blog";
-import BlogPost from "./pages/BlogPost";
-import BigdataSQL from "./pages/BigdataSQL";
+import AppLayout from "@/components/layout/AppLayout";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
+const Landing = lazy(() => import("./pages/Landing"));
+const Auth = lazy(() => import("./pages/Auth"));
+const RegisterCompany = lazy(() => import("./pages/RegisterCompany"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AllLeads = lazy(() => import("./pages/AllLeads"));
+const LGDashboard = lazy(() => import("./pages/LGDashboard"));
+const Interested = lazy(() => import("./pages/Interested"));
+const Paid = lazy(() => import("./pages/Paid"));
+const PendingPayments = lazy(() => import("./pages/PendingPayments"));
+const AutoDialer = lazy(() => import("./pages/AutoDialer"));
+const AIInsights = lazy(() => import("./pages/AIInsights"));
+const Team = lazy(() => import("./pages/Team"));
+const Automations = lazy(() => import("./pages/Automations"));
+const Integrations = lazy(() => import("./pages/Integrations"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Forms = lazy(() => import("./pages/Forms"));
+const FormResponses = lazy(() => import("./pages/FormResponses"));
+const FormBuilder = lazy(() => import("./pages/FormBuilder"));
+const PublicForm = lazy(() => import("./pages/PublicForm"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ManageCompany = lazy(() => import("./pages/ManageCompany"));
+const ManageStatuses = lazy(() => import("./pages/ManageStatuses"));
+const ManageProducts = lazy(() => import("./pages/ManageProducts"));
+const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const RealEstateAllLeads = lazy(() => import("./industries/real_estate/RealEstateAllLeads"));
+const ManageLeadProfiling = lazy(() => import("./industries/real_estate/ManageLeadProfiling"));
+const ManageProperties = lazy(() => import("./industries/real_estate/pages/ManageProperties"));
+const Report = lazy(() => import("./pages/Report"));
+const MetaOAuthCallback = lazy(() => import("./pages/MetaOAuthCallback"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
+const BigdataSQL = lazy(() => import("./pages/BigdataSQL"));
 
 const queryClient = new QueryClient();
 
 // Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
-import AppLayout from "@/components/layout/AppLayout";
-
-// ... existing imports
-
-// Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
 const MainDomainRoutes = () => (
-  <Routes>
-    <Route path="/" element={<Landing />} />
-    <Route path="/auth" element={<Auth />} />
-    <Route path="/terms" element={<TermsOfService />} />
-    <Route path="/privacy" element={<PrivacyPolicy />} />
-    <Route path="/register-company" element={<RegisterCompany />} />
-    <Route path="/reset-password" element={<ResetPassword />} />
-
-    <Route element={<AppLayout />}>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dashboard/lg" element={<LGDashboard />} />
-      <Route path="/dashboard/leads" element={<AllLeads />} />
-      <Route path="/dashboard/interested" element={<Interested />} />
-      <Route path="/dashboard/paid" element={<Paid />} />
-      <Route path="/dashboard/pending" element={<PendingPayments />} />
-      <Route path="/dashboard/dialer" element={<AutoDialer />} />
-      <Route path="/dashboard/report" element={<Report />} />
-      <Route path="/dashboard/ai" element={<AIInsights />} />
-      <Route path="/dashboard/team" element={<Team />} />
-      <Route path="/dashboard/automations" element={<Automations />} />
-      <Route path="/dashboard/integrations" element={<Integrations />} />
-      <Route path="/dashboard/settings" element={<Settings />} />
-      <Route path="/dashboard/forms" element={<Forms />} />
-      <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
-      <Route path="/dashboard/forms/new" element={<FormBuilder />} />
-      <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-      <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-      <Route path="/dashboard/company" element={<ManageCompany />} />
-      <Route path="/dashboard/statuses" element={<ManageStatuses />} />
-      <Route path="/dashboard/products" element={<ManageProducts />} />
-      <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
-      <Route path="/dashboard/properties" element={<ManageProperties />} />
-      <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
-      <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
-    </Route>
-
-    <Route path="/platform" element={<PlatformAdmin />} />
-    <Route path="/form/:id" element={<PublicForm />} />
-    <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
-    <Route path="/blog" element={<Blog />} />
-    <Route path="/blog/:slug" element={<BlogPost />} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
-
-// Subdomain routes (company.fastestcrm.com) - can be customized per workspace
-// Wrapped with SubdomainAccessGuard to ensure users can only access their own company's subdomain
-const SubdomainRoutes = () => (
-  <SubdomainAccessGuard>
+  <Suspense fallback={<LoadingSpinner />}>
     <Routes>
-      {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
-      <Route path="/" element={<Auth />} />
+      <Route path="/" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/register-company" element={<RegisterCompany />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route element={<AppLayout />}>
@@ -136,10 +89,60 @@ const SubdomainRoutes = () => (
         <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
       </Route>
 
+      <Route path="/platform" element={<PlatformAdmin />} />
       <Route path="/form/:id" element={<PublicForm />} />
       <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+      <Route path="/blog" element={<Blog />} />
+      <Route path="/blog/:slug" element={<BlogPost />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+  </Suspense>
+);
+
+// Subdomain routes (company.fastestcrm.com) - can be customized per workspace
+// Wrapped with SubdomainAccessGuard to ensure users can only access their own company's subdomain
+const SubdomainRoutes = () => (
+  <SubdomainAccessGuard>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
+        <Route path="/" element={<Auth />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/lg" element={<LGDashboard />} />
+          <Route path="/dashboard/leads" element={<AllLeads />} />
+          <Route path="/dashboard/interested" element={<Interested />} />
+          <Route path="/dashboard/paid" element={<Paid />} />
+          <Route path="/dashboard/pending" element={<PendingPayments />} />
+          <Route path="/dashboard/dialer" element={<AutoDialer />} />
+          <Route path="/dashboard/report" element={<Report />} />
+          <Route path="/dashboard/ai" element={<AIInsights />} />
+          <Route path="/dashboard/team" element={<Team />} />
+          <Route path="/dashboard/automations" element={<Automations />} />
+          <Route path="/dashboard/integrations" element={<Integrations />} />
+          <Route path="/dashboard/settings" element={<Settings />} />
+          <Route path="/dashboard/forms" element={<Forms />} />
+          <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
+          <Route path="/dashboard/forms/new" element={<FormBuilder />} />
+          <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+          <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
+          <Route path="/dashboard/company" element={<ManageCompany />} />
+          <Route path="/dashboard/statuses" element={<ManageStatuses />} />
+          <Route path="/dashboard/products" element={<ManageProducts />} />
+          <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
+          <Route path="/dashboard/properties" element={<ManageProperties />} />
+          <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
+          <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
+        </Route>
+
+        <Route path="/form/:id" element={<PublicForm />} />
+        <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   </SubdomainAccessGuard>
 );
 
