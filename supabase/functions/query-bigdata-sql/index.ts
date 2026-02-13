@@ -138,8 +138,6 @@ serve(async (req) => {
                     const sanitizedCountTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
                     const countQuery = `SELECT COUNT(*) as count FROM "${sanitizedCountTableName}"`;
 
-                    console.log('Executing count query:', countQuery);
-
                     try {
                         const countResult = await client.queryObject(countQuery);
                         await client.end();
@@ -208,9 +206,6 @@ serve(async (req) => {
                     // Add pagination - fetch limit + 1 to check if there are more results
                     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
                     params.push(limit + 1, offset); // Fetch one extra to check for more
-
-                    console.log('Executing query:', query);
-                    console.log('Query params:', params);
 
                     try {
                         result = await client.queryObject(query, params);

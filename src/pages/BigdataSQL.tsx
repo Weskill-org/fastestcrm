@@ -3,14 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Download, Search, Database, ChevronLeft, ChevronRight, Filter, Lock } from 'lucide-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { UnlockFeatureModal } from '@/components/features/UnlockFeatureModal';
 
@@ -48,24 +48,18 @@ export default function BigdataSQL() {
         queryFn: async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
-                console.error('No session found');
                 throw new Error('No session');
             }
 
-            console.log('Calling query-bigdata-sql with action: list_tables');
             const response = await supabase.functions.invoke('query-bigdata-sql', {
                 body: { action: 'list_tables' }
             });
 
-            console.log('Edge Function Response:', response);
-
             if (response.error) {
-                console.error('Edge Function error:', response.error);
                 throw response.error;
             }
 
             if (response.data?.error) {
-                console.error('Edge Function returned error:', response.data.error);
                 toast({
                     title: "Error",
                     description: response.data.error,
