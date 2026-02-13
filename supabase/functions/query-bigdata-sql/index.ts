@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface QueryRequest {
-    action: 'list_tables' | 'get_schema' | 'query_data';
+    action: 'list_tables' | 'get_schema' | 'query_data' | 'get_count';
     tableName?: string;
     filters?: Record<string, any>;
     phoneSearch?: string;
@@ -128,6 +128,33 @@ serve(async (req) => {
                         JSON.stringify({ data: convertBigIntToString(result.rows) }),
                         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
                     );
+
+                case 'get_count':
+                    if (!tableName) {
+                        throw new Error("Table name required for get_count action");
+                    }
+
+                    // Sanitize table name
+                    const sanitizedCountTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
+                    const countQuery = `SELECT COUNT(*) as count FROM "${sanitizedCountTableName}"`;
+
+                    console.log('Executing count query:', countQuery);
+
+                    try {
+                        const countResult = await client.queryObject(countQuery);
+                        await client.end();
+
+                        const count = (countResult.rows[0] as any).count;
+
+                        return new Response(
+                            JSON.stringify({ count: convertBigIntToString(count) }),
+                            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                        );
+                    } catch (countError: any) {
+                        console.error('Count query error:', countError);
+                        await client.end();
+                        throw new Error(`Count query failed: ${countError.message}`);
+                    }
 
                 case 'query_data':
                     if (!tableName) {

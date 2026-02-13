@@ -35,7 +35,7 @@ export default function BigdataSQL() {
     const { toast } = useToast();
     const { data: featureAccess, isLoading: accessLoading } = useFeatureAccess('bigdata_sql');
 
-    const [selectedTable, setSelectedTable] = useState<string>('');
+    const [selectedTable, setSelectedTable] = useState<string>('tcdata');
     const [phoneSearch, setPhoneSearch] = useState('');
     const [filters, setFilters] = useState<Record<string, string>>({});
     const [page, setPage] = useState(0);
@@ -97,6 +97,26 @@ export default function BigdataSQL() {
         },
         enabled: !!selectedTable && !companyLoading && isCompanyAdmin
     });
+
+    // Fetch total count - call hook unconditionally
+    const { data: countData, isLoading: countLoading } = useQuery({
+        queryKey: ['bigdata-count', selectedTable],
+        queryFn: async () => {
+            if (!selectedTable) return null;
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('No session');
+
+            const response = await supabase.functions.invoke('query-bigdata-sql', {
+                body: { action: 'get_count', tableName: selectedTable }
+            });
+
+            if (response.error) throw response.error;
+            return response.data.count as string;
+        },
+        enabled: !!selectedTable && !companyLoading && isCompanyAdmin && featureAccess?.isUnlocked
+    });
+
 
     // Fetch table data - call hook unconditionally
     const { data: tableData, isLoading: dataLoading, refetch } = useQuery({
@@ -237,30 +257,55 @@ export default function BigdataSQL() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Lock className="h-6 w-6" />
-                            Bigdata SQL - Premium Feature
+                            Premium All India Data Access
                         </CardTitle>
                         <CardDescription>
-                            Query and export data from external databases
+                            Unlock access to comprehensive business data across India
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p>This premium feature allows you to:</p>
-                        <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
-                            <li>Connect to external CockroachDB databases</li>
-                            <li>Query tables with advanced filters</li>
-                            <li>Export data to CSV</li>
-                            <li>Search by phone numbers</li>
-                            <li>View live data from your external databases</li>
-                        </ul>
+                    <CardContent className="space-y-6">
+                        <div>
+                            <h3 className="font-semibold text-lg mb-3">Get Access to Premium Features:</h3>
+                            <ul className="space-y-3">
+                                <li className="flex items-start gap-3">
+                                    <Database className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium">Premium All India Data</p>
+                                        <p className="text-sm text-muted-foreground">Access comprehensive business listings and contact information from across India</p>
+                                    </div>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <Filter className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium">Advanced Query Filters</p>
+                                        <p className="text-sm text-muted-foreground">Filter and query tables with powerful search capabilities to find exactly what you need</p>
+                                    </div>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <Search className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium">Phone Number Search</p>
+                                        <p className="text-sm text-muted-foreground">Instantly search and retrieve contact details using phone numbers</p>
+                                    </div>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <Download className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium">Export to CSV</p>
+                                        <p className="text-sm text-muted-foreground">Download filtered data for your marketing and sales campaigns</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
 
                         <div className="pt-4 border-t">
                             <div className="flex items-center justify-between mb-4">
-                                <span className="text-lg font-semibold">Unlock Price:</span>
+                                <span className="text-lg font-semibold">One-Time Unlock Price:</span>
                                 <span className="text-2xl font-bold text-primary">₹{BIGDATA_SQL_UNLOCK_PRICE.toLocaleString('en-IN')}</span>
                             </div>
                             <Button onClick={() => setShowUnlockModal(true)} className="w-full" size="lg">
                                 <Lock className="h-4 w-4 mr-2" />
-                                Unlock Feature
+                                Unlock Premium Data Access
                             </Button>
                         </div>
                     </CardContent>
@@ -271,60 +316,26 @@ export default function BigdataSQL() {
 
     return (
         <div className="p-8 space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <Database className="h-6 w-6" />
-                    Bigdata SQL
-                </h1>
-                <p className="text-muted-foreground">Query and export data from the external database</p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Database className="h-6 w-6" />
+                        Bigdata SQL
+                    </h1>
+                    <p className="text-muted-foreground">Query and export data from the external database</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Total Data Available</p>
+                    <p className="text-2xl font-bold text-primary">
+                        {countLoading ? (
+                            <Loader2 className="h-6 w-6 animate-spin inline" />
+                        ) : (
+                            Number(countData || 0).toLocaleString('en-IN')
+                        )}
+                    </p>
+                </div>
             </div>
 
-            {/* Table Selector */}
-            <Card className="glass">
-                <CardHeader>
-                    <CardTitle>Select Table</CardTitle>
-                    <CardDescription>Choose a table to view and query</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid gap-4">
-                        <div>
-                            <Label>Table</Label>
-                            <Select value={selectedTable} onValueChange={handleTableChange} disabled={tablesLoading}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={tablesLoading ? "Loading tables..." : "Select a table"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {tablesData?.map((table) => (
-                                        <SelectItem key={table.table_name} value={table.table_name}>
-                                            {table.table_name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Phone Search */}
-                        {selectedTable && (
-                            <div className="flex gap-2">
-                                <div className="flex-1">
-                                    <Label>Phone Number Search</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            placeholder="Search by phone number..."
-                                            value={phoneSearch}
-                                            onChange={(e) => setPhoneSearch(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handlePhoneSearch()}
-                                        />
-                                        <Button onClick={handlePhoneSearch} disabled={dataLoading}>
-                                            <Search className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
 
             {/* Filters */}
             {selectedTable && schemaData && (
