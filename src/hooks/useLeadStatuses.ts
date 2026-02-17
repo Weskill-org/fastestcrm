@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from './useCompany';
+import { useMemo, useCallback } from 'react';
 
 export interface CompanyLeadStatus {
     id: string;
@@ -38,17 +39,28 @@ export function useLeadStatuses() {
         staleTime: 1000 * 60 * 5,
     });
 
+    // Create an O(1) lookup map for statuses
+    const statusMap = useMemo(() => {
+        if (!statuses) return {};
+        return statuses.reduce((acc, status) => {
+            acc[status.value] = status;
+            return acc;
+        }, {} as Record<string, CompanyLeadStatus>);
+    }, [statuses]);
+
     // Helper to get color for a status value
-    const getStatusColor = (value: string) => {
-        const status = statuses?.find(s => s.value === value);
+    // Memoized to prevent unnecessary re-renders in consumers
+    const getStatusColor = useCallback((value: string) => {
+        const status = statusMap[value];
         return status?.color || '#6B7280'; // Default gray
-    };
+    }, [statusMap]);
 
     // Helper to get label
-    const getStatusLabel = (value: string) => {
-        const status = statuses?.find(s => s.value === value);
+    // Memoized to prevent unnecessary re-renders in consumers
+    const getStatusLabel = useCallback((value: string) => {
+        const status = statusMap[value];
         return status?.label || value.replace(/_/g, ' ');
-    };
+    }, [statusMap]);
 
     return {
         statuses: statuses || [],
