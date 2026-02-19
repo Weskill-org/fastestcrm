@@ -135,42 +135,45 @@ export default function GenericAllLeads() {
         });
     }
 
-    // Fetch filter options
+    // Fetch filter options — all queries run in parallel via Promise.all
     const { data: filterOptions } = useQuery({
         queryKey: ['leadsFilterOptions', company?.id],
         queryFn: async () => {
             if (!company?.id) return null;
 
-            // Fetch owners (profiles)
-            const { data: ownersData } = await supabase
-                .from('profiles')
-                .select('id, full_name')
-                .eq('company_id', company.id)
-                .not('full_name', 'is', null);
+            // Fire all three independent queries at the same time
+            const [ownersResult, productsResult, statusesResult] = await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select('id, full_name')
+                    .eq('company_id', company.id)
+                    .not('full_name', 'is', null),
+                supabase
+                    .from('products')
+                    .select('name')
+                    .eq('company_id', company.id)
+                    .order('name'),
+                supabase
+                    .from('company_lead_statuses' as any)
+                    .select('label, value, category, order_index')
+                    .eq('company_id', company.id)
+                    .order('order_index'),
+            ]);
 
-            let activeOwners = ownersData || [];
+            // Filter owners to only those with active role entries
+            let activeOwners = ownersResult.data || [];
             if (activeOwners.length > 0) {
                 const ownerIds = activeOwners.map(o => o.id);
                 const { data: rolesData } = await supabase
                     .from('user_roles')
                     .select('user_id')
                     .in('user_id', ownerIds);
-
                 const activeUserIds = new Set(rolesData?.map(r => r.user_id));
                 activeOwners = activeOwners.filter(o => activeUserIds.has(o.id));
             }
 
-            const { data: products } = await supabase
-                .from('products')
-                .select('name')
-                .eq('company_id', company.id)
-                .order('name');
-
-            const { data: statusesData } = await (supabase
-                .from('company_lead_statuses' as any)
-                .select('label, value, category, order_index')
-                .eq('company_id', company.id)
-                .order('order_index'));
+            const products = productsResult.data;
+            const statusesData = statusesResult.data as any[] | null;
 
             const statuses = statusesData && statusesData.length > 0
                 ? statusesData.map((s: any) => ({
@@ -186,7 +189,8 @@ export default function GenericAllLeads() {
                 statuses: statuses
             };
         },
-        enabled: !!company?.id
+        enabled: !!company?.id,
+        staleTime: 1000 * 60 * 5, // Cache filter options for 5 minutes
     });
 
     const { data: leadsData, isLoading, refetch } = useLeads({
@@ -251,15 +255,7 @@ export default function GenericAllLeads() {
         setSelectedLeads(newSelected);
     };
 
-    if (isLoading) {
-        return (
-            <>
-                <div className="flex items-center justify-center h-screen">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-            </>
-        );
-    }
+    // No full-screen blocking spinner — the table renders inline skeletons while loading
 
     const visibleColumns = defaultColumns.filter(col => {
         if (!columnConfig) return !col.defaultHidden;
@@ -270,7 +266,7 @@ export default function GenericAllLeads() {
         const indexA = columnConfig.findIndex((c: any) => c.id === a.id);
         const indexB = columnConfig.findIndex((c: any) => c.id === b.id);
         return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-    });
+    }).map(col => ({ ...col, visible: true }));
 
     return (
         <>

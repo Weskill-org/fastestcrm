@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,59 +17,48 @@ interface Company {
   mask_leads?: boolean;
 }
 
+async function fetchCompanyData(userId: string): Promise<Company | null> {
+  // Step 1: Get company_id from profile
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', userId)
+    .single();
+
+  if (profileError || !profile?.company_id) return null;
+
+  // Step 2: Get company details
+  const { data: companyData, error: companyError } = await supabase
+    .from('companies')
+    .select('*')
+    .eq('id', profile.company_id)
+    .single();
+
+  if (companyError) {
+    console.error('[useCompany] Error fetching company:', companyError);
+    return null;
+  }
+
+  return companyData as Company;
+}
+
 export function useCompany() {
   const { user } = useAuth();
-  const [company, setCompany] = useState<Company | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (user) {
-      fetchCompany();
-    } else {
-      setCompany(null);
-      setLoading(false);
-    }
-  }, [user]);
+  const {
+    data: company = null,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ['company', user?.id],
+    queryFn: () => fetchCompanyData(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,  // Cache for 5 minutes — shared across all hook callers
+    gcTime: 1000 * 60 * 10,    // Keep in memory for 10 minutes
+    retry: 2,
+  });
 
-  const fetchCompany = async () => {
-    setLoading(true);
-    try {
-      // Get user's profile with company_id
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('id', user?.id)
-        .single();
-
-      if (!profile?.company_id) {
-        setCompany(null);
-        setLoading(false);
-        return;
-      }
-
-      // Get company details
-      const { data: companyData, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', profile.company_id)
-        .single();
-
-      if (error) {
-        console.error('[useCompany] Error fetching company:', error);
-        setCompany(null);
-      } else {
-
-        setCompany(companyData);
-        setIsCompanyAdmin(companyData.admin_id === user?.id);
-      }
-    } catch (err) {
-      console.error('Error in useCompany:', err);
-      setCompany(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isCompanyAdmin = company ? company.admin_id === user?.id : false;
 
   const canAddTeamMember = () => {
     if (!company) return false;
@@ -81,12 +70,16 @@ export function useCompany() {
     return company.total_licenses - company.used_licenses;
   };
 
+  const refetch = () => {
+    queryClient.invalidateQueries({ queryKey: ['company', user?.id] });
+  };
+
   return {
     company,
     loading,
     isCompanyAdmin,
     canAddTeamMember,
     availableLicenses,
-    refetch: fetchCompany,
+    refetch,
   };
 }

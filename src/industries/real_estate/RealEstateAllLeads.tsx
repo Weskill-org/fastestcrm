@@ -84,20 +84,27 @@ export default function RealEstateAllLeads() {
   // Hierarchy Check
   const { accessibleUserIds, canViewAll, loading: hierarchyLoading } = useHierarchy();
 
-  // Fetch filter options
+  // Fetch filter options — all queries run in parallel via Promise.all
   const { data: filterOptions } = useQuery({
     queryKey: ['realEstateLeadsFilterOptions', company?.id, canViewAll, accessibleUserIds],
     queryFn: async () => {
       if (!company?.id) return null;
 
-      // Fetch owners (profiles)
-      const { data: ownersData } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('company_id', company.id)
-        .not('full_name', 'is', null);
+      // Fire owners and statuses in parallel
+      const [ownersResult, statusesResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('company_id', company.id)
+          .not('full_name', 'is', null),
+        supabase
+          .from('company_lead_statuses' as any)
+          .select('label, value, category, order_index')
+          .eq('company_id', company.id)
+          .order('order_index'),
+      ]);
 
-      let activeOwners = ownersData || [];
+      let activeOwners = ownersResult.data || [];
       if (activeOwners.length > 0) {
         const ownerIds = activeOwners.map(o => o.id);
         const { data: rolesData } = await supabase
@@ -115,12 +122,7 @@ export default function RealEstateAllLeads() {
         activeOwners = activeOwners.filter(o => accessibleSet.has(o.id));
       }
 
-      const { data: statusesData } = await supabase
-        .from('company_lead_statuses' as any)
-        .select('label, value, category, order_index')
-        .eq('company_id', company.id)
-        .order('order_index');
-
+      const statusesData = statusesResult.data as any[] | null;
       const statuses = statusesData && statusesData.length > 0
         ? statusesData.map((s: any) => ({
           label: s.label,
@@ -135,7 +137,8 @@ export default function RealEstateAllLeads() {
         propertyTypes: REAL_ESTATE_PROPERTY_TYPES.map(t => ({ label: t, value: t })),
       };
     },
-    enabled: !!company?.id && !hierarchyLoading
+    enabled: !!company?.id && !hierarchyLoading,
+    staleTime: 1000 * 60 * 5, // Cache filter options for 5 minutes
   });
 
   const { data: leadsData, isLoading, refetch } = useRealEstateLeads({
@@ -200,15 +203,7 @@ export default function RealEstateAllLeads() {
     setSelectedLeads(newSelected);
   };
 
-  if (isLoading) {
-    return (
-      <>
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </>
-    );
-  }
+  // No full-screen blocking spinner — table renders inline skeletons while loading
 
   const visibleColumns = defaultColumns.filter(col => {
     if (!columnConfig) return !col.defaultHidden;
