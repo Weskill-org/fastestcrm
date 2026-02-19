@@ -8,6 +8,9 @@ import {
 import { Tables } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
 import { Mail, Phone, Building, Calendar, User, CreditCard, Link, MapPin, Home, DollarSign, Megaphone, Globe, Layers, CalendarClock } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MaskedValue } from '@/components/ui/MaskedValue';
 
 type Lead = Tables<'leads'> & Partial<Tables<'leads_real_estate'>> & {
     sales_owner?: {
@@ -18,11 +21,12 @@ type Lead = Tables<'leads'> & Partial<Tables<'leads_real_estate'>> & {
 interface LeadDetailsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    lead: Lead | null;
-    owners?: { label: string; value: string }[];
+    lead: any;
+    owners: { label: string; value: string }[];
+    maskLeads?: boolean;
 }
 
-export function LeadDetailsDialog({ open, onOpenChange, lead, owners = [] }: LeadDetailsDialogProps) {
+export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads = false }: LeadDetailsDialogProps) {
     if (!lead) return null;
 
     // Helper to format currency
@@ -65,13 +69,17 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners = [] }: Lea
                                 <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                                     <Mail className="h-4 w-4" /> Email
                                 </h4>
-                                <p className="text-sm break-all">{lead.email || 'N/A'}</p>
+                                <div className="text-sm break-all">
+                                    <MaskedValue value={lead.email} type="email" enabled={maskLeads} />
+                                </div>
                             </div>
                             <div className="space-y-1">
                                 <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                                     <Phone className="h-4 w-4" /> Phone
                                 </h4>
-                                <p className="text-sm">{lead.phone || 'N/A'}</p>
+                                <div className="text-sm">
+                                    <MaskedValue value={lead.phone} type="phone" enabled={maskLeads} />
+                                </div>
                             </div>
                             <div className="space-y-1">
                                 <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">

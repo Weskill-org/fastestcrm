@@ -14,8 +14,9 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Building2, Users, CreditCard, Globe, Palette,
   Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle, Upload,
-  RefreshCw, Trash2, Link2, Wallet, Plus, Calendar, Gift, Tag
+  RefreshCw, Trash2, Link2, Wallet, Plus, Calendar, Gift, Tag, Shield
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface Company {
   id: string;
@@ -31,6 +32,7 @@ interface Company {
   subscription_valid_until: string | null;
   subscription_status: string | null;
   features: Record<string, boolean> | null;
+  mask_leads: boolean;
 }
 
 interface WalletData {
@@ -75,6 +77,7 @@ export default function ManageCompany() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingSlug, setSavingSlug] = useState(false);
   const [slugError, setSlugError] = useState('');
+  const [maskLeads, setMaskLeads] = useState(false);
 
   // Domain
   const [savingDomain, setSavingDomain] = useState(false);
@@ -144,6 +147,7 @@ export default function ManageCompany() {
         subscription_valid_until: companyData.subscription_valid_until,
         subscription_status: companyData.subscription_status,
         features: (companyData.features as Record<string, boolean>) || null,
+        mask_leads: companyData.mask_leads || false,
       };
 
       setCompany(mappedCompany);
@@ -152,6 +156,7 @@ export default function ManageCompany() {
       setCustomDomain(mappedCompany.custom_domain || '');
       setPrimaryColor(mappedCompany.primary_color || '#8B5CF6');
       setLogoUrl(mappedCompany.logo_url);
+      setMaskLeads(mappedCompany.mask_leads);
 
       // Get Wallet
       const { data: walletData } = await supabase
@@ -213,6 +218,7 @@ export default function ManageCompany() {
           name: companyName,
           primary_color: primaryColor,
           logo_url: logoUrl,
+          mask_leads: maskLeads,
         })
         .eq('id', company.id);
 
@@ -943,6 +949,37 @@ export default function ManageCompany() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="md:col-span-2">
+            <Card className="glass border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" /> Privacy & Security</CardTitle>
+                <CardDescription>Manage how data is displayed and secured.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="mask-leads" className="text-base">Mask Contact Information</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Hide lead phone numbers and email addresses by default.
+                      Users can click to reveal.
+                    </p>
+                  </div>
+                  <Switch
+                    id="mask-leads"
+                    checked={maskLeads}
+                    onCheckedChange={setMaskLeads}
+                  />
+                </div>
+                <Separator />
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveSettings} disabled={saving}>
+                    {saving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </>

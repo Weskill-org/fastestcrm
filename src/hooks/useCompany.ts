@@ -14,6 +14,7 @@ interface Company {
   custom_leads_table?: string | null;
   admin_id: string;
   industry: string | null;
+  mask_leads?: boolean;
 }
 
 export function useCompany() {

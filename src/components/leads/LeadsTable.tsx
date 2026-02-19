@@ -40,6 +40,7 @@ import { EditLeadDialog } from './EditLeadDialog';
 import { LeadDetailsDialog } from './LeadDetailsDialog';
 import { LeadHistoryDialog } from './LeadHistoryDialog';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { MaskedValue } from '@/components/ui/MaskedValue';
 
 type Lead = Tables<'leads'> & {
   sales_owner?: {
@@ -60,9 +61,10 @@ interface LeadsTableProps {
   onSelectionChange: (selected: Set<string>) => void;
   owners?: { label: string; value: string }[];
   columnConfig?: ColumnConfigItem[];
+  maskLeads?: boolean;
 }
 
-export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, owners = [], columnConfig }: LeadsTableProps) {
+export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, owners = [], columnConfig, maskLeads = false }: LeadsTableProps) {
   const { products } = useProducts();
   const updateLead = useUpdateLead();
   const { data: userRole } = useUserRole();
@@ -184,16 +186,18 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     email: {
       label: 'Email',
       render: (lead) => lead.email ? (
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <Mail className="h-3 w-3" /> {lead.email}
+        <span className="flex items-center gap-1 text-muted-foreground w-full">
+          <Mail className="h-3 w-3 shrink-0" />
+          <MaskedValue value={lead.email} type="email" enabled={maskLeads} showIcon={false} />
         </span>
       ) : null
     },
     phone: {
       label: 'Phone Number',
       render: (lead) => lead.phone ? (
-        <span className="flex items-center gap-1 text-muted-foreground">
-          <Phone className="h-3 w-3" /> {lead.phone}
+        <span className="flex items-center gap-1 text-muted-foreground w-full">
+          <Phone className="h-3 w-3 shrink-0" />
+          <MaskedValue value={lead.phone} type="phone" enabled={maskLeads} showIcon={false} />
         </span>
       ) : null
     },
@@ -491,6 +495,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
         onOpenChange={(open) => !open && setViewingLead(null)}
         lead={viewingLead}
         owners={owners}
+        maskLeads={maskLeads}
       />
 
       <LeadHistoryDialog

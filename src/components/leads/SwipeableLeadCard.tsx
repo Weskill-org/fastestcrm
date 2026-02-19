@@ -15,6 +15,8 @@ import {
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
+import { Tables } from "@/integrations/supabase/types";
+import { MaskedValue } from '@/components/ui/MaskedValue';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { cn } from '@/lib/utils';
 
@@ -28,8 +30,9 @@ interface SwipeableLeadCardProps {
   onCall?: () => void;
   onCreatePaymentLink?: () => void;
   owners?: { label: string; value: string }[];
-  variant?: 'education' | 'real_estate';
-  visibleAttributes?: { id: string; label: string }[];
+  variant?: 'education' | 'real_estate' | 'default';
+  visibleAttributes?: { id: string; visible: boolean; label?: string }[];
+  maskLeads?: boolean;
 }
 
 export function SwipeableLeadCard({
@@ -43,7 +46,8 @@ export function SwipeableLeadCard({
   onCreatePaymentLink,
   owners = [],
   variant = 'education',
-  visibleAttributes
+  visibleAttributes,
+  maskLeads = false
 }: SwipeableLeadCardProps) {
   const { statuses, getStatusColor } = useLeadStatuses();
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -245,16 +249,16 @@ export function SwipeableLeadCard({
         {/* Contact Info */}
         <div className="flex flex-wrap gap-3 text-sm">
           {lead.phone && (
-            <a href={`tel:${lead.phone}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-              <Phone className="h-3.5 w-3.5" />
-              <span>{lead.phone}</span>
-            </a>
+            <div className="flex items-center gap-1.5 text-muted-foreground w-full">
+              <Phone className="h-3.5 w-3.5 shrink-0" />
+              <MaskedValue value={lead.phone} type="phone" enabled={maskLeads} className="text-sm" showIcon={false} />
+            </div>
           )}
           {lead.email && (
-            <a href={`mailto:${lead.email}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground truncate">
+            <div className="flex items-center gap-1.5 text-muted-foreground w-full overflow-hidden">
               <Mail className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{lead.email}</span>
-            </a>
+              <MaskedValue value={lead.email} type="email" enabled={maskLeads} className="text-sm truncate" showIcon={false} />
+            </div>
           )}
         </div>
 

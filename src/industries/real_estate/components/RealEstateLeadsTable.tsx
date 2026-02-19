@@ -45,6 +45,8 @@ import { LeadHistoryDialog } from '@/components/leads/LeadHistoryDialog';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
 
+import { MaskedValue } from '@/components/ui/MaskedValue';
+
 export interface RealEstateLead {
   id: string;
   company_id: string | null;
@@ -107,6 +109,7 @@ interface RealEstateLeadsTableProps {
   owners?: { label: string; value: string }[];
   onRefetch: () => void;
   columnConfig?: ColumnConfigItem[];
+  maskLeads?: boolean;
 }
 
 interface ProfileLevel {
@@ -122,7 +125,8 @@ export function RealEstateLeadsTable({
   onSelectionChange,
   owners = [],
   onRefetch,
-  columnConfig
+  columnConfig,
+  maskLeads = false
 }: RealEstateLeadsTableProps) {
   const { statuses, getStatusColor } = useLeadStatuses();
   const { company } = useCompany();
@@ -528,7 +532,8 @@ export function RealEstateLeadsTable({
       minWidth: 'min-w-[150px]',
       render: (lead) => lead.email ? (
         <span className="flex items-center gap-1 text-muted-foreground text-xs">
-          <Mail className="h-3 w-3" /> {lead.email}
+          <Mail className="h-3 w-3" />
+          <MaskedValue value={lead.email} type="email" enabled={maskLeads} />
         </span>
       ) : '-'
     },
@@ -537,7 +542,8 @@ export function RealEstateLeadsTable({
       minWidth: 'min-w-[120px]',
       render: (lead) => lead.phone ? (
         <span className="flex items-center gap-1 text-muted-foreground text-xs">
-          <Phone className="h-3 w-3" /> {lead.phone}
+          <Phone className="h-3 w-3" />
+          <MaskedValue value={lead.phone} type="phone" enabled={maskLeads} />
         </span>
       ) : '-'
     },
@@ -792,6 +798,7 @@ export function RealEstateLeadsTable({
         onOpenChange={(open) => !open && setViewingLead(null)}
         lead={viewingLead}
         owners={owners}
+        maskLeads={maskLeads}
       />
 
       <LeadHistoryDialog

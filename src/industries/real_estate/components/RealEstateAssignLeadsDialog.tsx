@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
+import { notificationService } from '@/services/notificationService';
 
 interface RealEstateAssignLeadsDialogProps {
   open: boolean;
@@ -37,11 +38,11 @@ interface Profile {
 
 type OwnerType = 'pre_sales' | 'sales' | 'post_sales';
 
-export function RealEstateAssignLeadsDialog({ 
-  open, 
-  onOpenChange, 
-  selectedLeadIds, 
-  onSuccess 
+export function RealEstateAssignLeadsDialog({
+  open,
+  onOpenChange,
+  selectedLeadIds,
+  onSuccess
 }: RealEstateAssignLeadsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -99,7 +100,7 @@ export function RealEstateAssignLeadsDialog({
   };
 
   const handleAssign = async () => {
-    const hasAnySelection = 
+    const hasAnySelection =
       (updatePreSales && preSalesUserId) ||
       (updateSales && salesUserId) ||
       (updatePostSales && postSalesUserId);
@@ -129,6 +130,28 @@ export function RealEstateAssignLeadsDialog({
         .in('id', selectedLeadIds);
 
       if (error) throw error;
+
+      // Send notifications
+      const notificationsToSend = [];
+      if (updatePreSales && preSalesUserId && preSalesUserId !== user?.id) {
+        notificationsToSend.push({ userId: preSalesUserId, role: 'Pre-Sales' });
+      }
+      if (updateSales && salesUserId && salesUserId !== user?.id) {
+        notificationsToSend.push({ userId: salesUserId, role: 'Sales' });
+      }
+      if (updatePostSales && postSalesUserId && postSalesUserId !== user?.id) {
+        notificationsToSend.push({ userId: postSalesUserId, role: 'Post-Sales' });
+      }
+
+      // Send notifications in parallel
+      await Promise.all(notificationsToSend.map(({ userId, role }) =>
+        notificationService.createNotification({
+          userId,
+          title: 'New Real Estate Leads Assigned',
+          message: `You have been assigned ${selectedLeadIds.length} new lead${selectedLeadIds.length !== 1 ? 's' : ''} as ${role} Owner.`,
+          type: 'lead_assignment'
+        })
+      ));
 
       const ownerTypes: string[] = [];
       if (updatePreSales && preSalesUserId) ownerTypes.push('Pre-Sales');
@@ -186,7 +209,7 @@ export function RealEstateAssignLeadsDialog({
         <DialogHeader>
           <DialogTitle>Assign Leads</DialogTitle>
         </DialogHeader>
-        
+
         <div className="py-4 space-y-4">
           <p className="text-sm text-muted-foreground">
             Assign {selectedLeadIds.length} selected lead{selectedLeadIds.length !== 1 ? 's' : ''} to team members.

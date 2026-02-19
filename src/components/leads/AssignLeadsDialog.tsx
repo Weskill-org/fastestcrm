@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
+import { notificationService } from '@/services/notificationService';
 
 interface AssignLeadsDialogProps {
     open: boolean;
@@ -93,6 +94,16 @@ export function AssignLeadsDialog({ open, onOpenChange, selectedLeadIds, onSucce
                 .in('id', selectedLeadIds);
 
             if (error) throw error;
+
+            // Send notification to the assigned user
+            if (selectedUserId && selectedUserId !== user?.id) {
+                await notificationService.createNotification({
+                    userId: selectedUserId,
+                    title: 'New Leads Assigned',
+                    message: `You have been assigned ${selectedLeadIds.length} new lead${selectedLeadIds.length !== 1 ? 's' : ''}.`,
+                    type: 'lead_assignment'
+                });
+            }
 
             toast.success(`Successfully assigned ${selectedLeadIds.length} leads`);
             queryClient.invalidateQueries({ queryKey: ['leads'] });

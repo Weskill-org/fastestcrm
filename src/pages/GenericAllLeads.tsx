@@ -319,6 +319,7 @@ export default function GenericAllLeads() {
                                     owners={filterOptions?.owners}
                                     variant="education"
                                     visibleAttributes={visibleColumns}
+                                    maskLeads={company?.mask_leads}
                                 />
                             ))
                         )}
@@ -334,6 +335,7 @@ export default function GenericAllLeads() {
                                 onSelectionChange={setSelectedLeads}
                                 owners={filterOptions?.owners || []}
                                 columnConfig={columnConfig}
+                                maskLeads={company?.mask_leads}
                             />
                         </CardContent>
                     </Card>
@@ -388,6 +390,7 @@ export default function GenericAllLeads() {
                 onOpenChange={(open) => !open && setViewingLead(null)}
                 lead={viewingLead}
                 owners={filterOptions?.owners || []}
+                maskLeads={company?.mask_leads}
             />
 
             {/* Mobile Floating Action Button */}

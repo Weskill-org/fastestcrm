@@ -13,17 +13,21 @@ CREATE TABLE IF NOT EXISTS public.features_unlocked (
 ALTER TABLE public.features_unlocked ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Companies can view their own unlocked features
+-- Policy: Companies can view their own unlocked features
+DROP POLICY IF EXISTS "Companies can view their own unlocked features" ON public.features_unlocked;
 CREATE POLICY "Companies can view their own unlocked features"
     ON public.features_unlocked FOR SELECT
     USING (
-        company_id IN (
-            SELECT company_id 
+        auth.uid() IN (
+            SELECT id 
             FROM public.profiles 
-            WHERE id = auth.uid()
+            WHERE company_id = features_unlocked.company_id
         )
     );
 
 -- Policy: Service role can insert (for Edge Functions)
+-- Policy: Service role can insert (for Edge Functions)
+DROP POLICY IF EXISTS "Service role can insert features" ON public.features_unlocked;
 CREATE POLICY "Service role can insert features"
     ON public.features_unlocked FOR INSERT
     WITH CHECK (true);

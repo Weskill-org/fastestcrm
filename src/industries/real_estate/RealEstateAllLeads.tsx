@@ -219,7 +219,7 @@ export default function RealEstateAllLeads() {
     const indexA = columnConfig.findIndex((c: any) => c.id === a.id);
     const indexB = columnConfig.findIndex((c: any) => c.id === b.id);
     return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-  });
+  }).map(col => ({ ...col, visible: true }));
 
   return (
     <>
@@ -273,6 +273,7 @@ export default function RealEstateAllLeads() {
                   owners={filterOptions?.owners}
                   variant="real_estate"
                   visibleAttributes={visibleColumns}
+                  maskLeads={company?.mask_leads}
                 />
               ))
             )}
@@ -289,6 +290,7 @@ export default function RealEstateAllLeads() {
                 owners={filterOptions?.owners || []}
                 onRefetch={refetch}
                 columnConfig={columnConfig}
+                maskLeads={company?.mask_leads}
               />
             </CardContent>
           </Card>
@@ -344,6 +346,7 @@ export default function RealEstateAllLeads() {
         onOpenChange={(open) => !open && setViewingLead(null)}
         lead={viewingLead}
         owners={filterOptions?.owners || []}
+        maskLeads={company?.mask_leads}
       />
 
       {/* Mobile Floating Action Button */}

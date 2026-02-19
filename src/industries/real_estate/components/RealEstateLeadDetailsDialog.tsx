@@ -7,18 +7,20 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Phone, Mail, MapPin, Calendar, User, Home, IndianRupee, 
-  FileText, Clock, Camera, CheckCircle 
+import {
+  Phone, Mail, MapPin, Calendar, User, Home, IndianRupee,
+  FileText, Clock, Camera, CheckCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { RealEstateLead } from './RealEstateLeadsTable';
+import { MaskedValue } from '@/components/ui/MaskedValue';
 
 interface RealEstateLeadDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead: RealEstateLead | null;
   owners?: { label: string; value: string }[];
+  maskLeads?: boolean;
 }
 
 export function RealEstateLeadDetailsDialog({
@@ -26,6 +28,7 @@ export function RealEstateLeadDetailsDialog({
   onOpenChange,
   lead,
   owners = [],
+  maskLeads = false,
 }: RealEstateLeadDetailsDialogProps) {
   if (!lead) return null;
 
@@ -61,7 +64,9 @@ export function RealEstateLeadDetailsDialog({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Phone:</span>
-                  <p className="font-medium">{lead.phone || '-'}</p>
+                  <div className="font-medium">
+                    <MaskedValue value={lead.phone} type="phone" enabled={maskLeads} />
+                  </div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">WhatsApp:</span>
@@ -69,7 +74,9 @@ export function RealEstateLeadDetailsDialog({
                 </div>
                 <div className="col-span-2">
                   <span className="text-muted-foreground">Email:</span>
-                  <p className="font-medium">{lead.email || '-'}</p>
+                  <div className="font-medium">
+                    <MaskedValue value={lead.email} type="email" enabled={maskLeads} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -93,7 +100,7 @@ export function RealEstateLeadDetailsDialog({
                 <div>
                   <span className="text-muted-foreground">Budget Range:</span>
                   <p className="font-medium">
-                    {lead.budget_min || lead.budget_max 
+                    {lead.budget_min || lead.budget_max
                       ? `${formatBudget(lead.budget_min)} - ${formatBudget(lead.budget_max)}`
                       : '-'}
                   </p>
@@ -195,8 +202,8 @@ export function RealEstateLeadDetailsDialog({
                   <div className="grid grid-cols-2 gap-4">
                     {lead.site_visit_photos.map((photo, index) => (
                       <div key={index} className="relative rounded-lg overflow-hidden border">
-                        <img 
-                          src={photo.url} 
+                        <img
+                          src={photo.url}
                           alt={`Site visit ${index + 1}`}
                           className="w-full h-40 object-cover"
                         />
