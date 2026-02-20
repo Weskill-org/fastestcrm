@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -6,6 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import PageLoader from '@/components/ui/page-loader';
 import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, Database } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
 
@@ -228,7 +229,9 @@ export default function AppLayout() {
         <main className={`flex-1 overflow-auto ${isMobile ? 'pb-20' : ''}`}>
             <div className="p-4 md:p-8 min-h-[calc(100vh-2rem)] flex flex-col">
                 <div className="flex-1">
-                    <Outlet />
+                    <Suspense fallback={<PageLoader />}>
+                        <Outlet />
+                    </Suspense>
                 </div>
                 <footer className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
                     © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.

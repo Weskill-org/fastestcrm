@@ -3,57 +3,60 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { SubdomainProvider } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
 import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
 import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
+import PageLoader from "@/components/ui/page-loader";
+
+// Static imports for critical routes
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import RegisterCompany from "./pages/RegisterCompany";
-import Dashboard from "./pages/Dashboard";
-import AllLeads from "./pages/AllLeads";
-import LGDashboard from "./pages/LGDashboard";
-import Interested from "./pages/Interested";
-import Paid from "./pages/Paid";
-import PendingPayments from "./pages/PendingPayments";
-import AutoDialer from "./pages/AutoDialer";
-import AIInsights from "./pages/AIInsights";
-import Team from "./pages/Team";
-import Automations from "./pages/Automations";
-import Integrations from "./pages/Integrations";
-import Settings from "./pages/Settings";
-import Forms from "./pages/Forms";
-import FormResponses from "./pages/FormResponses";
-import FormBuilder from "./pages/FormBuilder";
-import PublicForm from "./pages/PublicForm";
-import ResetPassword from "./pages/ResetPassword";
-import ManageCompany from "./pages/ManageCompany";
-import ManageStatuses from "./pages/ManageStatuses";
-import ManageProducts from "./pages/ManageProducts";
-import PlatformAdmin from "./pages/PlatformAdmin";
-import NotFound from "./pages/NotFound";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
-import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
-import ManageProperties from "./industries/real_estate/pages/ManageProperties";
-import Report from "./pages/Report";
-import MetaOAuthCallback from "./pages/MetaOAuthCallback";
-import Blog from "./pages/Blog";
-import BlogPost from "./pages/BlogPost";
-import BigdataSQL from "./pages/BigdataSQL";
+import AppLayout from "@/components/layout/AppLayout";
+
+// Lazy imports for non-critical routes
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AllLeads = lazy(() => import("./pages/AllLeads"));
+const LGDashboard = lazy(() => import("./pages/LGDashboard"));
+const Interested = lazy(() => import("./pages/Interested"));
+const Paid = lazy(() => import("./pages/Paid"));
+const PendingPayments = lazy(() => import("./pages/PendingPayments"));
+const AutoDialer = lazy(() => import("./pages/AutoDialer"));
+const AIInsights = lazy(() => import("./pages/AIInsights"));
+const Team = lazy(() => import("./pages/Team"));
+const Automations = lazy(() => import("./pages/Automations"));
+const Integrations = lazy(() => import("./pages/Integrations"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Forms = lazy(() => import("./pages/Forms"));
+const FormResponses = lazy(() => import("./pages/FormResponses"));
+const FormBuilder = lazy(() => import("./pages/FormBuilder"));
+const PublicForm = lazy(() => import("./pages/PublicForm"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ManageCompany = lazy(() => import("./pages/ManageCompany"));
+const ManageStatuses = lazy(() => import("./pages/ManageStatuses"));
+const ManageProducts = lazy(() => import("./pages/ManageProducts"));
+const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const RealEstateAllLeads = lazy(() => import("./industries/real_estate/RealEstateAllLeads"));
+const ManageLeadProfiling = lazy(() => import("./industries/real_estate/ManageLeadProfiling"));
+const ManageProperties = lazy(() => import("./industries/real_estate/pages/ManageProperties"));
+const Report = lazy(() => import("./pages/Report"));
+const MetaOAuthCallback = lazy(() => import("./pages/MetaOAuthCallback"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
+const BigdataSQL = lazy(() => import("./pages/BigdataSQL"));
 
 const queryClient = new QueryClient();
 
 // Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
-import AppLayout from "@/components/layout/AppLayout";
-
-// ... existing imports
-
-// Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
 const MainDomainRoutes = () => (
-  <Routes>
+  <Suspense fallback={<PageLoader />}>
+    <Routes>
     <Route path="/" element={<Landing />} />
     <Route path="/auth" element={<Auth />} />
     <Route path="/terms" element={<TermsOfService />} />
@@ -95,14 +98,16 @@ const MainDomainRoutes = () => (
     <Route path="/blog" element={<Blog />} />
     <Route path="/blog/:slug" element={<BlogPost />} />
     <Route path="*" element={<NotFound />} />
-  </Routes>
+    </Routes>
+  </Suspense>
 );
 
 // Subdomain routes (company.fastestcrm.com) - can be customized per workspace
 // Wrapped with SubdomainAccessGuard to ensure users can only access their own company's subdomain
 const SubdomainRoutes = () => (
   <SubdomainAccessGuard>
-    <Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
       {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
       <Route path="/" element={<Auth />} />
       <Route path="/auth" element={<Auth />} />
@@ -139,7 +144,8 @@ const SubdomainRoutes = () => (
       <Route path="/form/:id" element={<PublicForm />} />
       <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
       <Route path="*" element={<NotFound />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   </SubdomainAccessGuard>
 );
 
