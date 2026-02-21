@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from './useCompany';
+import { useCallback, useMemo } from 'react';
 
 export interface CompanyLeadStatus {
     id: string;
@@ -38,20 +39,22 @@ export function useLeadStatuses() {
         staleTime: 1000 * 60 * 5,
     });
 
+    const safeStatuses = useMemo(() => statuses || [], [statuses]);
+
     // Helper to get color for a status value
-    const getStatusColor = (value: string) => {
-        const status = statuses?.find(s => s.value === value);
+    const getStatusColor = useCallback((value: string) => {
+        const status = safeStatuses.find(s => s.value === value);
         return status?.color || '#6B7280'; // Default gray
-    };
+    }, [safeStatuses]);
 
     // Helper to get label
-    const getStatusLabel = (value: string) => {
-        const status = statuses?.find(s => s.value === value);
+    const getStatusLabel = useCallback((value: string) => {
+        const status = safeStatuses.find(s => s.value === value);
         return status?.label || value.replace(/_/g, ' ');
-    };
+    }, [safeStatuses]);
 
     return {
-        statuses: statuses || [],
+        statuses: safeStatuses,
         isLoading,
         error,
         getStatusColor,
