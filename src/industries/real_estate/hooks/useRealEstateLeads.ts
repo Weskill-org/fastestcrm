@@ -41,19 +41,6 @@ export function useRealEstateLeads({
         return { leads: [], count: 0 };
       }
 
-      // Convert statusFilter to single string if possible, or null/undefined
-      // The RPC expects `status_filter text`. If array is passed, we take the first one or null.
-      // This matches previous behavior in RealEstateAllLeads.tsx which passed `undefined` for multiple selections.
-      let rpcStatusFilter: string | null = null;
-      if (statusFilter && statusFilter !== 'all') {
-        if (Array.isArray(statusFilter)) {
-          if (statusFilter.length === 1) rpcStatusFilter = statusFilter[0];
-          // if > 1, we pass null -> fetch all (as per previous logic limitation)
-        } else {
-          rpcStatusFilter = statusFilter;
-        }
-      }
-
       // Use direct query instead of RPC to avoid TypeScript issues
       let query = supabase
         .from('leads_real_estate')
@@ -61,8 +48,14 @@ export function useRealEstateLeads({
         .eq('company_id', company.id)
         .order('created_at', { ascending: false });
 
-      if (rpcStatusFilter) {
-        query = query.eq('status', rpcStatusFilter);
+      if (statusFilter && statusFilter !== 'all') {
+        if (Array.isArray(statusFilter)) {
+          if (statusFilter.length > 0) {
+            query = query.in('status', statusFilter);
+          }
+        } else {
+          query = query.eq('status', statusFilter);
+        }
       }
 
       if (ownerFilter && ownerFilter.length > 0) {

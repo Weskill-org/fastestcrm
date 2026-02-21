@@ -43,6 +43,7 @@ import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import BigdataSQL from "./pages/BigdataSQL";
+import Tasks from "./pages/Tasks";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ const MainDomainRoutes = () => (
       <Route path="/dashboard/properties" element={<ManageProperties />} />
       <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
       <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
+      <Route path="/dashboard/tasks" element={<Tasks />} />
     </Route>
 
     <Route path="/platform" element={<PlatformAdmin />} />
@@ -134,6 +136,7 @@ const SubdomainRoutes = () => (
         <Route path="/dashboard/properties" element={<ManageProperties />} />
         <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
         <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
+        <Route path="/dashboard/tasks" element={<Tasks />} />
       </Route>
 
       <Route path="/form/:id" element={<PublicForm />} />

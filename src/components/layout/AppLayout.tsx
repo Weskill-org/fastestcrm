@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Outlet } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, Database } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, Database, CheckSquare, AlertTriangle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTaskLeads } from '@/hooks/useTaskLeads';
+import { useEffect } from 'react';
 import MobileBottomNav from './MobileBottomNav';
 
 const navItems = [{
@@ -110,7 +112,16 @@ export default function AppLayout() {
     } = useCompany();
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
     const isMobile = useIsMobile();
+    const [tasksExpanded, setTasksExpanded] = useState(location.pathname.startsWith('/dashboard/tasks'));
+
+    const { urgent: urgentLeads, today: todayLeads, upcoming: upcomingLeads, isLoading: tasksLoading } = useTaskLeads();
+    const taskCounts = { urgent: urgentLeads.length, today: todayLeads.length, upcoming: upcomingLeads.length };
+    const totalTaskCount = taskCounts.urgent + taskCounts.today + taskCounts.upcoming;
+
+    const isTasksActive = location.pathname.startsWith('/dashboard/tasks');
+    const activeTaskTab = searchParams.get('tab') || 'today';
 
     useEffect(() => {
         if (!loading && !user) {
@@ -194,7 +205,93 @@ export default function AppLayout() {
             </div>
 
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                {filteredNavItems.map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
+                {/* Regular nav items — Dashboard + LG Dashboard first */}
+                {filteredNavItems.slice(0, 2).map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path && !isTasksActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
+                    <item.icon className="h-4 w-4" />
+                    <span className="flex-1 text-left">{item.label}</span>
+                </button>)}
+
+                {/* ── Tasks section (below LG Dashboard) ── */}
+                <div>
+                    <button
+                        onClick={() => {
+                            setTasksExpanded(prev => !prev);
+                            if (!isTasksActive) navigate(`/dashboard/tasks?tab=${activeTaskTab}`);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${isTasksActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                            }`}
+                    >
+                        <CheckSquare className="h-4 w-4" />
+                        <span className="flex-1 text-left">Tasks</span>
+                        {!tasksLoading && totalTaskCount > 0 && (
+                            <span className="text-xs font-bold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                                {totalTaskCount}
+                            </span>
+                        )}
+                        {tasksExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
+                    </button>
+
+                    {/* Sub-items */}
+                    {tasksExpanded && (
+                        <div className="mt-0.5 ml-3 border-l border-sidebar-border pl-3 space-y-0.5">
+                            {/** Urgent */}
+                            <button
+                                onClick={() => navigate('/dashboard/tasks?tab=urgent')}
+                                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'urgent'
+                                    ? 'bg-red-500/20 text-red-400'
+                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                                    }`}
+                            >
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                <span className="flex-1 text-left">Urgent</span>
+                                {!tasksLoading && taskCounts.urgent > 0 && (
+                                    <span className="text-xs font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                                        {taskCounts.urgent}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/** Today */}
+                            <button
+                                onClick={() => navigate('/dashboard/tasks?tab=today')}
+                                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'today'
+                                    ? 'bg-amber-500/20 text-amber-400'
+                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                                    }`}
+                            >
+                                <Clock className="h-3.5 w-3.5" />
+                                <span className="flex-1 text-left">Today</span>
+                                {!tasksLoading && taskCounts.today > 0 && (
+                                    <span className="text-xs font-bold bg-amber-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                                        {taskCounts.today}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/** Upcoming */}
+                            <button
+                                onClick={() => navigate('/dashboard/tasks?tab=upcoming')}
+                                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'upcoming'
+                                    ? 'bg-blue-500/20 text-blue-400'
+                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                                    }`}
+                            >
+                                <Calendar className="h-3.5 w-3.5" />
+                                <span className="flex-1 text-left">Upcoming</span>
+                                {!tasksLoading && taskCounts.upcoming > 0 && (
+                                    <span className="text-xs font-bold bg-blue-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                                        {taskCounts.upcoming}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Remaining nav items (index 2+) */}
+                {filteredNavItems.slice(2).map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
                     <item.icon className="h-4 w-4" />
                     <span className="flex-1 text-left">{item.label}</span>
                     {item.label === 'Bigdata SQL' && (
