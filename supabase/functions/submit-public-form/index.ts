@@ -238,6 +238,24 @@ serve(async (req) => {
 
     console.log(`Lead created: ${lead.id} from form: ${formId}, IP: ${clientIP}`);
 
+    // Notify the form creator about the new submission (fire-and-forget)
+    try {
+      const submitterName = leadData.name || 'Someone';
+      await supabaseAdmin
+        .from('notifications')
+        .insert({
+          user_id: form.created_by_id,
+          title: 'New Form Submission 📋',
+          message: `${submitterName} just submitted your form`,
+          type: 'form_submission',
+          lead_id: lead.id,
+          read: false,
+        });
+    } catch (notifyErr) {
+      // Non-critical — do not fail the response
+      console.error('Failed to create form submission notification:', notifyErr);
+    }
+
     return new Response(
       JSON.stringify({ success: true, leadId: lead.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

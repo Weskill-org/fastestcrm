@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { requestWebNotificationPermission, sendWebNotification } from '@/lib/webNotificationHelper';
 
 export interface Notification {
     id: string;
@@ -85,6 +86,9 @@ export function useNotifications() {
         if (session?.user?.id) {
             fetchNotifications();
 
+            // Request browser notification permission once the user is logged in
+            requestWebNotificationPermission();
+
             // Subscribe to real-time changes
             const channel = supabase
                 .channel('public:notifications')
@@ -100,8 +104,15 @@ export function useNotifications() {
                         const newNotification = payload.new as Notification;
                         setNotifications(prev => [newNotification, ...prev]);
                         setUnreadCount(prev => prev + 1);
+
+                        // In-app toast
                         toast.info(newNotification.title, {
                             description: newNotification.message,
+                        });
+
+                        // Native OS browser popup
+                        sendWebNotification(newNotification.title, newNotification.message, {
+                            tag: newNotification.id, // prevents duplicate popups for same notification
                         });
                     }
                 )
