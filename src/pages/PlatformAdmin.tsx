@@ -13,8 +13,11 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Building2, Users, Search, Plus, Wallet, Gift, Tag,
   Loader2, ArrowLeft, CheckCircle, XCircle, Eye, RefreshCw,
-  Calendar, Clock, DollarSign, BarChart3, Download, Trash2, Edit
+  Calendar, Clock, DollarSign, BarChart3, Download, Trash2, Edit, Megaphone
 } from 'lucide-react';
+import { AnalyticsTab } from '@/components/platform/AnalyticsTab';
+import { AnnouncementsTab } from '@/components/platform/AnnouncementsTab';
+import { CompanyUsersPanel, type CompanyForPanel } from '@/components/platform/CompanyUsersPanel';
 import {
   Table,
   TableBody,
@@ -114,6 +117,7 @@ export default function PlatformAdmin() {
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [userMgmtCompany, setUserMgmtCompany] = useState<CompanyForPanel | null>(null);
 
   // Dialog states
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -680,6 +684,14 @@ export default function PlatformAdmin() {
               <Gift className="h-4 w-4" />
               Gift Cards
             </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="announcements" className="gap-2">
+              <Megaphone className="h-4 w-4" />
+              Announcements
+            </TabsTrigger>
           </TabsList>
 
           {/* Companies Tab */}
@@ -719,7 +731,14 @@ export default function PlatformAdmin() {
                   <TableBody>
                     {filteredCompanies.map((company) => (
                       <TableRow key={company.id}>
-                        <TableCell className="font-medium">{company.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <button
+                            onClick={() => setUserMgmtCompany({ id: company.id, name: company.name, slug: company.slug })}
+                            className="text-left font-semibold hover:text-primary hover:underline transition-colors cursor-pointer"
+                          >
+                            {company.name}
+                          </button>
+                        </TableCell>
                         <TableCell>
                           <code className="text-xs bg-muted px-2 py-1 rounded">
                             {company.slug}
@@ -771,6 +790,10 @@ export default function PlatformAdmin() {
                               <DropdownMenuItem onClick={() => fetchCompanyDetails(company.id)}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setUserMgmtCompany({ id: company.id, name: company.name, slug: company.slug })}>
+                                <Users className="h-4 w-4 mr-2" />
+                                Manage Users
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => {
                                 setSelectedCompany(company);
@@ -1013,7 +1036,23 @@ export default function PlatformAdmin() {
               </CardContent>
             </Card>
           </TabsContent>
+          {/* Analytics Tab */}
+          <TabsContent value="analytics">
+            <AnalyticsTab />
+          </TabsContent>
+
+          {/* Announcements Tab */}
+          <TabsContent value="announcements">
+            <AnnouncementsTab />
+          </TabsContent>
         </Tabs>
+
+        {/* Company Users Panel */}
+        <CompanyUsersPanel
+          company={userMgmtCompany}
+          onClose={() => setUserMgmtCompany(null)}
+          onCompanyDeleted={fetchAllData}
+        />
 
         {/* Add Credits Dialog */}
         <Dialog open={addCreditsOpen} onOpenChange={setAddCreditsOpen}>

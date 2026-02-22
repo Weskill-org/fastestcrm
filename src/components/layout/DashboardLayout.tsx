@@ -11,6 +11,7 @@ import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone,
 import MobileBottomNav from './MobileBottomNav';
 import { NotificationsBell } from './NotificationsBell';
 import { useTaskLeads } from '@/hooks/useTaskLeads';
+import { AnnouncementBanner } from './AnnouncementBanner';
 
 
 const navItems = [{
@@ -326,6 +327,7 @@ export default function DashboardLayout({
 
     {/* Main Content */}
     <main className={`flex-1 overflow-auto ${isMobile ? 'pb-20' : ''}`}>
+      <AnnouncementBanner />
       <div className="p-4 md:p-8 min-h-[calc(100vh-2rem)] flex flex-col">
         <div className="flex-1">
           {children}
