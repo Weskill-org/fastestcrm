@@ -10,8 +10,22 @@ import { format } from 'date-fns';
 export default function Dashboard() {
   // Fetch all leads for accurate revenue calculations
   // TODO: Move aggregation to backend for better performance with large datasets
-  const { data: leadsData, isLoading } = useLeads({ fetchAll: true });
-  const leads = leadsData?.leads || [];
+  // Optimization: Fetch only necessary columns for stats to reduce payload size
+  const { data: statsData, isLoading: isLoadingStats } = useLeads({
+    fetchAll: true,
+    select: 'id,status,revenue_received,revenue_projected,updated_at'
+  });
+  const leads = statsData?.leads || [];
+
+  // Fetch only recent leads for the list
+  const { data: recentLeadsData, isLoading: isLoadingRecent } = useLeads({
+    page: 1,
+    pageSize: 5,
+    select: 'id,name,email,phone,status,created_at'
+  });
+  const recentLeads = recentLeadsData?.leads || [];
+
+  const isLoading = isLoadingStats || isLoadingRecent;
 
   // Calculate stats
   const today = new Date();
@@ -72,8 +86,6 @@ export default function Dashboard() {
       trend: 'Forecast'
     },
   ];
-
-  const recentLeads = leads.slice(0, 5);
 
   return (
     <>
