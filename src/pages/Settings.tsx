@@ -156,14 +156,14 @@ export default function Settings() {
 
     return (
         <>
-            <div className="p-8 space-y-8">
+            <div className="p-4 md:p-8 space-y-6 md:space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold">Settings</h1>
                     <p className="text-muted-foreground">Manage your account and application preferences.</p>
                 </div>
 
                 <Tabs defaultValue="profile" className="w-full">
-                    <TabsList className="mb-8 flex-wrap">
+                    <TabsList className="mb-8 flex-wrap h-auto w-full justify-start gap-1 p-1">
                         <TabsTrigger value="profile" className="flex items-center gap-2">
                             <User className="h-4 w-4" /> Profile
                         </TabsTrigger>

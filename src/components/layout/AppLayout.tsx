@@ -196,7 +196,7 @@ export default function AppLayout() {
                         </div>
                     )}
                     <div>
-                        <h1 className="font-semibold text-sidebar-foreground">
+                        <h1 className="font-semibold text-sidebar-foreground" style={{ fontFamily: "'Syne', sans-serif" }}>
                             {company?.name || 'Fastest CRM'}
                         </h1>
                         <p className="text-xs text-muted-foreground">Fastest CRM by Upmarking.com</p>
@@ -206,10 +206,19 @@ export default function AppLayout() {
 
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                 {/* Regular nav items — Dashboard + LG Dashboard first */}
-                {filteredNavItems.slice(0, 2).map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path && !isTasksActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
-                    <item.icon className="h-4 w-4" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                </button>)}
+                {filteredNavItems.slice(0, 2).map(item => (
+                    <button
+                        key={item.label}
+                        onClick={() => navigate(item.path)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === item.path && !isTasksActive
+                                ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                            }`}
+                    >
+                        <item.icon className={`h-4 w-4 transition-colors ${location.pathname === item.path && !isTasksActive ? 'text-primary' : ''}`} />
+                        <span className="flex-1 text-left">{item.label}</span>
+                    </button>
+                ))}
 
                 {/* ── Tasks section (below LG Dashboard) ── */}
                 <div>
@@ -291,19 +300,28 @@ export default function AppLayout() {
                 </div>
 
                 {/* Remaining nav items (index 2+) */}
-                {filteredNavItems.slice(2).map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
-                    <item.icon className="h-4 w-4" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {item.label === 'Bigdata SQL' && (
-                        <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">New</span>
-                    )}
-                </button>)}
+                {filteredNavItems.slice(2).map(item => (
+                    <button
+                        key={item.label}
+                        onClick={() => navigate(item.path)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === item.path
+                                ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                            }`}
+                    >
+                        <item.icon className={`h-4 w-4 transition-colors ${location.pathname === item.path ? 'text-primary' : ''}`} />
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {item.label === 'Bigdata SQL' && (
+                            <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">New</span>
+                        )}
+                    </button>
+                ))}
             </nav>
 
             <div className="p-4 border-t border-sidebar-border">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
+                    <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center ring-2 ring-primary/30">
+                        <span className="text-sm font-bold" style={{ color: 'hsl(222 28% 5%)' }}>
                             {user.email?.[0].toUpperCase()}
                         </span>
                     </div>

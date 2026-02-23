@@ -127,11 +127,12 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark flex items-center justify-center p-6">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-background dark flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Dot-grid */}
+      <div className="absolute inset-0 dot-grid-bg opacity-40" />
+      {/* Gradient orbs */}
+      <div className="absolute top-1/4 left-1/5 w-80 h-80 bg-primary/15 rounded-full blur-[90px] animate-float" />
+      <div className="absolute bottom-1/4 right-1/5 w-72 h-72 bg-primary/10 rounded-full blur-[80px] animate-float-slow" />
 
       <div className="w-full max-w-md relative">
         {/* Show different back link based on subdomain */}
@@ -148,7 +149,7 @@ export default function Auth() {
           </Link>
         )}
 
-        <Card className="glass border-border/50">
+        <Card className="glass border-border/50 shadow-2xl" style={{ boxShadow: '0 0 60px hsl(175 80% 48% / 0.08), 0 20px 60px hsl(0 0% 0% / 0.3)' }}>
           <CardHeader className="text-center">
             {/* Company logo or default logo based on subdomain */}
             {applyBranding && logoUrl ? (
@@ -164,8 +165,8 @@ export default function Auth() {
                 <Building2 className="h-8 w-8 text-primary-foreground" />
               </div>
             ) : (
-              <div className="mx-auto w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
-                <span className="text-xl font-bold text-primary-foreground">L³</span>
+              <div className="mx-auto w-12 h-12 flex items-center justify-center mb-4">
+                <img src="/fastestcrmlogo.png" alt="Fastest CRM" className="w-12 h-12 object-contain" />
               </div>
             )}
 
@@ -178,7 +179,7 @@ export default function Auth() {
               </div>
             )}
 
-            <CardTitle className="text-2xl">
+            <CardTitle className="text-2xl" style={{ fontFamily: "'Syne', sans-serif" }}>
               {isForgotPassword
                 ? 'Reset your password'
                 : 'Welcome back'}
@@ -213,7 +214,8 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  className="w-full gradient-primary"
+                  className="w-full gradient-primary shimmer-overlay font-semibold"
+                  style={{ color: 'hsl(222 28% 5%)' }}
                   disabled={loading}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -278,7 +280,8 @@ export default function Auth() {
 
                   <Button
                     type="submit"
-                    className="w-full gradient-primary"
+                    className="w-full gradient-primary shimmer-overlay font-semibold"
+                    style={{ color: 'hsl(222 28% 5%)' }}
                     disabled={loading}
                   >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

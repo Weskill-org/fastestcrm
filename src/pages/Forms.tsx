@@ -59,13 +59,13 @@ export default function Forms() {
 
     return (
         <>
-            <div className="p-8 space-y-8">
-                <div className="flex items-center justify-between">
+            <div className="p-4 md:p-8 space-y-6 md:space-y-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold">Forms</h1>
                         <p className="text-muted-foreground">Create and manage your lead capture forms.</p>
                     </div>
-                    <Button onClick={() => navigate('/dashboard/forms/new')} className="gradient-primary">
+                    <Button onClick={() => navigate('/dashboard/forms/new')} className="gradient-primary w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Create New Form
                     </Button>
@@ -76,82 +76,143 @@ export default function Forms() {
                         <CardTitle>All Forms</CardTitle>
                         <CardDescription>Manage your active forms and view responses.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Form Name</TableHead>
-                                    <TableHead className="text-right">Responses</TableHead>
-                                    <TableHead>Created Date</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoading ? (
+                    <CardContent className="p-0 sm:p-6">
+                        {/* Mobile card view (hidden on md+) */}
+                        <div className="md:hidden divide-y divide-border">
+                            {isLoading ? (
+                                <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                            ) : forms?.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground px-4">
+                                    No forms found. Create one to get started.
+                                </div>
+                            ) : (
+                                forms?.map((form) => (
+                                    <div key={form.id} className="flex items-start justify-between gap-3 px-4 py-4">
+                                        <div className="flex items-start gap-3 min-w-0">
+                                            <FileText className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-sm leading-snug break-words">{form.name}</p>
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {format(new Date(form.created_at), 'MMM d, yyyy')}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs ${form.status === 'active'
+                                                        ? 'bg-green-500/10 text-green-500'
+                                                        : 'bg-yellow-500/10 text-yellow-500'
+                                                        }`}>
+                                                        {form.status || 'Draft'}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {responseCounts?.[form.id] || 0} responses
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="shrink-0">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}`)}>
+                                                    <Edit className="h-4 w-4 mr-2" /> Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}/responses`)}>
+                                                    <Eye className="h-4 w-4 mr-2" /> View Responses
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="text-destructive"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(form.id);
+                                                    }}
+                                                >
+                                                    <Trash className="h-4 w-4 mr-2" /> Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Desktop table view (hidden below md) */}
+                        <div className="hidden md:block">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8">
-                                            Loading...
-                                        </TableCell>
+                                        <TableHead>Form Name</TableHead>
+                                        <TableHead className="text-right">Responses</TableHead>
+                                        <TableHead>Created Date</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ) : forms?.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                            No forms found. Create one to get started.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    forms?.map((form) => (
-                                        <TableRow key={form.id}>
-                                            <TableCell className="font-medium flex items-center gap-2">
-                                                <FileText className="h-4 w-4 text-primary" />
-                                                {form.name}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {responseCounts?.[form.id] || 0}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {format(new Date(form.created_at), 'MMM d, yyyy')}
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className={`px-2 py-1 rounded-full text-xs ${form.status === 'active'
-                                                    ? 'bg-green-500/10 text-green-500'
-                                                    : 'bg-yellow-500/10 text-yellow-500'
-                                                    }`}>
-                                                    {form.status || 'Draft'}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}`)}>
-                                                            <Edit className="h-4 w-4 mr-2" /> Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}/responses`)}>
-                                                            <Eye className="h-4 w-4 mr-2" /> View Responses
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            className="text-destructive"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDelete(form.id);
-                                                            }}
-                                                        >
-                                                            <Trash className="h-4 w-4 mr-2" /> Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                </TableHeader>
+                                <TableBody>
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-8">Loading...</TableCell>
+                                        </TableRow>
+                                    ) : forms?.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                                No forms found. Create one to get started.
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : (
+                                        forms?.map((form) => (
+                                            <TableRow key={form.id}>
+                                                <TableCell className="font-medium">
+                                                    <span className="flex items-center gap-2">
+                                                        <FileText className="h-4 w-4 text-primary" />
+                                                        {form.name}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">{responseCounts?.[form.id] || 0}</TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    {format(new Date(form.created_at), 'MMM d, yyyy')}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${form.status === 'active'
+                                                        ? 'bg-green-500/10 text-green-500'
+                                                        : 'bg-yellow-500/10 text-yellow-500'
+                                                        }`}>
+                                                        {form.status || 'Draft'}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}`)}>
+                                                                <Edit className="h-4 w-4 mr-2" /> Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/${form.id}/responses`)}>
+                                                                <Eye className="h-4 w-4 mr-2" /> View Responses
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                className="text-destructive"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDelete(form.id);
+                                                                }}
+                                                            >
+                                                                <Trash className="h-4 w-4 mr-2" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
 

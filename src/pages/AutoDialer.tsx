@@ -162,7 +162,7 @@ export default function AutoDialer() {
 
     return (
         <>
-            <div className="p-8 space-y-8">
+            <div className="p-4 md:p-8 space-y-6 md:space-y-8">
                 <div>
                     <h1 className="text-2xl font-bold">Auto Dialer</h1>
                     <p className="text-muted-foreground">Sequential calling for high-velocity sales. Focusing on 'New' leads.</p>
@@ -172,7 +172,7 @@ export default function AutoDialer() {
                     {/* Active Call Card */}
                     <Card className="lg:col-span-2 glass border-primary/20">
                         <CardHeader>
-                            <div className="flex justify-between items-center">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                                 <div>
                                     <CardTitle className="flex items-center gap-2">
                                         <PhoneForwarded className="h-5 w-5 text-primary animate-pulse" />
@@ -182,7 +182,7 @@ export default function AutoDialer() {
                                         {isDialing ? 'Dialing in progress...' : 'Ready to start dialing'}
                                     </CardDescription>
                                 </div>
-                                <div className="flex items-center gap-4">
+                                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                                     {!isDialing && (
                                         <MultiSelectFilter
                                             title="Status"
@@ -222,8 +222,8 @@ export default function AutoDialer() {
                                         <p className="text-sm text-muted-foreground mt-2">{currentLead.college || 'No College'}</p>
                                     </div>
 
-                                    <div className="flex justify-center gap-4 max-w-md mx-auto">
-                                        <div className="w-[180px]">
+                                    <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 max-w-md mx-auto w-full">
+                                        <div className="w-full sm:w-[180px]">
                                             <Select value={callStatus} onValueChange={(val) => handleStatusChange(val as LeadStatus)}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select Outcome" />
@@ -241,7 +241,7 @@ export default function AutoDialer() {
                                         <Button
                                             onClick={handleCallOutcome}
                                             disabled={!callStatus}
-                                            className="gradient-primary min-w-[140px]"
+                                            className="gradient-primary w-full sm:w-auto min-w-[140px]"
                                         >
                                             {timer !== null ? `Next Call (${timer})` : 'Next Call'} <SkipForward className="ml-2 h-4 w-4" />
                                         </Button>

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link2, Copy, Plus, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForms } from '@/hooks/useForms';
 import { useLGLinks } from '@/hooks/useLGLinks';
@@ -175,9 +176,38 @@ export default function LGDashboard() {
                     </CardHeader>
                     <CardContent>
                         {linksLoading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            </div>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>CA Name</TableHead>
+                                        <TableHead>Form</TableHead>
+                                        <TableHead>UTM Source</TableHead>
+                                        <TableHead>Campaign</TableHead>
+                                        <TableHead className="text-right">Total Leads</TableHead>
+                                        <TableHead className="text-right">Interested</TableHead>
+                                        <TableHead className="text-right">Paid</TableHead>
+                                        <TableHead className="text-right">Revenue</TableHead>
+                                        <TableHead className="text-right">Projected</TableHead>
+                                        <TableHead></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {[1, 2, 3].map((i) => (
+                                        <TableRow key={i}>
+                                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                                            <TableCell className="text-right"><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
+                                            <TableCell className="text-right"><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
+                                            <TableCell className="text-right"><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
+                                            <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                                            <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                                            <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         ) : links.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
                                 No links created yet. Create your first link above.

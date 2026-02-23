@@ -339,13 +339,13 @@ export default function Team() {
 
     return (
         <>
-            <div className="p-8 space-y-8">
-                <div className="flex items-center justify-between">
+            <div className="p-4 md:p-8 space-y-6 md:space-y-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold">Team Management</h1>
                         <p className="text-muted-foreground">Manage your organization hierarchy and roles.</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         {currentUserRole === 'company' && (
                             <Dialog open={editHierarchyOpen} onOpenChange={setEditHierarchyOpen}>
                                 <Button variant="outline" onClick={openEditHierarchy}>
