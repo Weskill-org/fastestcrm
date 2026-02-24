@@ -7,10 +7,17 @@ import {
 } from '@/components/ui/dialog';
 import { Tables } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
-import { Mail, Phone, Building, Calendar, User, CreditCard, Link, MapPin, Home, DollarSign, Megaphone, Globe, Layers, CalendarClock } from 'lucide-react';
+import { Mail, Phone, Building, Calendar, User, CreditCard, Link, MapPin, Home, DollarSign, Megaphone, Globe, Layers, CalendarClock, Pencil, FileText, Check } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MaskedValue } from '@/components/ui/MaskedValue';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect } from 'react';
+import { useUpdateLead } from '@/hooks/useLeads';
+import { useLeadStatuses, CompanyLeadStatus } from '@/hooks/useLeadStatuses';
+import { StatusReminderDialog } from './StatusReminderDialog';
 
 type Lead = Tables<'leads'> & Partial<Tables<'leads_real_estate'>> & {
     sales_owner?: {
@@ -24,9 +31,72 @@ interface LeadDetailsDialogProps {
     lead: any;
     owners: { label: string; value: string }[];
     maskLeads?: boolean;
+    onEdit?: (lead: any) => void;
+    onUpdate?: () => void;
 }
 
-export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads = false }: LeadDetailsDialogProps) {
+export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads = false, onEdit, onUpdate }: LeadDetailsDialogProps) {
+    const updateLead = useUpdateLead();
+    const { statuses } = useLeadStatuses();
+
+    // Quick Update State
+    const [quickStatus, setQuickStatus] = useState<string>('');
+    const [quickNotes, setQuickNotes] = useState<string>('');
+    const [statusReminderOpen, setStatusReminderOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
+    const [reminderAt, setReminderAt] = useState<Date | null>(null);
+
+    useEffect(() => {
+        if (lead) {
+            setQuickStatus(lead.status || 'new');
+            setQuickNotes(lead.notes || '');
+            setReminderAt(lead.reminder_at ? new Date(lead.reminder_at) : null);
+        }
+    }, [lead, open]);
+
+    const handleStatusChange = (newStatusValue: string) => {
+        const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+        if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived')) {
+            setPendingStatus(newStatus);
+            setStatusReminderOpen(true);
+        } else {
+            setQuickStatus(newStatusValue);
+            setReminderAt(null);
+        }
+    };
+
+    const handleReminderConfirm = (date: Date | null, sendNotification: boolean) => {
+        if (pendingStatus) {
+            setQuickStatus(pendingStatus.value);
+            setReminderAt(date);
+        }
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+    };
+
+    const handleReminderCancel = () => {
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+    };
+
+    const handleSaveQuickUpdate = async () => {
+        if (!lead) return;
+        try {
+            await updateLead.mutateAsync({
+                id: lead.id,
+                status: quickStatus as any,
+                notes: quickNotes,
+                reminder_at: reminderAt ? reminderAt.toISOString() : null,
+            });
+            if (onUpdate) onUpdate();
+        } catch (error) {
+            console.error('Failed to update lead via quick update', error);
+        }
+    };
+
+    const hasQuickUpdateChanges = lead && (quickStatus !== lead.status || quickNotes !== (lead.notes || '') || (reminderAt?.toISOString() !== (lead.reminder_at ? new Date(lead.reminder_at).toISOString() : null)));
+
     if (!lead) return null;
 
     // Helper to format currency
@@ -49,12 +119,59 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Lead Details</DialogTitle>
+                    <div className="flex items-center justify-between pr-6">
+                        <DialogTitle>Lead Details</DialogTitle>
+                        {onEdit && (
+                            <Button variant="outline" size="sm" onClick={() => onEdit(lead)} className="gap-2 h-8">
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit Lead
+                            </Button>
+                        )}
+                    </div>
                     <DialogDescription>
                         Detailed information about {lead.name}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-6 py-4">
+                    {/* Quick Update Section */}
+                    <div className="space-y-3 bg-muted/30 p-4 rounded-lg border">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-primary/80 flex items-center gap-2">
+                                <FileText className="h-4 w-4" /> Quick Update
+                            </h3>
+                            {hasQuickUpdateChanges && (
+                                <Button size="sm" onClick={handleSaveQuickUpdate} disabled={updateLead.isPending} className="h-8 gap-1.5">
+                                    <Check className="h-3.5 w-3.5" />
+                                    {updateLead.isPending ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <span className="text-sm font-medium text-muted-foreground">Status</span>
+                                <Select value={quickStatus} onValueChange={handleStatusChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {statuses?.map((s) => (
+                                            <SelectItem key={s.id} value={s.value} className="capitalize">{s.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <span className="text-sm font-medium text-muted-foreground">Notes</span>
+                                <Textarea
+                                    placeholder="Add quick notes here..."
+                                    value={quickNotes}
+                                    onChange={(e) => setQuickNotes(e.target.value)}
+                                    className="resize-none min-h-[80px]"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Role / Basic Info Section */}
                     <div className="space-y-3">
                         <h3 className="font-semibold text-primary/80 border-b pb-1">Contact Information</h3>
@@ -275,6 +392,16 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
                     )}
                 </div>
             </DialogContent>
+
+            {pendingStatus && (
+                <StatusReminderDialog
+                    open={statusReminderOpen}
+                    onOpenChange={setStatusReminderOpen}
+                    status={pendingStatus}
+                    onConfirm={handleReminderConfirm}
+                    onCancel={handleReminderCancel}
+                />
+            )}
         </Dialog>
     );
 }

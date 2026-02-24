@@ -1,0 +1,170 @@
+[93m[4mUnused files[24m[39m (81)
+test-edge-function.js                                   
+vite.config.ts.timestamp-1764963566802-c1ae1cddcd90f.mjs
+vite.config.ts.timestamp-1767972073732-681d4cf49d5cc.mjs
+src/App.css                                             
+src/components/NavLink.tsx                              
+src/hooks/useAnnouncements.ts                           
+src/hooks/useReminderPolling.ts                         
+src/industries/index.ts                                 
+src/pages/Index.tsx                                     
+src/components/layout/AnnouncementBanner.tsx            
+src/components/layout/DashboardLayout.tsx               
+src/components/leads/LeadMobileCard.tsx                 
+src/components/leads/LeadsFilters.tsx                   
+src/components/ui/accordion.tsx                         
+src/components/ui/aspect-ratio.tsx                      
+src/components/ui/avatar.tsx                            
+src/components/ui/breadcrumb.tsx                        
+src/components/ui/carousel.tsx                          
+src/components/ui/chart.tsx                             
+src/components/ui/collapsible.tsx                       
+src/components/ui/context-menu.tsx                      
+src/components/ui/drawer.tsx                            
+src/components/ui/hover-card.tsx                        
+src/components/ui/input-otp.tsx                         
+src/components/ui/menubar.tsx                           
+src/components/ui/navigation-menu.tsx                   
+src/components/ui/pagination.tsx                        
+src/components/ui/resizable.tsx                         
+src/components/ui/sidebar.tsx                           
+src/components/ui/slider.tsx                            
+src/components/ui/toggle-group.tsx                      
+src/components/ui/toggle.tsx                            
+src/industries/automotive/config.ts                     
+src/industries/automotive/index.ts                      
+src/industries/education/index.ts                       
+src/industries/finance/config.ts                        
+src/industries/finance/index.ts                         
+src/industries/healthcare/config.ts                     
+src/industries/healthcare/index.ts                      
+src/industries/insurance/config.ts                      
+src/industries/insurance/index.ts                       
+src/industries/real_estate/index.ts                     
+src/industries/retail/config.ts                         
+src/industries/retail/index.ts                          
+src/industries/saas/config.ts                           
+src/industries/saas/index.ts                            
+src/industries/travel/config.ts                         
+src/industries/travel/index.ts                          
+supabase/functions/admin-manage-company/index.ts        
+supabase/functions/change-industry/index.ts             
+supabase/functions/create-payment-link/index.ts         
+supabase/functions/delete-team-member/index.ts          
+supabase/functions/get-public-form/index.ts             
+supabase/functions/google-lead-webhook/index.ts         
+supabase/functions/google-link-webhook/index.ts         
+supabase/functions/google-list-accounts/index.ts        
+supabase/functions/google-oauth-callback/index.ts       
+supabase/functions/handle-license-webhook/index.ts      
+supabase/functions/handle-razorpay-webhook/index.ts     
+supabase/functions/initiate-wallet-recharge/index.ts    
+supabase/functions/invite-team-member/index.ts          
+supabase/functions/linkedin-lead-webhook/index.ts       
+supabase/functions/manage-subscription/index.ts         
+supabase/functions/meta-lead-webhook/index.ts           
+supabase/functions/meta-oauth-callback/index.ts         
+supabase/functions/meta-select-page/index.ts            
+supabase/functions/process-auto-debit/index.ts          
+supabase/functions/process-reminders/cors.ts            
+supabase/functions/process-reminders/index.ts           
+supabase/functions/purchase-addon/index.ts              
+supabase/functions/purchase-licenses/index.ts           
+supabase/functions/query-bigdata-sql/index.ts           
+supabase/functions/redeem-gift-card/index.ts            
+supabase/functions/register-company/index.ts            
+supabase/functions/submit-external-lead/index.ts        
+supabase/functions/submit-public-form/index.ts          
+supabase/functions/unlock-feature/index.ts              
+supabase/functions/unlock-lead-attributes/index.ts      
+supabase/functions/validate-discount/index.ts           
+supabase/functions/verify-domain/index.ts               
+supabase/functions/verify-wallet-recharge/index.ts      
+[93m[4mUnused dependencies[24m[39m (15)
+@radix-ui/react-accordion        package.json:18:6
+@radix-ui/react-aspect-ratio     package.json:20:6
+@radix-ui/react-avatar           package.json:21:6
+@radix-ui/react-collapsible      package.json:23:6
+@radix-ui/react-context-menu     package.json:24:6
+@radix-ui/react-hover-card       package.json:27:6
+@radix-ui/react-menubar          package.json:29:6
+@radix-ui/react-navigation-menu  package.json:30:6
+@radix-ui/react-slider           package.json:37:6
+@radix-ui/react-toggle           package.json:42:6
+@radix-ui/react-toggle-group     package.json:43:6
+embla-carousel-react             package.json:52:6
+input-otp                        package.json:53:6
+react-resizable-panels           package.json:61:6
+vaul                             package.json:67:6
+[93m[4mUnused devDependencies[24m[39m (2)
+@tailwindcss/typography  package.json:72:6
+supabase                 package.json:84:6
+[93m[4mUnused exports[24m[39m (41)
+toast                                   src/components/ui/sonner.tsx:27:19       
+Tooltip                                 src/components/ui/tooltip.tsx:28:10      
+TooltipTrigger                          src/components/ui/tooltip.tsx:28:19      
+TooltipContent                          src/components/ui/tooltip.tsx:28:35      
+isCompanyWorkspace            function  src/hooks/useSubdomain.ts:167:17         
+getIndustryName               function  src/config/industries.ts:95:17           
+ToastAction                             src/components/ui/toast.tsx:110:3        
+reducer                                 src/hooks/use-toast.ts:71:14             
+useCreateLeads                function  src/hooks/useLeads.ts:221:17             
+useDeleteLead                 function  src/hooks/useLeads.ts:245:17             
+HIERARCHY_LEVELS                        src/hooks/useUserRole.ts:30:14           
+toast                                   src/components/ui/use-toast.ts:3:20      
+badgeVariants                           src/components/ui/badge.tsx:29:17        
+SelectSeparator                         src/components/ui/select.tsx:140:3       
+SelectScrollUpButton                    src/components/ui/select.tsx:141:3       
+SelectScrollDownButton                  src/components/ui/select.tsx:142:3       
+TableFooter                             src/components/ui/table.tsx:72:41        
+TableCaption                            src/components/ui/table.tsx:72:86        
+DialogPortal                            src/components/ui/dialog.tsx:86:3        
+DialogOverlay                           src/components/ui/dialog.tsx:87:3        
+DialogClose                             src/components/ui/dialog.tsx:88:3        
+EDUCATION_STATUSES                      src/industries/education/config.ts:54:14 
+EDUCATION_PRODUCT_CATEGORIES            src/industries/education/config.ts:68:14 
+DropdownMenuCheckboxItem                src/components/ui/dropdown-menu.tsx:168:3
+DropdownMenuLabel                       src/components/ui/dropdown-menu.tsx:170:3
+DropdownMenuShortcut                    src/components/ui/dropdown-menu.tsx:172:3
+DropdownMenuGroup                       src/components/ui/dropdown-menu.tsx:173:3
+DropdownMenuPortal                      src/components/ui/dropdown-menu.tsx:174:3
+AlertDialogPortal                       src/components/ui/alert-dialog.tsx:94:3  
+AlertDialogOverlay                      src/components/ui/alert-dialog.tsx:95:3  
+AlertDialogTrigger                      src/components/ui/alert-dialog.tsx:96:3  
+CommandDialog                           src/components/ui/command.tsx:124:3      
+CommandShortcut                         src/components/ui/command.tsx:130:3      
+ScrollBar                               src/components/ui/scroll-area.tsx:38:22  
+useFormField                            src/components/ui/form.tsx:129:10        
+FormDescription                         src/components/ui/form.tsx:129:64        
+SheetClose                              src/components/ui/sheet.tsx:98:3         
+SheetDescription                        src/components/ui/sheet.tsx:100:3        
+SheetFooter                             src/components/ui/sheet.tsx:101:3        
+SheetOverlay                            src/components/ui/sheet.tsx:103:3        
+SheetPortal                             src/components/ui/sheet.tsx:104:3        
+[93m[4mUnused exported types[24m[39m (25)
+Industry                  interface  src/config/industries.ts:15:18                 
+BlogPost                  interface  src/data/blogs.ts:1:18                         
+Enums                     type       src/integrations/supabase/types.ts:1734:13     
+CompositeTypes            type       src/integrations/supabase/types.ts:1751:13     
+Form                      type       src/hooks/useForms.ts:5:13                     
+FormInsert                type       src/hooks/useForms.ts:6:13                     
+FormUpdate                type       src/hooks/useForms.ts:7:13                     
+LeadResponse              interface  src/hooks/useForms.ts:140:18                   
+AppRole                   type       src/hooks/useHierarchy.ts:6:13                 
+HierarchyUser             interface  src/hooks/useHierarchy.ts:8:18                 
+CreateAutomationParams    interface  src/services/automationService.ts:19:18        
+LGLink                    interface  src/hooks/useLGLinks.ts:5:18                   
+Notification              interface  src/hooks/useNotifications.ts:7:18             
+ProductInput              interface  src/hooks/useProducts.ts:16:18                 
+PropertyFormData          type       src/hooks/useRealEstateProperties.ts:21:13     
+TaskLeadsResult           interface  src/hooks/useTaskLeads.ts:27:18                
+TeamMember                interface  src/hooks/useTeam.ts:8:18                      
+ButtonProps               interface  src/components/ui/button.tsx:33:18             
+BadgeProps                interface  src/components/ui/badge.tsx:23:18              
+MultiSelectFilterProps    interface  src/components/ui/multi-select-filter.tsx:21:18
+EducationLeadFields       interface  src/industries/education/config.ts:4:18        
+RealEstateLeadFields      interface  src/industries/real_estate/config.ts:4:18      
+TextareaProps             interface  src/components/ui/textarea.tsx:5:18            
+CreateNotificationParams  interface  src/services/notificationService.ts:3:18       
+CalendarProps             type       src/components/ui/calendar.tsx:8:13            
+[33m[4mConfiguration hints[24m (1)[39m

@@ -18,6 +18,8 @@ import { useTaskLeads, TaskLead, TaskBucket } from '@/hooks/useTaskLeads';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { LeadDetailsDialog } from '@/components/leads/LeadDetailsDialog';
 import { EditLeadDialog } from '@/components/leads/EditLeadDialog';
+import { RealEstateEditLeadDialog } from '@/industries/real_estate/components/RealEstateEditLeadDialog';
+import { useCompany } from '@/hooks/useCompany';
 import { Tables } from '@/integrations/supabase/types';
 
 /* ─── Tab config ─────────────────────────────── */
@@ -195,18 +197,18 @@ function EmptyState({ tab }: { tab: TabDef }) {
         <div className="flex flex-col items-center justify-center py-20 text-center">
             <div
                 className={`h-16 w-16 rounded-full flex items-center justify-center mb-4 ${tab.id === 'urgent'
-                        ? 'bg-red-500/10'
-                        : tab.id === 'today'
-                            ? 'bg-amber-500/10'
-                            : 'bg-blue-500/10'
+                    ? 'bg-red-500/10'
+                    : tab.id === 'today'
+                        ? 'bg-amber-500/10'
+                        : 'bg-blue-500/10'
                     }`}
             >
                 <Icon
                     className={`h-8 w-8 ${tab.id === 'urgent'
-                            ? 'text-red-500'
-                            : tab.id === 'today'
-                                ? 'text-amber-500'
-                                : 'text-blue-500'
+                        ? 'text-red-500'
+                        : tab.id === 'today'
+                            ? 'text-amber-500'
+                            : 'text-blue-500'
                         }`}
                 />
             </div>
@@ -226,6 +228,8 @@ export default function Tasks() {
     const [editingLead, setEditingLead] = useState<TaskLead | null>(null);
 
     const { urgent, today, upcoming, isLoading, error, refetch } = useTaskLeads();
+    const { company } = useCompany();
+    const isRealEstate = company?.industry === 'real_estate';
 
     const counts: Record<TaskBucket, number> = {
         urgent: urgent.length,
@@ -267,12 +271,12 @@ export default function Tasks() {
                             key={tab.id}
                             onClick={() => setTab(tab.id)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${isActive
-                                    ? tab.id === 'urgent'
-                                        ? 'bg-red-500/15 border-red-500/40 text-red-400'
-                                        : tab.id === 'today'
-                                            ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                                            : 'bg-blue-500/15 border-blue-500/40 text-blue-400'
-                                    : 'bg-card border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                                ? tab.id === 'urgent'
+                                    ? 'bg-red-500/15 border-red-500/40 text-red-400'
+                                    : tab.id === 'today'
+                                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                                        : 'bg-blue-500/15 border-blue-500/40 text-blue-400'
+                                : 'bg-card border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                                 }`}
                         >
                             <Icon className="h-4 w-4" />
@@ -280,12 +284,12 @@ export default function Tasks() {
                             {!isLoading && count > 0 && (
                                 <span
                                     className={`ml-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${isActive
-                                            ? tab.id === 'urgent'
-                                                ? 'bg-red-500 text-white'
-                                                : tab.id === 'today'
-                                                    ? 'bg-amber-500 text-white'
-                                                    : 'bg-blue-500 text-white'
-                                            : 'bg-muted text-muted-foreground'
+                                        ? tab.id === 'urgent'
+                                            ? 'bg-red-500 text-white'
+                                            : tab.id === 'today'
+                                                ? 'bg-amber-500 text-white'
+                                                : 'bg-blue-500 text-white'
+                                        : 'bg-muted text-muted-foreground'
                                         }`}
                                 >
                                     {count}
@@ -333,9 +337,26 @@ export default function Tasks() {
                     onOpenChange={(open) => !open && setViewingLead(null)}
                     lead={viewingLead as unknown as Tables<'leads'>}
                     owners={[]}
+                    onEdit={(lead) => {
+                        setViewingLead(null);
+                        setEditingLead(lead as TaskLead);
+                    }}
+                    onUpdate={() => refetch()}
                 />
             )}
-            {editingLead && (
+            {editingLead && isRealEstate && (
+                <RealEstateEditLeadDialog
+                    open={!!editingLead}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setEditingLead(null);
+                        }
+                    }}
+                    lead={editingLead as any}
+                    onSuccess={() => refetch()}
+                />
+            )}
+            {editingLead && !isRealEstate && (
                 <EditLeadDialog
                     open={!!editingLead}
                     onOpenChange={(open) => {

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -47,6 +48,7 @@ const formSchema = z.object({
     lead_source: z.string().optional(),
     product_category: z.string().optional(),
     product_purchased: z.string().optional(),
+    notes: z.string().optional(),
 });
 
 interface EditLeadDialogProps {
@@ -80,6 +82,7 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
             lead_source: 'Others',
             product_category: '',
             product_purchased: '',
+            notes: '',
         },
     });
 
@@ -97,6 +100,7 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 lead_source: lead.lead_source || 'Others',
                 product_category: (lead as any).product_category || '', // Cast because type might not be updated yet
                 product_purchased: lead.product_purchased || '',
+                notes: (lead as any).notes || '',
             });
             setReminderAt((lead as any).reminder_at ? new Date((lead as any).reminder_at) : null);
         }
@@ -145,10 +149,10 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 status: values.status as any,
                 lead_source: values.lead_source || null,
                 product_category: values.product_category || null,
-                product_category: values.product_category || null,
                 product_purchased: values.product_purchased || null, // This stores the Product Name
+                notes: values.notes || '',
                 reminder_at: reminderAt ? reminderAt.toISOString() : null, // Add reminder_at
-            });
+            } as any);
             toast.success('Lead updated successfully');
             onOpenChange(false);
         } catch (error) {
@@ -318,6 +322,23 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                                 )}
                             />
                         )}
+                        <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Notes</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Add notes..."
+                                            className="resize-none min-h-[100px]"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <Button type="submit" className="w-full" disabled={updateLead.isPending}>
                             {updateLead.isPending ? 'Updating...' : 'Update Lead'}
                         </Button>
