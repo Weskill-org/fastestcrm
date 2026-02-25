@@ -1,0 +1,455 @@
+﻿node.exe : open 
+supabase\.temp\profile: The 
+system cannot find the file 
+specified.
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (open   
+  supabase\....file speci   
+ fied.:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+Using access token for 
+profile: supabase
+Loading project ref from 
+file: 
+supabase\.temp\project-ref
+Supabase CLI 2.76.7
+Using profile: supabase 
+(supabase.co)
+Using access token for 
+profile: supabase
+2026/02/26 04:43:20 HTTP 
+GET: https://api.supabase.co
+m/v1/projects/uykdyqdeyilpul
+aqlqip/functions
+Bundling Function: 
+handle-razorpay-webhook
+DEBUG package.json 
+auto-discovery is disabled
+DEBUG No .npmrc file found
+DEBUG Finished config 
+loading.
+DEBUG Opening cache /root/.c
+ache/deno/dep_analysis_cache
+_v2...
+DEBUG Opening cache /root/.c
+ache/deno/node_analysis_cach
+e_v2...
+DEBUG Opening cache /root/.c
+ache/deno/dep_analysis_cache
+_v2...
+DEBUG Opening cache /root/.c
+ache/deno/node_analysis_cach
+e_v2...
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: file:///Users/ppd
+ub/Documents/Work/Weskill/So
+ftware/FastestCRM/supabase/f
+unctions/handle-razorpay-web
+hook/index.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/http/server.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/http/server.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/supabase-js@2
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/supa
+base-js@2
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/mod.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/mod.ts
+DEBUG No cached session for 
+DnsName("esm.sh")
+DEBUG Not resuming any 
+session
+DEBUG No cached session for 
+DnsName("deno.land")
+DEBUG Not resuming any 
+session
+DEBUG Using ciphersuite 
+TLS13_AES_256_GCM_SHA384
+DEBUG Not resuming
+DEBUG TLS1.3 encrypted 
+extensions: [ServerNameAck, 
+Protocols([ProtocolName(6832
+)])]
+DEBUG ALPN protocol is 
+Some(b"h2")
+DEBUG No cached session for 
+DnsName("deno.land")
+DEBUG Not resuming any 
+session
+DEBUG Using ciphersuite 
+TLS13_AES_256_GCM_SHA384
+DEBUG Not resuming
+DEBUG TLS1.3 encrypted 
+extensions: [ServerNameAck, 
+Protocols([ProtocolName(6832
+)])]
+DEBUG ALPN protocol is 
+Some(b"h2")
+DEBUG Using ciphersuite 
+TLS13_AES_256_GCM_SHA384
+DEBUG Not resuming
+DEBUG TLS1.3 encrypted 
+extensions: [ServerNameAck, 
+Protocols([ProtocolName(6832
+)])]
+DEBUG ALPN protocol is 
+Some(b"h2")
+DEBUG Sending warning alert 
+CloseNotify
+DEBUG Redirecting to "https:
+//esm.sh/@supabase/supabase-
+js@2.97.0"...
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/mod.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/mod.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/supabase-js@2.97.0
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/supa
+base-js@2.97.0
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/crypto.t
+s
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/crypto.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/keystack
+.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/keystack.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/timing_s
+afe_equal.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/timing_safe_equal.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/to_hash_
+string.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/to_hash_string.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/abortable
+.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/abortable.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/deadline.
+ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/deadline.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/debounce.
+ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/debounce.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/deferred.
+ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/deferred.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/delay.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/delay.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/mux_async
+_iterator.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/mux_async_iterator.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/pool.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/pool.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/tee.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/tee.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.168.0/async/retry.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.168.0
+/async/retry.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/auth-js@2.97.0/denon
+ext/auth-js.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/auth
+-js@2.97.0/denonext/auth-js.
+mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/functions-js@2.97.0/
+denonext/functions-js.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/func
+tions-js@2.97.0/denonext/fun
+ctions-js.mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/postgrest-js@2.97.0/
+denonext/postgrest-js.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/post
+grest-js@2.97.0/denonext/pos
+tgrest-js.mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/realtime-js@2.97.0/d
+enonext/realtime-js.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/real
+time-js@2.97.0/denonext/real
+time-js.mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/storage-js@2.97.0/de
+nonext/storage-js.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/stor
+age-js@2.97.0/denonext/stora
+ge-js.mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/@s
+upabase/supabase-js@2.97.0/d
+enonext/supabase-js.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/@supabase/supa
+base-js@2.97.0/denonext/supa
+base-js.mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/_wasm/mo
+d.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/_wasm/mod.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/_fnv/ind
+ex.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/_fnv/index.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/encoding/base64
+url.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/encoding/base64url.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/_util/asserts.t
+s
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/_util/asserts.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/encoding/hex.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/encoding/hex.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/encoding/base64
+.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/encoding/base64.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/ts
+lib@2.8.1/denonext/tslib.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/tslib@2.8.1/de
+nonext/tslib.mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/ic
+eberg-js@^0.8.1?target=denon
+ext
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/iceberg-js@^0.
+8.1?target=denonext
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/_wasm/li
+b/deno_std_wasm_crypto.gener
+ated.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/_wasm/lib/deno_std_w
+asm_crypto.generated.mjs
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/_fnv/fnv
+32.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/_fnv/fnv32.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/_fnv/fnv
+64.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/_fnv/fnv64.ts
+DEBUG Redirecting to "https:
+//esm.sh/iceberg-js@0.8.1?ta
+rget=denonext"...
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/ic
+eberg-js@0.8.1?target=denone
+xt
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/iceberg-js@0.8
+.1?target=denonext
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://deno.land
+/std@0.177.0/crypto/_fnv/uti
+l.ts
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://deno.land/std@0.177.0
+/crypto/_fnv/util.ts
+DEBUG FileFetcher::fetch_no_
+follow_with_options - 
+specifier: https://esm.sh/ic
+eberg-js@0.8.1/denonext/iceb
+erg-js.mjs
+DEBUG FileFetcher::fetch_rem
+ote_no_follow - specifier: h
+ttps://esm.sh/iceberg-js@0.8
+.1/denonext/iceberg-js.mjs
+DEBUG Building vfs with 
+root '/Users/ppdub/Documents
+/Work/Weskill/Software/Faste
+stCRM/supabase/functions'
+No change found in 
+Function: 
+handle-razorpay-webhook
+Deployed Functions on project uykdyqdeyilpulaqlqip: handle-razorpay-webhook
+You can inspect your deployment in the Dashboard: https://supabase.com/dashboard/project/uykdyqdeyilpulaqlqip/functions

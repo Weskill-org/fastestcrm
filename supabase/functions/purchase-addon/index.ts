@@ -1,62 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
-}
 
-const COSTS = {
-    'custom_slug': 100,
-    'custom_domain': 5000
-}
 
-serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
-
-    try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-
-        const authHeader = req.headers.get('Authorization')
-        if (!authHeader) throw new Error('No authorization header')
-
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: authHeader } }
-        })
-
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) throw new Error('Not authenticated')
-
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('company_id')
-            .eq('id', user.id)
-            .single()
-
-        if (!profile?.company_id) throw new Error('No company found')
-        const companyId = profile.company_id
-
-        const { feature } = await req.json()
-        if (!feature || !COSTS[feature as keyof typeof COSTS]) {
-            throw new Error('Invalid feature requested')
-        }
-
-        const cost = COSTS[feature as keyof typeof COSTS];
-
-        // 1. Check if already owned
-        const { data: company } = await supabaseAdmin
-            .from('companies')
-            .select('features')
-            .eq('id', companyId)
-            .single()
-
-        const currentFeatures = company?.features || {};
         if (currentFeatures[feature]) {
             throw new Error('Feature already unlocked');
         }
