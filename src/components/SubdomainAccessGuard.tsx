@@ -30,6 +30,7 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
   const {
     isSubdomain,
     isCustomDomain,
+    isMainDomain,
     company: workspaceCompany,
     loading: subdomainLoading,
   } = useSubdomainContext();
@@ -43,12 +44,28 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
     if (authLoading || subdomainLoading) return;
     // Not logged in — pass through (Auth page will handle)
     if (!user) return;
-    // Not on a client workspace — pass through
-    if (!isWorkspaceDomain || !workspaceCompany) return;
+
     // Still loading which company the user belongs to
     if (companyLoading) return;
+
     // User has no company yet (still being set up) — pass through
     if (!userCompany) return;
+
+    // SCENARIO A: We are on the Main Domain (fastestcrm.com/dashboard)
+    if (isMainDomain) {
+      // User has a company, so they shouldn't be here. Redirect to their workspace.
+      if (!redirected.current) {
+        redirected.current = true;
+        const correctUrl = getWorkspaceUrl(userCompany.slug);
+        window.location.href = `${correctUrl}${window.location.pathname}`;
+      }
+      return;
+    }
+
+    // SCENARIO B: We are on a Workspace Domain (acme.fastestcrm.com or crm.acme.com)
+    // If not a workspace domain (should be caught above, but TypeScript needs it), pass through
+    if (!isWorkspaceDomain || !workspaceCompany) return;
+
     // Correct workspace — pass through
     if (userCompany.id === workspaceCompany.id) return;
 
@@ -56,12 +73,16 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
     if (!redirected.current) {
       redirected.current = true;
       const correctUrl = getWorkspaceUrl(userCompany.slug);
+
+      // If we are on the main domain, take them to the exact same path on their subdomain
+      // If we are on a wrong subdomain, redirect them to the exact same path on their correct subdomain
       window.location.href = `${correctUrl}${window.location.pathname}`;
     }
   }, [
     user,
     authLoading,
     isWorkspaceDomain,
+    isMainDomain,
     workspaceCompany,
     subdomainLoading,
     userCompany,

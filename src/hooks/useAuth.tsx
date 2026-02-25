@@ -11,9 +11,35 @@ import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+import Cookies from 'js-cookie';
+
 // ─── Session-token helpers ────────────────────────────────────────────────────
 
 const SESSION_TOKEN_KEY = 'app_session_token';
+
+function setSharedCookie(key: string, value: string) {
+  const hostname = window.location.hostname;
+  const cookieOptions: Cookies.CookieAttributes = {
+    expires: 365,
+    path: '/',
+    secure: window.location.protocol === 'https:',
+    sameSite: 'Lax',
+  };
+
+  if (hostname.endsWith('fastestcrm.com')) {
+    cookieOptions.domain = '.fastestcrm.com';
+  }
+
+  Cookies.set(key, value, cookieOptions);
+}
+
+function removeSharedCookie(key: string) {
+  const hostname = window.location.hostname;
+  Cookies.remove(key, { path: '/' });
+  if (hostname.endsWith('fastestcrm.com')) {
+    Cookies.remove(key, { path: '/', domain: '.fastestcrm.com' });
+  }
+}
 
 function generateSessionToken(): string {
   // Simple Math.random fallback instead of crypto APIs that might be blocked on HTTP
@@ -26,10 +52,10 @@ function generateSessionToken(): string {
 }
 
 function getOrCreateSessionToken(): string {
-  let token = localStorage.getItem(SESSION_TOKEN_KEY);
+  let token = Cookies.get(SESSION_TOKEN_KEY);
   if (!token) {
     token = generateSessionToken();
-    localStorage.setItem(SESSION_TOKEN_KEY, token);
+    setSharedCookie(SESSION_TOKEN_KEY, token);
   }
   return token;
 }
@@ -104,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const validateSession = useCallback(async (userId: string): Promise<boolean> => {
     if (isValidatingSession.current) return true;
-    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    const sessionToken = Cookies.get(SESSION_TOKEN_KEY);
     if (!sessionToken) return true;
 
     isValidatingSession.current = true;
@@ -127,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeSession = useCallback(async (userId: string) => {
-    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    const sessionToken = Cookies.get(SESSION_TOKEN_KEY);
     if (!sessionToken || !userId) return;
     try {
       await supabase.rpc('remove_user_session', {
@@ -150,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       description: 'You were logged out because you signed in on another device.',
       variant: 'destructive',
     });
-    localStorage.removeItem(SESSION_TOKEN_KEY);
+    removeSharedCookie(SESSION_TOKEN_KEY);
     sessionRegistered.current = false;
     await supabase.auth.signOut();
   }, [toast]);
