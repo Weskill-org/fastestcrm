@@ -72,15 +72,22 @@ export function useSubdomain(): SubdomainResult {
       }
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from('companies')
-          .select('id, name, slug, logo_url, primary_color, is_active')
-          .eq('slug', subdomain)
-          .maybeSingle();
+        const { data, error: fetchError } = await (supabase.rpc as any)(
+          'get_company_by_subdomain',
+          { p_slug: subdomain }
+        ).maybeSingle();
 
         if (fetchError) {
           console.error('Error fetching company:', fetchError);
-          setError('Failed to load workspace');
+          // If it's a timeout/failed to fetch, we don't want to completely block the user
+          // if they are just trying to log in. We'll set a specific error.
+          if (fetchError.message?.includes('Failed to fetch') ||
+            fetchError.message?.includes('timeout') ||
+            fetchError.message?.includes('network')) {
+            setError('Network error: Could not reach server. Your connection might be blocking the request.');
+          } else {
+            setError('Failed to load workspace');
+          }
           return;
         }
 
@@ -95,9 +102,13 @@ export function useSubdomain(): SubdomainResult {
         }
 
         setCompany(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error in useSubdomain:', err);
-        setError('Failed to load workspace');
+        if (err?.message?.includes('Failed to fetch') || err?.message?.includes('network')) {
+          setError('Network error: Could not reach server. Your connection might be blocking the request.');
+        } else {
+          setError('Failed to load workspace');
+        }
       } finally {
         setLoading(false);
       }
@@ -116,16 +127,15 @@ export function useSubdomain(): SubdomainResult {
 
         // Try to find company with this custom domain
         // We check both with and without www to be safe, though we encourage valid entries in DB
-        const { data, error: fetchError } = await supabase
-          .from('companies')
-          .select('id, name, slug, logo_url, primary_color, is_active')
-          .or(`custom_domain.eq.${normalizedHostname},custom_domain.eq.www.${normalizedHostname}`)
-          .eq('domain_status', 'active')
-          .maybeSingle();
+        const { data, error: fetchError } = await (supabase.rpc as any)(
+          'get_company_by_custom_domain',
+          { p_domain: normalizedHostname }
+        ).maybeSingle();
 
         if (fetchError) {
           console.error('Error fetching company by domain:', fetchError);
-          setLoading(false);
+          // Don't set a hard error here that breaks the app if it's just a network issue
+          // It's better to let them fallback to the main app if the custom domain lookup times out
           return;
         }
 
