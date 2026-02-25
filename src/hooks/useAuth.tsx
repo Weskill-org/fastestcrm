@@ -16,9 +16,13 @@ import { useToast } from '@/hooks/use-toast';
 const SESSION_TOKEN_KEY = 'app_session_token';
 
 function generateSessionToken(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  // Simple Math.random fallback instead of crypto APIs that might be blocked on HTTP
+  let token = '';
+  const chars = 'abcdef0123456789';
+  for (let i = 0; i < 64; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
 }
 
 function getOrCreateSessionToken(): string {
