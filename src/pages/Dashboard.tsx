@@ -11,7 +11,10 @@ import { format } from 'date-fns';
 export default function Dashboard() {
   // Fetch all leads for accurate revenue calculations
   // TODO: Move aggregation to backend for better performance with large datasets
-  const { data: leadsData, isLoading } = useLeads({ fetchAll: true });
+  const { data: leadsData, isLoading } = useLeads({
+    fetchAll: true,
+    select: 'id,name,email,phone,status,created_at,updated_at,revenue_received,revenue_projected'
+  });
   const leads = leadsData?.leads || [];
 
   // Calculate stats
