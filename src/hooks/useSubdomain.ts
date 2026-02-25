@@ -72,10 +72,9 @@ export function useSubdomain(): SubdomainResult {
       }
 
       try {
-        const { data, error: fetchError } = await (supabase.rpc as any)(
-          'get_company_by_subdomain',
-          { p_slug: subdomain }
-        ).maybeSingle();
+        const { data, error: fetchError } = await supabase
+          .rpc('get_subdomain_company', { _slug: subdomain })
+          .maybeSingle();
 
         if (fetchError) {
           console.error('Error fetching company:', fetchError);
@@ -127,10 +126,9 @@ export function useSubdomain(): SubdomainResult {
 
         // Try to find company with this custom domain
         // We check both with and without www to be safe, though we encourage valid entries in DB
-        const { data, error: fetchError } = await (supabase.rpc as any)(
-          'get_company_by_custom_domain',
-          { p_domain: normalizedHostname }
-        ).maybeSingle();
+        const { data, error: fetchError } = await supabase
+          .rpc('get_custom_domain_company', { _domain: normalizedHostname })
+          .maybeSingle();
 
         if (fetchError) {
           console.error('Error fetching company by domain:', fetchError);
