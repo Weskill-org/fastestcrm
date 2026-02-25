@@ -28,6 +28,24 @@ if (typeof window !== 'undefined') {
       }) as any;
     };
   }
+
+  // ─── Force Migration: Clear Old LocalStorage Auth ─────────────────────────
+  // Because we moved from localStorage to Cookies for cross-subdomain auth,
+  // we must aggressively clear any old Supabase tokens left in localStorage
+  // by returning users so they don't fight with the new cookie state.
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      // Match old supabase tokens (sb-[ref]-auth-token) and our old session keys
+      if (key && (key.startsWith('sb-') || key.includes('session'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  } catch (e) {
+    // Ignore DOMException for environments blocking localStorage access
+  }
 }
 
 // ─── Cookie Storage for Cross-Subdomain Auth ──────────────────────────────────

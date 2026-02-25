@@ -142,13 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isValidatingSession.current = false;
       if (error) {
         console.warn('[Auth] Session validation error:', error.message);
-        return true;
+        return true; // Assume valid on network/RPC error to prevent false-positive logouts
       }
       return data === true;
     } catch (err) {
       isValidatingSession.current = false;
       console.warn('[Auth] Session validation failed:', err);
-      return true;
+      return true; // Assume valid on network/RPC error to prevent false-positive logouts
     }
   }, []);
 
@@ -231,7 +231,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const startDelay = setTimeout(() => {
         validationInterval.current = setInterval(async () => {
           const isValid = await validateSession(user.id);
-          if (!isValid) await forceLogout();
+          // Only force logout if the session completely failed validation in DB
+          if (isValid === false) {
+            await forceLogout();
+          }
         }, 60_000); // every 60 s
       }, 5_000); // wait 5 s after login before starting
 
