@@ -72,3 +72,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storageKey: 'sb-auth-token',
   },
 });
+
+// A lightweight, unauthenticated client strictly used for fast public lookups (e.g. subdomains)
+// It deliberately ignores the session so requests are not delayed by session hydration.
+export const anonSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+});

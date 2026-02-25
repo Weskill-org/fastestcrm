@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, anonSupabase } from '@/integrations/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +70,12 @@ function classifyHostname(hostname: string): DomainClassification {
     hostname.startsWith('10.')
   ) {
     return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
+  }
+
+  // Localhost subdomain testing (e.g. weskill.localhost)
+  if (hostname.endsWith('.localhost')) {
+    const sub = hostname.slice(0, hostname.length - '.localhost'.length);
+    return { isMainDomain: false, isSubdomain: true, isCustomDomain: false, subdomain: sub };
   }
 
   // Preview / staging deployments
@@ -141,8 +147,9 @@ export function useSubdomain(): SubdomainResult {
       try {
         if (isSubdomain && subdomain) {
           // ── Slug-based lookup ──────────────────────────────────────────────
-          const { data, error: rpcError } = await supabase
-            .rpc('get_subdomain_company', { _slug: subdomain });
+          const { data, error: rpcError } = await (anonSupabase.rpc as any)(
+            'get_subdomain_company', { _slug: subdomain }
+          );
 
           if (cancelled) return;
 
@@ -161,7 +168,7 @@ export function useSubdomain(): SubdomainResult {
             return;
           }
 
-          const row = rows[0] as SubdomainCompany;
+          const row = rows[0] as unknown as SubdomainCompany;
           if (!row.is_active) {
             setError('This workspace is currently inactive');
             return;
@@ -173,8 +180,9 @@ export function useSubdomain(): SubdomainResult {
           // ── Custom-domain lookup ───────────────────────────────────────────
           const normalized = hostname.toLowerCase().replace(/^www\./, '');
 
-          const { data, error: rpcError } = await supabase
-            .rpc('get_custom_domain_company', { _domain: normalized });
+          const { data, error: rpcError } = await (anonSupabase.rpc as any)(
+            'get_custom_domain_company', { _domain: normalized }
+          );
 
           if (cancelled) return;
 
@@ -186,7 +194,7 @@ export function useSubdomain(): SubdomainResult {
 
           const rows = Array.isArray(data) ? data : data ? [data] : [];
           if (rows.length > 0) {
-            const row = rows[0] as SubdomainCompany;
+            const row = rows[0] as unknown as SubdomainCompany;
             if (row.is_active) setCompany(row);
           }
         }

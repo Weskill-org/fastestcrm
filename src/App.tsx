@@ -60,13 +60,15 @@ function AuthRoute() {
   const { user, loading: authLoading } = useAuth();
   const { data: isPlatformAdmin, isLoading: isCheckingAdmin } = usePlatformAdmin();
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-
+  // If the user IS logged in, we wait to check admin status before redirecting.
   if (user) {
     if (isCheckingAdmin) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     return <Navigate to={isPlatformAdmin ? '/platform' : '/dashboard'} replace />;
   }
 
+  // If auth is still loading, we render the <Auth /> page IMMEDIATELY.
+  // This fulfills the "subdomain pages must load instantly" requirement.
+  // If they turn out to be logged in when auth finishes, it will re-render and redirect them.
   return <Auth />;
 }
 

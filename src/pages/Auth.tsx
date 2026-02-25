@@ -118,6 +118,27 @@ export default function Auth() {
   };
 
   // ── Normal auth UI ─────────────────────────────────────────────────────────
+
+  // If we are on a workspace domain, WAIT for the company to load before showing any UI.
+  // This prevents the "flash" of the generic fastestcrm login page.
+  const isSubdomainLoading = useSubdomainContext().loading;
+
+  if (isWorkspaceDomain && isSubdomainLoading) {
+    return (
+      <div className="min-h-screen bg-background dark flex items-center justify-center p-6 relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute inset-0 dot-grid-bg opacity-40" />
+        <div className="absolute top-1/4 left-1/5 w-80 h-80 bg-primary/15 rounded-full blur-[90px] animate-float" />
+        <div className="absolute bottom-1/4 right-1/5 w-72 h-72 bg-primary/10 rounded-full blur-[80px] animate-float-slow" />
+
+        <div className="w-full max-w-md relative text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
+          <p className="text-muted-foreground animate-pulse">Loading workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background dark flex items-center justify-center p-6 relative overflow-hidden">
       {/* Background effects */}

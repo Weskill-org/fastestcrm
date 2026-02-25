@@ -32,16 +32,10 @@ export function SubdomainGate({ children, mainDomainContent }: SubdomainGateProp
   }
 
   // ② Workspace domain: still resolving company via RPC
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-4 text-muted-foreground">Loading workspace…</p>
-        </div>
-      </div>
-    );
-  }
+  // We explicitly DO NOT block rendering here anymore. We allow children to render immediately
+  // so the user sees something right away (fulfilling the "super fast load" requirement).
+  // Branding will automatically pop in once resolved, but the login form is instantly usable.
+  // It only shows an error block (below) if the lookup completely failed.
 
   // ③ Subdomain resolved but workspace not found or inactive
   if (error && isSubdomain) {
