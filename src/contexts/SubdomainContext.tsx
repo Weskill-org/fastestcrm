@@ -1,17 +1,9 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useSubdomain } from '@/hooks/useSubdomain';
-
-interface SubdomainCompany {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null;
-  primary_color: string | null;
-  is_active: boolean;
-}
+import { useSubdomain, SubdomainCompany } from '@/hooks/useSubdomain';
 
 interface SubdomainContextType {
   isSubdomain: boolean;
+  isCustomDomain: boolean;
   subdomain: string | null;
   company: SubdomainCompany | null;
   loading: boolean;

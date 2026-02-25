@@ -37,7 +37,9 @@ export default function Auth() {
   const [networkDown, setNetworkDown] = useState(false);
 
   const { signIn, user, networkError } = useAuth();
-  const { isSubdomain, company: subdomainCompany } = useSubdomainContext();
+  const { isSubdomain, isCustomDomain, company: subdomainCompany } = useSubdomainContext();
+  // Show the "signing in to X" label for both subdomain and custom domain
+  const isWorkspaceDomain = isSubdomain || isCustomDomain;
   const { companyName, logoUrl, applyBranding } = useCompanyBranding();
   const { data: isPlatformAdmin, isLoading: isCheckingAdmin } = usePlatformAdmin();
   const navigate = useNavigate();
@@ -193,7 +195,7 @@ export default function Auth() {
 
       <div className="w-full max-w-md relative">
         {/* Back link or subdomain label */}
-        {isSubdomain && subdomainCompany ? (
+        {isWorkspaceDomain && subdomainCompany ? (
           <div className="mb-8 text-center">
             <p className="text-sm text-muted-foreground">
               Signing in to{' '}

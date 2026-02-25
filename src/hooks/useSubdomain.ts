@@ -1,7 +1,22 @@
+/**
+ * useSubdomain
+ *
+ * Resolves the current hostname to a company record stored in Supabase.
+ * Works for:
+ *   • Client subdomain:   acme.fastestcrm.com  → RPC get_subdomain_company
+ *   • Custom domain:      crm.acme.com         → RPC get_custom_domain_company
+ *   • Main domain / dev: fastestcrm.com / localhost → no lookup
+ *
+ * The two RPCs are SECURITY DEFINER and GRANTed to `anon`, so they succeed
+ * even before the user has signed in.
+ */
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface SubdomainCompany {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface SubdomainCompany {
   id: string;
   name: string;
   slug: string;
@@ -10,19 +25,32 @@ interface SubdomainCompany {
   is_active: boolean;
 }
 
-interface SubdomainResult {
+export interface SubdomainResult {
+  /** True when on a client subdomain (slug.fastestcrm.com) */
   isSubdomain: boolean;
+  /** True when on a custom domain (crm.acme.com) */
+  isCustomDomain: boolean;
+  /** The resolved subdomain slug, null if custom domain or main domain */
   subdomain: string | null;
+  /** The resolved company, null until lookup completes or if not found */
   company: SubdomainCompany | null;
   loading: boolean;
   error: string | null;
+  /** True only on the platform's own root domain */
   isMainDomain: boolean;
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const MAIN_DOMAIN = 'fastestcrm.com';
-const ALLOWED_SUBDOMAINS = ['www', 'app', 'api', 'admin'];
-// Subdomain lookup should never take longer than this
-const SUBDOMAIN_LOOKUP_TIMEOUT_MS = 8_000;
+
+/** These subdomains belong to the platform, not a client workspace */
+const PLATFORM_SUBDOMAINS = new Set(['www', 'app', 'api', 'admin', 'mail', 'smtp', 'ftp']);
+
+/** How long to wait for a lookup before giving up and rendering anyway */
+const LOOKUP_TIMEOUT_MS = 6_000;
+
+// ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useSubdomain(): SubdomainResult {
   const [company, setCompany] = useState<SubdomainCompany | null>(null);
@@ -31,125 +59,128 @@ export function useSubdomain(): SubdomainResult {
 
   const hostname = window.location.hostname;
 
-  // ── Determine if we're on a subdomain ────────────────────────────────────
-  const getSubdomainInfo = () => {
-    // Local development — always treat as main domain
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return { isSubdomain: false, subdomain: null, isMainDomain: true };
+  // ── Classify the current hostname ──────────────────────────────────────────
+  const classify = (): {
+    isMainDomain: boolean;
+    isSubdomain: boolean;
+    isCustomDomain: boolean;
+    subdomain: string | null;
+  } => {
+    // Local development / CI
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+      return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
     }
 
-    // Preview/staging domains (lovable, Vercel, Netlify, etc.)
+    // Preview / staging deployments
     if (
-      hostname.includes('lovable.app') ||
-      hostname.includes('vercel.app') ||
-      hostname.includes('netlify.app')
+      hostname.endsWith('.lovable.app') ||
+      hostname.endsWith('.vercel.app') ||
+      hostname.endsWith('.netlify.app') ||
+      hostname.endsWith('.pages.dev')
     ) {
-      return { isSubdomain: false, subdomain: null, isMainDomain: true };
+      return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
     }
 
-    // Main domain root
+    // Exact root or www of the platform domain
     if (hostname === MAIN_DOMAIN || hostname === `www.${MAIN_DOMAIN}`) {
-      return { isSubdomain: false, subdomain: null, isMainDomain: true };
+      return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
     }
 
-    // Subdomain of main domain
+    // Platform subdomain: *.fastestcrm.com
     if (hostname.endsWith(`.${MAIN_DOMAIN}`)) {
-      const subdomain = hostname.replace(`.${MAIN_DOMAIN}`, '');
+      const sub = hostname.slice(0, hostname.length - MAIN_DOMAIN.length - 1);
 
-      if (ALLOWED_SUBDOMAINS.includes(subdomain)) {
-        return { isSubdomain: false, subdomain: null, isMainDomain: true };
+      // Known platform subdomains → still main domain
+      if (PLATFORM_SUBDOMAINS.has(sub)) {
+        return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
       }
 
-      return { isSubdomain: true, subdomain, isMainDomain: false };
+      // Client workspace subdomain
+      return { isMainDomain: false, isSubdomain: true, isCustomDomain: false, subdomain: sub };
     }
 
-    // Custom domain — try to resolve it
-    return { isSubdomain: false, subdomain: null, isMainDomain: false };
+    // Everything else is treated as a custom domain
+    return { isMainDomain: false, isSubdomain: false, isCustomDomain: true, subdomain: null };
   };
 
-  const { isSubdomain, subdomain, isMainDomain } = getSubdomainInfo();
+  const { isMainDomain, isSubdomain, isCustomDomain, subdomain } = classify();
 
   useEffect(() => {
-    // If we're on the main domain / localhost, skip all DB lookups immediately
+    // Main domain / localhost — skip all DB work immediately
     if (isMainDomain) {
       setLoading(false);
       return;
     }
 
-    const controller = new AbortController();
+    let cancelled = false;
 
-    // Safety valve — if the whole lookup takes longer than the timeout,
-    // we give up and let the app continue (fail-open for UX).
-    const safetyTimer = setTimeout(() => {
-      console.warn('[useSubdomain] Lookup timed out — continuing without company data');
-      setLoading(false);
-      controller.abort();
-    }, SUBDOMAIN_LOOKUP_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        console.warn('[useSubdomain] Lookup timed out — rendering without company data');
+        setLoading(false);
+      }
+    }, LOOKUP_TIMEOUT_MS);
 
     const run = async () => {
       try {
         if (isSubdomain && subdomain) {
-          // ── Subdomain lookup ────────────────────────────────────────────
-          const { data, error: fetchError } = await supabase
-            .rpc('get_subdomain_company', { _slug: subdomain })
-            .maybeSingle();
+          // ── Slug-based lookup ──────────────────────────────────────────────
+          const { data, error: rpcError } = await supabase
+            .rpc('get_subdomain_company', { _slug: subdomain });
 
-          if (controller.signal.aborted) return;
+          if (cancelled) return;
 
-          if (fetchError) {
-            console.error('[useSubdomain] RPC error (subdomain):', fetchError);
-            const isNetworkErr =
-              fetchError.message?.includes('Failed to fetch') ||
-              fetchError.message?.includes('timeout') ||
-              fetchError.message?.includes('network') ||
-              fetchError.message?.includes('abort');
-
-            setError(
-              isNetworkErr
-                ? 'Network error: Could not reach server. Please check your connection.'
-                : 'Failed to load workspace'
-            );
+          if (rpcError) {
+            console.error('[useSubdomain] get_subdomain_company error:', rpcError);
+            setError('Failed to load workspace. Please try again.');
             return;
           }
 
-          if (!data) {
+          // RPC returns TABLE — result is an array
+          const rows = Array.isArray(data) ? data : data ? [data] : [];
+          if (rows.length === 0) {
             setError('Workspace not found');
             return;
           }
 
-          if (!data.is_active) {
+          const row = rows[0] as SubdomainCompany;
+          if (!row.is_active) {
             setError('This workspace is currently inactive');
             return;
           }
 
-          setCompany(data as SubdomainCompany);
-        } else {
-          // ── Custom domain lookup ────────────────────────────────────────
-          const normalizedHostname = hostname.toLowerCase().replace(/^www\./, '');
+          setCompany(row);
 
-          const { data, error: fetchError } = await supabase
-            .rpc('get_custom_domain_company', { _domain: normalizedHostname })
-            .maybeSingle();
+        } else if (isCustomDomain) {
+          // ── Custom-domain lookup ───────────────────────────────────────────
+          const normalized = hostname.toLowerCase().replace(/^www\./, '');
 
-          if (controller.signal.aborted) return;
+          const { data, error: rpcError } = await supabase
+            .rpc('get_custom_domain_company', { _domain: normalized });
 
-          if (fetchError) {
-            console.warn('[useSubdomain] RPC error (custom domain):', fetchError);
-            // Fail-open: don't block the user for a custom-domain lookup failure
+          if (cancelled) return;
+
+          if (rpcError) {
+            // Fail-open: don't block users for custom-domain errors
+            console.warn('[useSubdomain] get_custom_domain_company error:', rpcError);
             return;
           }
 
-          if (data && data.is_active) {
-            setCompany(data as SubdomainCompany);
+          const rows = Array.isArray(data) ? data : data ? [data] : [];
+          if (rows.length > 0) {
+            const row = rows[0] as SubdomainCompany;
+            if (row.is_active) {
+              setCompany(row);
+            }
           }
         }
-      } catch (err: any) {
-        if (controller.signal.aborted) return; // expected abort — ignore
+      } catch (err: unknown) {
+        if (cancelled) return;
         console.error('[useSubdomain] Unexpected error:', err);
-        // Fail-open
+        // Fail-open — don't block the user
       } finally {
-        if (!controller.signal.aborted) {
-          clearTimeout(safetyTimer);
+        if (!cancelled) {
+          clearTimeout(timeoutId);
           setLoading(false);
         }
       }
@@ -158,13 +189,15 @@ export function useSubdomain(): SubdomainResult {
     run();
 
     return () => {
-      controller.abort();
-      clearTimeout(safetyTimer);
+      cancelled = true;
+      clearTimeout(timeoutId);
     };
-  }, [subdomain, isSubdomain, isMainDomain, hostname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMainDomain, isSubdomain, isCustomDomain, subdomain, hostname]);
 
   return {
     isSubdomain,
+    isCustomDomain,
     subdomain,
     company,
     loading,
@@ -173,7 +206,7 @@ export function useSubdomain(): SubdomainResult {
   };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Returns the full workspace URL for a given company slug */
 export function getWorkspaceUrl(slug: string): string {
@@ -183,5 +216,10 @@ export function getWorkspaceUrl(slug: string): string {
 /** Returns true if the current hostname matches the given company's subdomain */
 export function isCompanyWorkspace(companySlug: string): boolean {
   const hostname = window.location.hostname;
-  return hostname === `${companySlug}.${MAIN_DOMAIN}`;
+  return (
+    hostname === `${companySlug}.${MAIN_DOMAIN}` ||
+    // Support custom domains: compare against whatever the company registered
+    // (the caller can pass company.custom_domain instead of slug if needed)
+    hostname === companySlug
+  );
 }
