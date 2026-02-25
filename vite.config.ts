@@ -8,6 +8,17 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      // Proxy all Supabase API calls through the dev server to avoid
+      // direct outbound connection blocks (ISP/firewall blocking Supabase IP).
+      // The client uses VITE_SUPABASE_URL directly in production (no proxy needed).
+      "/supabase-proxy": {
+        target: "https://uykdyqdeyilpulaqlqip.supabase.co",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/supabase-proxy/, ""),
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
