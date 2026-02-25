@@ -12,11 +12,11 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, FileUp, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import Papa from 'papaparse';
-import { Constants } from '@/integrations/supabase/types';
 import { Progress } from '@/components/ui/progress';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -38,6 +38,7 @@ export function UploadLeadsDialog() {
     const { user } = useAuth();
     const { company } = useCompany();
     const { tableName } = useLeadsTable();
+    const { statuses } = useLeadStatuses();
     const queryClient = useQueryClient();
     const abortRef = useRef(false);
 
@@ -91,7 +92,7 @@ export function UploadLeadsDialog() {
         currentProgress: UploadProgress
     ): Promise<UploadProgress> => {
         const results = await Promise.all(leads.map(lead => insertLeadWithRetry(lead)));
-        
+
         return {
             ...currentProgress,
             processed: currentProgress.processed + leads.length,
@@ -117,7 +118,7 @@ export function UploadLeadsDialog() {
                 try {
                     const leads = results.data.map((row: any) => {
                         const status = row.Status || row.status || 'new';
-                        const validStatus = Constants.public.Enums.lead_status.includes(status.toLowerCase())
+                        const validStatus = statuses.some(s => s.value === status.toLowerCase())
                             ? status.toLowerCase()
                             : 'new';
 
@@ -247,7 +248,7 @@ export function UploadLeadsDialog() {
                             Selected: {file.name}
                         </div>
                     )}
-                    
+
                     {progress && (
                         <div className="space-y-3">
                             <Progress value={progressPercent} className="h-2" />

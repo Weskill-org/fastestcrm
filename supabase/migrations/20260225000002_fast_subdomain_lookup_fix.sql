@@ -1,9 +1,9 @@
--- Migration: Fast Subdomain Lookup RPCs
--- Description: Creates SECURITY DEFINER functions to securely fetch public company data without RLS overhead.
+-- Migration: Fast Subdomain Lookup RPCs Fix
+-- Description: Changes return type to TABLE to prevent PostgREST JSON wrapper issues.
 
 -- Drop previous versions to change return type
-DROP FUNCTION IF EXISTS public.get_subdomain_company(text);
-DROP FUNCTION IF EXISTS public.get_custom_domain_company(text);
+DROP FUNCTION IF EXISTS public.get_subdomain_company(_slug text);
+DROP FUNCTION IF EXISTS public.get_custom_domain_company(_domain text);
 DROP TYPE IF EXISTS public.public_company_info;
 
 -- Function to look up by slug (subdomain)

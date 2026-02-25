@@ -145,7 +145,6 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 status: values.status as any,
                 lead_source: values.lead_source || null,
                 product_category: values.product_category || null,
-                product_category: values.product_category || null,
                 product_purchased: values.product_purchased || null, // This stores the Product Name
                 reminder_at: reminderAt ? reminderAt.toISOString() : null, // Add reminder_at
             });

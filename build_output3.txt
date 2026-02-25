@@ -1,0 +1,32 @@
+
+> vite_react_shadcn_ts@0.0.0 build
+> vite build
+
+[36mvite v5.4.19 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 3575 modules transformed.
+[31mx[39m Build failed in 21.36s
+[31merror during build:
+[31msrc/pages/GenericAllLeads.tsx (14:9): "Constants" is not exported by "src/integrations/supabase/types.ts", imported by "src/pages/GenericAllLeads.tsx".[31m
+file: [36mC:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/src/pages/GenericAllLeads.tsx:14:9[31m
+[33m
+12: import { useQuery } from '@tanstack/react-query';
+13: import { useDebounce } from '@/hooks/useDebounce';
+14: import { Constants } from '@/integrations/supabase/types';
+             ^
+15: import { AddLeadDialog } from '@/components/leads/AddLeadDialog';
+16: import { UploadLeadsDialog } from '@/components/leads/UploadLeadsDialog';
+[31m
+    at getRollupError (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/parseAst.js:395:41)
+    at error (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/parseAst.js:391:42)
+    at Module.error (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:15535:16)
+    at Module.traceVariable (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:15984:29)
+    at ModuleScope.findVariable (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:13770:39)
+    at FunctionScope.findVariable (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:5252:38)
+    at FunctionBodyScope.findVariable (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:5252:38)
+    at ReturnValueScope.findVariable (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:5252:38)
+    at FunctionBodyScope.findVariable (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:5252:38)
+    at MemberExpression.bind (file:///C:/Users/ppdub/Documents/Work/Weskill/Software/FastestCRM/node_modules/rollup/dist/es/shared/node-entry.js:6891:49)[39m
