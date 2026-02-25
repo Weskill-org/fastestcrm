@@ -1,18 +1,32 @@
 {
-    "rewrites": [
-        {
-            "source": "/(.*)",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
-            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/$1"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
-    ]
+  "rewrites": [
+    {
+      "source": "/auth/v1/(.*)",
+      "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/auth/v1/"
+    },
+    {
+      "source": "/rest/v1/(.*)",
+      "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/rest/v1/"
+    },
+    {
+      "source": "/functions/v1/(.*)",
+      "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/"
+    },
+    {
+      "source": "/storage/v1/(.*)",
+      "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/storage/v1/"
+    },
+    {
+      "source": "/realtime/v1/(.*)",
+      "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/realtime/v1/"
+    },
+    {
+      "source": "/graphql/v1/(.*)",
+      "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/graphql/v1/"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
