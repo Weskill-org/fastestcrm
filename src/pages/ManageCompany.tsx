@@ -787,7 +787,8 @@ export default function ManageCompany() {
                         setUploadingLogo(true);
                         try {
                           const fileExt = file.name.split('.').pop();
-                          const filePath = `${company.id}/${crypto.randomUUID()}.${fileExt}`;
+                          const mathId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                          const filePath = `${company.id}/${mathId}.${fileExt}`;
                           const { error } = await supabase.storage.from('company_assets').upload(filePath, file);
                           if (error) throw error;
                           const { data: { publicUrl } } = supabase.storage.from('company_assets').getPublicUrl(filePath);
