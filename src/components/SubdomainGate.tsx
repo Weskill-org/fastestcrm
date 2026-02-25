@@ -1,14 +1,17 @@
 /**
  * SubdomainGate
  *
- * Decides what to render based on the resolved domain type:
+ * Controls which route-tree to render based on the resolved domain.
  *
- *  ① isMainDomain  → show mainDomainContent  (landing, marketing pages, etc.)
- *  ② isSubdomain with company found → show children (full CRM app)
- *  ③ Custom domain with company found → show children (full CRM app)
- *  ④ Subdomain/custom domain still loading → show spinner
- *  ⑤ Subdomain with error (not found / inactive) → show error page
- *  ⑥ Custom domain with no company match → fail-open, show mainDomainContent
+ * Flow:
+ *  1. Main domain / localhost / preview → render mainDomainContent immediately (no DB wait)
+ *  2. Workspace subdomain/custom domain, still loading → spinner
+ *  3. Workspace subdomain failed (not found / inactive) → error page
+ *  4. Workspace subdomain resolved → render children (full CRM app)
+ *  5. Custom domain with no match → fail-open, render children (routes to /auth)
+ *
+ * IMPORTANT: On the main domain and localhost `loading` is always `false`
+ * from the very first render (see useSubdomain), so case 1 is always instant.
  */
 
 import { useSubdomainContext } from '@/contexts/SubdomainContext';
@@ -20,14 +23,15 @@ interface SubdomainGateProps {
 }
 
 export function SubdomainGate({ children, mainDomainContent }: SubdomainGateProps) {
-  const { isSubdomain, loading, error, company, isMainDomain } = useSubdomainContext();
+  const { isMainDomain, isSubdomain, loading, error, company } = useSubdomainContext();
 
-  // ① Main domain (fastestcrm.com / www / localhost / preview) — fast path
+  // ① Fast path: main domain (fastestcrm.com / localhost / preview)
+  //    loading is always false here — zero delay
   if (isMainDomain) {
     return <>{mainDomainContent}</>;
   }
 
-  // ② Still resolving the domain — wait before committing to a route tree
+  // ② Workspace domain: still resolving company via RPC
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -39,7 +43,7 @@ export function SubdomainGate({ children, mainDomainContent }: SubdomainGateProp
     );
   }
 
-  // ③ Subdomain resolved to an error (workspace not found / inactive)
+  // ③ Subdomain resolved but workspace not found or inactive
   if (error && isSubdomain) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -60,14 +64,7 @@ export function SubdomainGate({ children, mainDomainContent }: SubdomainGateProp
     );
   }
 
-  // ④ We're on a company subdomain or custom domain with a resolved company
-  //    → render the full CRM app tree
-  if (company) {
-    return <>{children}</>;
-  }
-
-  // ⑤ Edge case: not main-domain, not loading, no error, no company
-  //    (e.g. a custom domain where the lookup returned nothing)
-  //    Fail-open: don't block the user; show children (which routes to /auth)
+  // ④ & ⑤ Company found OR custom-domain fail-open → render the CRM app
+  //    The SubdomainAccessGuard inside will handle per-user access checks.
   return <>{children}</>;
 }

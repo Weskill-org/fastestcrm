@@ -1,9 +1,14 @@
+/**
+ * Auth page — login form only.
+ *
+ * Redirect logic is handled by <AuthRoute> in App.tsx.
+ * This component's only job: collect credentials → call signIn → show result.
+ */
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubdomainContext } from '@/contexts/SubdomainContext';
 import { useCompanyBranding } from '@/contexts/CompanyBrandingContext';
-import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Building2, WifiOff, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
 
-// ─── Validation ───────────────────────────────────────────────────────────────
+// ─── Validation schema ────────────────────────────────────────────────────────
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -32,27 +37,21 @@ export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [networkDown, setNetworkDown] = useState(false);
 
-  const { signIn, user, networkError } = useAuth();
+  // Auth — only used for signIn.  Redirect handled by AuthRoute in App.tsx.
+  const { signIn, networkError } = useAuth();
+
+  // Subdomain / branding — purely cosmetic, never blocks login
   const { isSubdomain, isCustomDomain, company: subdomainCompany } = useSubdomainContext();
-  // Show the "signing in to X" label for both subdomain and custom domain
   const isWorkspaceDomain = isSubdomain || isCustomDomain;
   const { companyName, logoUrl, applyBranding } = useCompanyBranding();
-  const { data: isPlatformAdmin, isLoading: isCheckingAdmin } = usePlatformAdmin();
-  const navigate = useNavigate();
+
   const { toast } = useToast();
 
-  // ── Redirect after successful login ────────────────────────────────────────
-  useEffect(() => {
-    if (user && !isCheckingAdmin) {
-      navigate(isPlatformAdmin ? '/platform' : '/dashboard', { replace: true });
-    }
-  }, [user, isPlatformAdmin, isCheckingAdmin, navigate]);
-
-  // ── Expose auth-level network error to local state ─────────────────────────
+  // Propagate auth-level network errors (e.g. getSession failed on init)
   useEffect(() => {
     if (networkError) setNetworkDown(true);
   }, [networkError]);
@@ -65,17 +64,17 @@ export default function Auth() {
       return true;
     } catch (err) {
       if (err instanceof z.ZodError) {
-        const newErrors: Record<string, string> = {};
+        const fieldErrors: Record<string, string> = {};
         err.errors.forEach((e) => {
-          if (e.path[0]) newErrors[e.path[0] as string] = e.message;
+          if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
         });
-        setErrors(newErrors);
+        setErrors(fieldErrors);
       }
       return false;
     }
   };
 
-  // ── Forgot password ────────────────────────────────────────────────────────
+  // ── Forgot-password ────────────────────────────────────────────────────────
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -87,60 +86,61 @@ export default function Auth() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-
       if (error) {
         toast({ title: 'Error', description: error.message, variant: 'destructive' });
       } else {
-        toast({
-          title: 'Check your email',
-          description: 'We sent you a password reset link.',
-        });
+        toast({ title: 'Check your email', description: 'We sent you a password reset link.' });
         setIsForgotPassword(false);
       }
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  // ── Sign in ───────────────────────────────────────────────────────────────
+  // ── Sign-in ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setNetworkDown(false);
     if (!validateForm()) return;
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       const { error } = await signIn(email, password);
 
-      if (error) {
-        const msg = error.message ?? '';
-        const isNet =
-          msg.includes('Failed to fetch') ||
-          msg.includes('timed out') ||
-          msg.includes('NetworkError') ||
-          msg.includes('abort');
+      if (!error) {
+        // Success — AuthRoute in App.tsx will redirect when user state updates.
+        // Nothing to do here.
+        return;
+      }
 
-        if (isNet) {
-          setNetworkDown(true);
-        } else {
-          toast({
-            title: 'Sign in failed',
-            description: msg || 'Invalid email or password. Please try again.',
-            variant: 'destructive',
-          });
-        }
+      const msg = error.message ?? '';
+      const isNetworkError =
+        msg.includes('Failed to fetch') ||
+        msg.includes('timed out') ||
+        msg.includes('NetworkError') ||
+        msg.includes('abort') ||
+        msg.includes('network');
+
+      if (isNetworkError) {
+        setNetworkDown(true);
+      } else {
+        toast({
+          title: 'Sign in failed',
+          description: msg || 'Invalid email or password. Please try again.',
+          variant: 'destructive',
+        });
       }
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  // ── Network-down state ─────────────────────────────────────────────────────
+  // ── Network-error screen ───────────────────────────────────────────────────
   if (networkDown) {
     return (
       <div className="min-h-screen bg-background dark flex items-center justify-center p-6 relative overflow-hidden">
@@ -152,27 +152,23 @@ export default function Auth() {
                 <WifiOff className="h-8 w-8 text-destructive" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-foreground">Cannot reach Supabase</h2>
+                <h2 className="text-xl font-bold text-foreground">Cannot Reach Server</h2>
                 <p className="text-sm text-muted-foreground">
-                  Your network is blocking the connection to the Supabase backend
-                  (<span className="font-mono text-xs">uykdyqdeyilpulaqlqip.supabase.co</span>).
+                  The connection to the Supabase backend is being blocked by your network.
                 </p>
               </div>
               <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-left space-y-2 text-sm text-muted-foreground">
                 <p className="font-semibold text-foreground">Quick fixes:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Switch to a mobile hotspot or different Wi-Fi</li>
-                  <li>Enable a VPN then reload this page</li>
-                  <li>Try from a different device / network</li>
+                  <li>Switch to a mobile hotspot</li>
+                  <li>Enable a VPN, then reload</li>
+                  <li>Try a different network</li>
                 </ul>
               </div>
               <Button
                 className="w-full gradient-primary shimmer-overlay font-semibold"
                 style={{ color: 'hsl(222 28% 5%)' }}
-                onClick={() => {
-                  setNetworkDown(false);
-                  window.location.reload();
-                }}
+                onClick={() => { setNetworkDown(false); window.location.reload(); }}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Retry Connection
@@ -187,14 +183,13 @@ export default function Auth() {
   // ── Normal auth UI ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background dark flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Dot-grid */}
+      {/* Background effects */}
       <div className="absolute inset-0 dot-grid-bg opacity-40" />
-      {/* Gradient orbs */}
       <div className="absolute top-1/4 left-1/5 w-80 h-80 bg-primary/15 rounded-full blur-[90px] animate-float" />
       <div className="absolute bottom-1/4 right-1/5 w-72 h-72 bg-primary/10 rounded-full blur-[80px] animate-float-slow" />
 
       <div className="w-full max-w-md relative">
-        {/* Back link or subdomain label */}
+        {/* Back link or workspace label */}
         {isWorkspaceDomain && subdomainCompany ? (
           <div className="mb-8 text-center">
             <p className="text-sm text-muted-foreground">
@@ -216,20 +211,13 @@ export default function Auth() {
 
         <Card
           className="glass border-border/50 shadow-2xl"
-          style={{
-            boxShadow:
-              '0 0 60px hsl(175 80% 48% / 0.08), 0 20px 60px hsl(0 0% 0% / 0.3)',
-          }}
+          style={{ boxShadow: '0 0 60px hsl(175 80% 48% / 0.08), 0 20px 60px hsl(0 0% 0% / 0.3)' }}
         >
           <CardHeader className="text-center">
-            {/* Logo */}
+            {/* Logo / branding */}
             {applyBranding && logoUrl ? (
               <div className="mx-auto w-16 h-16 rounded-xl overflow-hidden mb-4 border border-border/50 bg-background/50">
-                <img
-                  src={logoUrl}
-                  alt={companyName || 'Company logo'}
-                  className="w-full h-full object-cover"
-                />
+                <img src={logoUrl} alt={companyName || 'Company logo'} className="w-full h-full object-cover" />
               </div>
             ) : applyBranding && companyName ? (
               <div className="mx-auto w-16 h-16 rounded-xl gradient-primary flex items-center justify-center mb-4">
@@ -237,11 +225,7 @@ export default function Auth() {
               </div>
             ) : (
               <div className="mx-auto w-12 h-12 flex items-center justify-center mb-4">
-                <img
-                  src="/fastestcrmlogo.png"
-                  alt="Fastest CRM"
-                  className="w-12 h-12 object-contain"
-                />
+                <img src="/fastestcrmlogo.png" alt="Fastest CRM" className="w-12 h-12 object-contain" />
               </div>
             )}
 
@@ -269,7 +253,7 @@ export default function Auth() {
           <CardContent>
             {isForgotPassword ? (
               /* ── Forgot-password form ── */
-              <form onSubmit={handleForgotPassword} className="space-y-4">
+              <form onSubmit={handleForgotPassword} className="space-y-4" noValidate>
                 <div className="space-y-2">
                   <Label htmlFor="fp-email">Email</Label>
                   <Input
@@ -278,23 +262,22 @@ export default function Auth() {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
+                    disabled={submitting}
                     className={errors.email ? 'border-destructive' : ''}
                     autoComplete="email"
+                    autoFocus
                   />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
-                  )}
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full gradient-primary shimmer-overlay font-semibold"
                   style={{ color: 'hsl(222 28% 5%)' }}
-                  disabled={loading}
+                  disabled={submitting}
                 >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Reset Link
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {submitting ? 'Sending…' : 'Send Reset Link'}
                 </Button>
 
                 <div className="text-center">
@@ -309,84 +292,72 @@ export default function Auth() {
               </form>
             ) : (
               /* ── Sign-in form ── */
-              <>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={loading}
-                      className={errors.email ? 'border-destructive' : ''}
-                      autoComplete="email"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email}</p>
-                    )}
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={submitting}
+                    className={errors.email ? 'border-destructive' : ''}
+                    autoComplete="email"
+                    autoFocus
+                  />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPassword(true)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
                   </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={submitting}
+                    className={errors.password ? 'border-destructive' : ''}
+                    autoComplete="current-password"
+                  />
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
-                      <button
-                        type="button"
-                        onClick={() => setIsForgotPassword(true)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading}
-                      className={errors.password ? 'border-destructive' : ''}
-                      autoComplete="current-password"
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-destructive">{errors.password}</p>
-                    )}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full gradient-primary shimmer-overlay font-semibold"
-                    style={{ color: 'hsl(222 28% 5%)' }}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing in…
-                      </>
-                    ) : (
-                      'Sign In'
-                    )}
-                  </Button>
-                </form>
-
-                <div className="mt-6 text-center text-sm" />
-              </>
+                <Button
+                  type="submit"
+                  className="w-full gradient-primary shimmer-overlay font-semibold"
+                  style={{ color: 'hsl(222 28% 5%)' }}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing in…
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              </form>
             )}
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
           By continuing, you agree to our{' '}
-          <Link to="/terms" className="underline hover:text-primary">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link to="/privacy" className="underline hover:text-primary">
-            Privacy Policy
-          </Link>
-          .
+          <Link to="/terms" className="underline hover:text-primary">Terms of Service</Link>
+          {' '}and{' '}
+          <Link to="/privacy" className="underline hover:text-primary">Privacy Policy</Link>.
         </p>
 
         <footer className="mt-8 text-center text-sm text-muted-foreground">

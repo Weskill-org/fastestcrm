@@ -1,5 +1,20 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+/**
+ * SubdomainAccessGuard
+ *
+ * Ensures that a logged-in user can only access the workspace that belongs to
+ * their company. If they land on a different company's subdomain they are
+ * redirected to their own workspace.
+ *
+ * KEY RULES:
+ *  • Unauthenticated users → always pass through (login page handles them)
+ *  • Auth/subdomain still loading → show minimal spinner
+ *  • User's company = workspace company → pass through
+ *  • Company mismatch → hard redirect to correct workspace
+ *
+ * Company lookup (useCompany) is only triggered AFTER the user is logged in,
+ * so it never delays the login page render.
+ */
+import { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubdomainContext } from '@/contexts/SubdomainContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -10,16 +25,6 @@ interface SubdomainAccessGuardProps {
   children: React.ReactNode;
 }
 
-/**
- * SubdomainAccessGuard
- *
- * Ensures that a logged-in user can only access the workspace that belongs to
- * their company. If they land on a different company's subdomain/domain they
- * are redirected to their own workspace URL.
- *
- * Unauthenticated users are always let through — the Auth page is responsible
- * for sign-in before anything company-sensitive is shown.
- */
 export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
   const { user, loading: authLoading } = useAuth();
   const {
@@ -29,42 +34,30 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
     loading: subdomainLoading,
   } = useSubdomainContext();
   const { company: userCompany, loading: companyLoading } = useCompany();
-  const [checking, setChecking] = useState(true);
-  const navigate = useNavigate();
+  const redirected = useRef(false);
 
   const isWorkspaceDomain = isSubdomain || isCustomDomain;
 
   useEffect(() => {
-    if (authLoading || subdomainLoading || companyLoading) return;
+    // Wait for everything we need
+    if (authLoading || subdomainLoading) return;
+    // Not logged in — pass through (Auth page will handle)
+    if (!user) return;
+    // Not on a client workspace — pass through
+    if (!isWorkspaceDomain || !workspaceCompany) return;
+    // Still loading which company the user belongs to
+    if (companyLoading) return;
+    // User has no company yet (still being set up) — pass through
+    if (!userCompany) return;
+    // Correct workspace — pass through
+    if (userCompany.id === workspaceCompany.id) return;
 
-    // Not yet logged in — let the Auth page handle everything
-    if (!user) {
-      setChecking(false);
-      return;
+    // Mismatch — redirect once to the user's correct workspace
+    if (!redirected.current) {
+      redirected.current = true;
+      const correctUrl = getWorkspaceUrl(userCompany.slug);
+      window.location.href = `${correctUrl}${window.location.pathname}`;
     }
-
-    // Not on a client workspace — allow access
-    if (!isWorkspaceDomain || !workspaceCompany) {
-      setChecking(false);
-      return;
-    }
-
-    // User has no company yet — allow access (they may be setting one up)
-    if (!userCompany) {
-      setChecking(false);
-      return;
-    }
-
-    // User's company matches the current workspace — allow access
-    if (userCompany.id === workspaceCompany.id) {
-      setChecking(false);
-      return;
-    }
-
-    // Mismatch: redirect to the user's correct workspace
-    const correctUrl = getWorkspaceUrl(userCompany.slug);
-    const currentPath = window.location.pathname;
-    window.location.href = `${correctUrl}${currentPath}`;
   }, [
     user,
     authLoading,
@@ -73,10 +66,15 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
     subdomainLoading,
     userCompany,
     companyLoading,
-    navigate,
   ]);
 
-  if (checking && (authLoading || subdomainLoading || companyLoading)) {
+  // Only show a spinner if we're actually waiting for something meaningful
+  const isChecking =
+    (authLoading && !user) ||
+    (subdomainLoading && isWorkspaceDomain) ||
+    (user && companyLoading && isWorkspaceDomain && !!workspaceCompany);
+
+  if (isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

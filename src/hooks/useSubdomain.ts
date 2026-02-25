@@ -5,13 +5,14 @@
  * Works for:
  *   • Client subdomain:   acme.fastestcrm.com  → RPC get_subdomain_company
  *   • Custom domain:      crm.acme.com         → RPC get_custom_domain_company
- *   • Main domain / dev: fastestcrm.com / localhost → no lookup
+ *   • Main domain / dev: fastestcrm.com / localhost → no lookup, instant resolve
  *
- * The two RPCs are SECURITY DEFINER and GRANTed to `anon`, so they succeed
- * even before the user has signed in.
+ * KEY DESIGN PRINCIPLE: The `loading` state is initialised to `false` on the
+ * main domain and `localhost` so the app NEVER blocks on a DB call when not
+ * running on a client workspace domain.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,11 +35,19 @@ export interface SubdomainResult {
   subdomain: string | null;
   /** The resolved company, null until lookup completes or if not found */
   company: SubdomainCompany | null;
+  /** Only true when actively fetching company data for a workspace domain */
   loading: boolean;
   error: string | null;
   /** True only on the platform's own root domain */
   isMainDomain: boolean;
 }
+
+type DomainClassification = {
+  isMainDomain: boolean;
+  isSubdomain: boolean;
+  isCustomDomain: boolean;
+  subdomain: string | null;
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -50,70 +59,77 @@ const PLATFORM_SUBDOMAINS = new Set(['www', 'app', 'api', 'admin', 'mail', 'smtp
 /** How long to wait for a lookup before giving up and rendering anyway */
 const LOOKUP_TIMEOUT_MS = 6_000;
 
+// ── Pure classification (no async, no side-effects) ───────────────────────────
+
+function classifyHostname(hostname: string): DomainClassification {
+  // Local development / CI / LAN
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.')
+  ) {
+    return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
+  }
+
+  // Preview / staging deployments
+  if (
+    hostname.endsWith('.lovable.app') ||
+    hostname.endsWith('.vercel.app') ||
+    hostname.endsWith('.netlify.app') ||
+    hostname.endsWith('.pages.dev')
+  ) {
+    return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
+  }
+
+  // Exact root or www of the platform domain
+  if (hostname === MAIN_DOMAIN || hostname === `www.${MAIN_DOMAIN}`) {
+    return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
+  }
+
+  // Platform subdomain: *.fastestcrm.com
+  if (hostname.endsWith(`.${MAIN_DOMAIN}`)) {
+    const sub = hostname.slice(0, hostname.length - MAIN_DOMAIN.length - 1);
+
+    // Known platform subdomains (www, api, etc.) → still the main domain
+    if (PLATFORM_SUBDOMAINS.has(sub)) {
+      return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
+    }
+
+    // Client workspace subdomain
+    return { isMainDomain: false, isSubdomain: true, isCustomDomain: false, subdomain: sub };
+  }
+
+  // Everything else is treated as a custom domain
+  return { isMainDomain: false, isSubdomain: false, isCustomDomain: true, subdomain: null };
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useSubdomain(): SubdomainResult {
-  const [company, setCompany] = useState<SubdomainCompany | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const hostname = window.location.hostname;
 
-  // ── Classify the current hostname ──────────────────────────────────────────
-  const classify = (): {
-    isMainDomain: boolean;
-    isSubdomain: boolean;
-    isCustomDomain: boolean;
-    subdomain: string | null;
-  } => {
-    // Local development / CI
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
-      return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
-    }
+  // Classification is pure / synchronous — computed once
+  const { isMainDomain, isSubdomain, isCustomDomain, subdomain } = useMemo(
+    () => classifyHostname(hostname),
+    [hostname]
+  );
 
-    // Preview / staging deployments
-    if (
-      hostname.endsWith('.lovable.app') ||
-      hostname.endsWith('.vercel.app') ||
-      hostname.endsWith('.netlify.app') ||
-      hostname.endsWith('.pages.dev')
-    ) {
-      return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
-    }
+  // On main-domain / localhost, we never need to load anything
+  const needsLookup = !isMainDomain && (isSubdomain || isCustomDomain);
 
-    // Exact root or www of the platform domain
-    if (hostname === MAIN_DOMAIN || hostname === `www.${MAIN_DOMAIN}`) {
-      return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
-    }
-
-    // Platform subdomain: *.fastestcrm.com
-    if (hostname.endsWith(`.${MAIN_DOMAIN}`)) {
-      const sub = hostname.slice(0, hostname.length - MAIN_DOMAIN.length - 1);
-
-      // Known platform subdomains → still main domain
-      if (PLATFORM_SUBDOMAINS.has(sub)) {
-        return { isMainDomain: true, isSubdomain: false, isCustomDomain: false, subdomain: null };
-      }
-
-      // Client workspace subdomain
-      return { isMainDomain: false, isSubdomain: true, isCustomDomain: false, subdomain: sub };
-    }
-
-    // Everything else is treated as a custom domain
-    return { isMainDomain: false, isSubdomain: false, isCustomDomain: true, subdomain: null };
-  };
-
-  const { isMainDomain, isSubdomain, isCustomDomain, subdomain } = classify();
+  const [company, setCompany] = useState<SubdomainCompany | null>(null);
+  // loading starts false on main domain — no spinner, no delay, no DB call
+  const [loading, setLoading] = useState(needsLookup);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Main domain / localhost — skip all DB work immediately
-    if (isMainDomain) {
-      setLoading(false);
-      return;
-    }
+    // Main domain / localhost — nothing to do
+    if (!needsLookup) return;
 
     let cancelled = false;
 
+    // Safety timeout — never block the app forever
     const timeoutId = setTimeout(() => {
       if (!cancelled) {
         console.warn('[useSubdomain] Lookup timed out — rendering without company data');
@@ -132,12 +148,14 @@ export function useSubdomain(): SubdomainResult {
 
           if (rpcError) {
             console.error('[useSubdomain] get_subdomain_company error:', rpcError);
+            // Network/RPC error — fail-open so login still works
             setError('Failed to load workspace. Please try again.');
             return;
           }
 
-          // RPC returns TABLE — result is an array
+          // RPC returns a TABLE — PostgREST wraps it as an array
           const rows = Array.isArray(data) ? data : data ? [data] : [];
+
           if (rows.length === 0) {
             setError('Workspace not found');
             return;
@@ -169,9 +187,7 @@ export function useSubdomain(): SubdomainResult {
           const rows = Array.isArray(data) ? data : data ? [data] : [];
           if (rows.length > 0) {
             const row = rows[0] as SubdomainCompany;
-            if (row.is_active) {
-              setCompany(row);
-            }
+            if (row.is_active) setCompany(row);
           }
         }
       } catch (err: unknown) {
@@ -193,7 +209,7 @@ export function useSubdomain(): SubdomainResult {
       clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMainDomain, isSubdomain, isCustomDomain, subdomain, hostname]);
+  }, [needsLookup, isSubdomain, isCustomDomain, subdomain, hostname]);
 
   return {
     isSubdomain,
@@ -218,8 +234,6 @@ export function isCompanyWorkspace(companySlug: string): boolean {
   const hostname = window.location.hostname;
   return (
     hostname === `${companySlug}.${MAIN_DOMAIN}` ||
-    // Support custom domains: compare against whatever the company registered
-    // (the caller can pass company.custom_domain instead of slug if needed)
-    hostname === companySlug
+    hostname === companySlug // custom domain
   );
 }

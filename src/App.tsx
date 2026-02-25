@@ -2,12 +2,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { SubdomainProvider } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
 import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
 import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
+import AppLayout from "@/components/layout/AppLayout";
+import { usePlatformAdmin } from "@/hooks/usePlatformAdmin";
+import { Loader2 } from "lucide-react";
+
+// ─── Page imports ─────────────────────────────────────────────────────────────
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import RegisterCompany from "./pages/RegisterCompany";
@@ -45,24 +50,131 @@ import BlogPost from "./pages/BlogPost";
 import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
 
-const queryClient = new QueryClient();
+// ─── Query client ─────────────────────────────────────────────────────────────
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        const isNetwork =
+          error?.message?.includes('Failed to fetch') ||
+          error?.message?.includes('abort');
+        return !isNetwork && failureCount < 2;
+      },
+    },
+  },
+});
 
-// Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
-import AppLayout from "@/components/layout/AppLayout";
+// ─── AuthRoute ────────────────────────────────────────────────────────────────
+/**
+ * Wraps the <Auth /> login page.
+ * • If the user is already logged in → redirect to their home.
+ * • If auth is still loading from localStorage → tiny spinner.
+ * • Otherwise → show the login form.
+ */
+function AuthRoute() {
+  const { user, loading: authLoading } = useAuth();
+  const { data: isPlatformAdmin, isLoading: isCheckingAdmin } = usePlatformAdmin();
 
-// ... existing imports
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-// Main domain routes (fastestcrm.com, www.fastestcrm.com, localhost, preview domains)
+  // Already logged in — wait for admin check, then redirect
+  if (user) {
+    if (isCheckingAdmin) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+    return <Navigate to={isPlatformAdmin ? '/platform' : '/dashboard'} replace />;
+  }
+
+  return <Auth />;
+}
+
+// ─── ProtectedRoute ───────────────────────────────────────────────────────────
+/**
+ * Guards routes that require authentication.
+ * Saves the attempted path so we can redirect back after login.
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// ─── Shared dashboard routes (Outlet-based, used by AppLayout) ────────────────
+/**
+ * These routes sit INSIDE <AppLayout> via React Router's <Outlet>.
+ * AppLayout renders <Outlet /> at line 346 — do NOT wrap AppLayout with
+ * {children}; always use it as a route element with nested child routes.
+ */
+const DashboardRoutes = () => (
+  <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+    <Route path="dashboard" element={<Dashboard />} />
+    <Route path="dashboard/lg" element={<LGDashboard />} />
+    <Route path="dashboard/leads" element={<AllLeads />} />
+    <Route path="dashboard/interested" element={<Interested />} />
+    <Route path="dashboard/paid" element={<Paid />} />
+    <Route path="dashboard/pending" element={<PendingPayments />} />
+    <Route path="dashboard/dialer" element={<AutoDialer />} />
+    <Route path="dashboard/report" element={<Report />} />
+    <Route path="dashboard/ai" element={<AIInsights />} />
+    <Route path="dashboard/team" element={<Team />} />
+    <Route path="dashboard/automations" element={<Automations />} />
+    <Route path="dashboard/integrations" element={<Integrations />} />
+    <Route path="dashboard/settings" element={<Settings />} />
+    <Route path="dashboard/forms" element={<Forms />} />
+    <Route path="dashboard/forms/:id/responses" element={<FormResponses />} />
+    <Route path="dashboard/forms/new" element={<FormBuilder />} />
+    <Route path="dashboard/forms/:id" element={<FormBuilder />} />
+    <Route path="dashboard/company" element={<ManageCompany />} />
+    <Route path="dashboard/statuses" element={<ManageStatuses />} />
+    <Route path="dashboard/products" element={<ManageProducts />} />
+    <Route path="dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
+    <Route path="dashboard/properties" element={<ManageProperties />} />
+    <Route path="dashboard/lead-profiling" element={<ManageLeadProfiling />} />
+    <Route path="dashboard/bigdata-sql" element={<BigdataSQL />} />
+    <Route path="dashboard/tasks" element={<Tasks />} />
+  </Route>
+);
+
+// ─── Main-domain route tree ───────────────────────────────────────────────────
 const MainDomainRoutes = () => (
   <Routes>
     <Route path="/" element={<Landing />} />
-    <Route path="/auth" element={<Auth />} />
+    <Route path="/auth" element={<AuthRoute />} />
     <Route path="/terms" element={<TermsOfService />} />
     <Route path="/privacy" element={<PrivacyPolicy />} />
     <Route path="/register-company" element={<RegisterCompany />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/platform" element={<ProtectedRoute><PlatformAdmin /></ProtectedRoute>} />
+    <Route path="/form/:id" element={<PublicForm />} />
+    <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+    <Route path="/blog" element={<Blog />} />
+    <Route path="/blog/:slug" element={<BlogPost />} />
 
-    <Route element={<AppLayout />}>
+    {/* AppLayout (Outlet-based) wraps all dashboard routes */}
+    <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/lg" element={<LGDashboard />} />
       <Route path="/dashboard/leads" element={<AllLeads />} />
@@ -80,7 +192,6 @@ const MainDomainRoutes = () => (
       <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
       <Route path="/dashboard/forms/new" element={<FormBuilder />} />
       <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-      <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
       <Route path="/dashboard/company" element={<ManageCompany />} />
       <Route path="/dashboard/statuses" element={<ManageStatuses />} />
       <Route path="/dashboard/products" element={<ManageProducts />} />
@@ -91,26 +202,24 @@ const MainDomainRoutes = () => (
       <Route path="/dashboard/tasks" element={<Tasks />} />
     </Route>
 
-    <Route path="/platform" element={<PlatformAdmin />} />
-    <Route path="/form/:id" element={<PublicForm />} />
-    <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
-    <Route path="/blog" element={<Blog />} />
-    <Route path="/blog/:slug" element={<BlogPost />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
 
-// Subdomain routes (company.fastestcrm.com) - can be customized per workspace
-// Wrapped with SubdomainAccessGuard to ensure users can only access their own company's subdomain
+// ─── Workspace subdomain route tree ──────────────────────────────────────────
 const SubdomainRoutes = () => (
   <SubdomainAccessGuard>
     <Routes>
-      {/* On subdomain, "/" goes directly to auth/dashboard, not landing */}
-      <Route path="/" element={<Auth />} />
-      <Route path="/auth" element={<Auth />} />
+      {/* On a workspace subdomain, "/" and "/auth" go to the login form */}
+      <Route path="/" element={<AuthRoute />} />
+      <Route path="/auth" element={<AuthRoute />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/platform" element={<ProtectedRoute><PlatformAdmin /></ProtectedRoute>} />
+      <Route path="/form/:id" element={<PublicForm />} />
+      <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
 
-      <Route element={<AppLayout />}>
+      {/* AppLayout (Outlet-based) wraps all dashboard routes */}
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/lg" element={<LGDashboard />} />
         <Route path="/dashboard/leads" element={<AllLeads />} />
@@ -128,7 +237,6 @@ const SubdomainRoutes = () => (
         <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
         <Route path="/dashboard/forms/new" element={<FormBuilder />} />
         <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-        <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
         <Route path="/dashboard/company" element={<ManageCompany />} />
         <Route path="/dashboard/statuses" element={<ManageStatuses />} />
         <Route path="/dashboard/products" element={<ManageProducts />} />
@@ -139,30 +247,40 @@ const SubdomainRoutes = () => (
         <Route path="/dashboard/tasks" element={<Tasks />} />
       </Route>
 
-      <Route path="/form/:id" element={<PublicForm />} />
-      <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </SubdomainAccessGuard>
 );
 
+// ─── App ─────────────────────────────────────────────────────────────────────
+/**
+ * Provider order (outermost → innermost):
+ *
+ *  QueryClient → BrowserRouter → AuthProvider → SubdomainProvider →
+ *    CompanyBrandingProvider → TooltipProvider → SubdomainGate → Routes
+ *
+ * AuthProvider is OUTSIDE SubdomainProvider so:
+ *  • Auth reads the existing Supabase session from localStorage instantly
+ *  • The login form renders with zero dependency on subdomain lookups
+ *  • Subdomain resolution runs in parallel and adds branding only
+ */
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <SubdomainProvider>
-        <CompanyBrandingProvider>
-          <AuthProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <SubdomainProvider>
+          <CompanyBrandingProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
               <SubdomainGate mainDomainContent={<MainDomainRoutes />}>
                 <SubdomainRoutes />
               </SubdomainGate>
-            </BrowserRouter>
-          </AuthProvider>
-        </CompanyBrandingProvider>
-      </SubdomainProvider>
-    </TooltipProvider>
+            </TooltipProvider>
+          </CompanyBrandingProvider>
+        </SubdomainProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
