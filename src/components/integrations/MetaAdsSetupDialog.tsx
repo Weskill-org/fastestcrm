@@ -45,12 +45,11 @@ interface FacebookPage {
 const META_APP_ID = '1222309222740033';
 
 // Use the already-deployed edge function URL as redirect_uri.
-const META_OAUTH_REDIRECT_URI =
-  'https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-oauth-callback';
+`https://api.fastestcrm.com/functions/v1/meta-oauth-callback`;
 
 // Only accept postMessage events from our callback origins.
 const META_OAUTH_ALLOWED_ORIGINS = new Set([
-  'https://uykdyqdeyilpulaqlqip.supabase.co',
+  'https://api.fastestcrm.com',
   'https://fastestcrm.com',
 ]);
 
@@ -483,7 +482,7 @@ export function MetaAdsSetupDialog({
               <div className="bg-white rounded p-2 space-y-1 text-xs font-mono">
                 <div>
                   <p className="text-gray-600">URL:</p>
-                  <p className="text-gray-900 break-all">https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-lead-webhook</p>
+                  <p className="text-gray-900 break-all">https://api.fastestcrm.com/functions/v1/meta-lead-webhook</p>
                 </div>
                 <div>
                   <p className="text-gray-600">Verify Token:</p>

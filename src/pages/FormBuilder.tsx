@@ -290,7 +290,7 @@ export default function FormBuilder() {
     const [copiedUrl, setCopiedUrl] = useState(false);
     const [copiedJson, setCopiedJson] = useState(false);
 
-    const apiUrl = "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/submit-external-lead";
+    const apiUrl = `https://api.fastestcrm.com/functions/v1/submit-external-lead`;
     const canViewApiInfo = (userRole === 'company' || userRole === 'company_subadmin');
 
     // Generate sample JSON payload based on current fields

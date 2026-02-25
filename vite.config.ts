@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
       // direct outbound connection blocks (ISP/firewall blocking Supabase IP).
       // The client uses VITE_SUPABASE_URL directly in production (no proxy needed).
       "/supabase-proxy": {
-        target: "https://uykdyqdeyilpulaqlqip.supabase.co",
+        target: "https://api.fastestcrm.com",
         changeOrigin: true,
         secure: true,
         rewrite: (path) => path.replace(/^\/supabase-proxy/, ""),

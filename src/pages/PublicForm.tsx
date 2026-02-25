@@ -57,7 +57,7 @@ export default function PublicForm() {
 
             // Call secure edge function for public form submission
             const response = await fetch(
-                `https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/submit-public-form`,
+                `https://api.fastestcrm.com/functions/v1/submit-public-form`,
                 {
                     method: 'POST',
                     headers: {

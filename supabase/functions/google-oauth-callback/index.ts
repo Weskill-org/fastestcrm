@@ -36,7 +36,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
     const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
-    const googleRedirectUri = "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/google-oauth-callback";
+    const googleRedirectUri = "https://api.fastestcrm.com/functions/v1/google-oauth-callback";
 
     if (!googleClientId || !googleClientSecret) {
         console.error("google-oauth-callback: Missing Google credentials");

@@ -3,7 +3,7 @@ import Cookies from 'js-cookie';
 import type { Database } from './types';
 
 // ─── Environment ─────────────────────────────────────────────────────────────
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_URL = "https://api.fastestcrm.com";
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 // ─── Startup guard ────────────────────────────────────────────────────────────

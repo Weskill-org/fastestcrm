@@ -36,7 +36,7 @@ export function LinkedInAdsSetupDialog({ isOpen, onOpenChange, onComplete, exist
   const [copied, setCopied] = useState(false);
 
   // Generate webhook URL
-  const webhookUrl = `https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/linkedin-lead-webhook?company=${company?.id}`;
+  const webhookUrl = `https://api.fastestcrm.com/functions/v1/linkedin-lead-webhook?company=${company?.id}`;
 
   const copyToClipboard = async (text: string) => {
     await navigator.clipboard.writeText(text);

@@ -38,7 +38,7 @@ export function GoogleAdsSetupDialog({ isOpen, onOpenChange, onComplete, existin
   const [selectedAccountId, setSelectedAccountId] = useState(existingIntegration?.ad_account_id || '');
 
   // Generate webhook URL with company identifier
-  const webhookUrl = `https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/google-lead-webhook?company=${company?.id}`;
+  const webhookUrl = `https://api.fastestcrm.com/functions/v1/google-lead-webhook?company=${company?.id}`;
   const webhookKey = existingIntegration?.webhook_verify_token || 'Auto-generated via OAuth';
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export function GoogleAdsSetupDialog({ isOpen, onOpenChange, onComplete, existin
       // 1. Redirect to Google OAuth
       // We construct the URL with our redirect URI and state
       const clientId = '1033874890501-kmknjjuqrfr605id643hjit2n5vgmneq.apps.googleusercontent.com'; // From user request
-      const redirectUri = 'https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/google-oauth-callback';
+      const redirectUri = `https://api.fastestcrm.com/functions/v1/google-oauth-callback`;
       const scope = 'https://www.googleapis.com/auth/adwords';
       const state = JSON.stringify({ companyId: company.id, defaultStatus });
 
