@@ -20,10 +20,28 @@ if (!SUPABASE_URL || !SUPABASE_URL.startsWith('http')) {
 // localStorage is bound to exactly the origin (e.g. app.fastestcrm.com is isolated
 // from fastestcrm.com). To make auth survive subdomain hops, we use cookies set
 // on the root domain (.fastestcrm.com). Custom domains will receive standard cookies.
+// Browsers limit cookies to 4KB. Supabase sessions often exceed this, so we MUST chunk them.
+const MAX_COOKIE_SIZE = 3000;
+
 const cookieStorage = {
   getItem: (key: string): string | null => {
     if (typeof window === 'undefined') return null;
-    return Cookies.get(key) || null;
+    let value = '';
+    let i = 0;
+    while (true) {
+      const chunk = Cookies.get(`${key}_${i}`);
+      if (chunk) {
+        value += chunk;
+        i++;
+      } else {
+        break;
+      }
+    }
+    // Fallback for legacy un-chunked cookies
+    if (!value) {
+      value = Cookies.get(key) || '';
+    }
+    return value || null;
   },
   setItem: (key: string, value: string): void => {
     if (typeof window === 'undefined') return;
@@ -36,27 +54,54 @@ const cookieStorage = {
       sameSite: 'None', // Critical for cross-subdomain auth in strict browsers like Safari/Brave
     };
 
-    // If we're on any fastestcrm.com domain, scope the cookie to the root domain
-    // so it's shared across www., api., app., and client subdomains.
     if (hostname.endsWith('fastestcrm.com')) {
       cookieOptions.domain = '.fastestcrm.com';
     }
-    // Otherwise (localhost, preview URLs, or custom client domains like crm.acme.com),
-    // let the browser use the default exact hostname.
 
-    Cookies.set(key, value, cookieOptions);
+    // Clean legacy un-chunked
+    Cookies.remove(key, { path: '/' });
+    if (cookieOptions.domain) Cookies.remove(key, { path: '/', domain: cookieOptions.domain });
+
+    // Split value into chunks safely under 4KB
+    const chunks = [];
+    for (let c = 0; c < value.length; c += MAX_COOKIE_SIZE) {
+      chunks.push(value.slice(c, c + MAX_COOKIE_SIZE));
+    }
+
+    // Set new chunks
+    chunks.forEach((chunk, index) => {
+      Cookies.set(`${key}_${index}`, chunk, cookieOptions);
+    });
+
+    // Remove any trailing chunks from a previously larger session
+    let cleanupIndex = chunks.length;
+    while (Cookies.get(`${key}_${cleanupIndex}`)) {
+      Cookies.remove(`${key}_${cleanupIndex}`, { path: '/' });
+      if (cookieOptions.domain) Cookies.remove(`${key}_${cleanupIndex}`, { path: '/', domain: cookieOptions.domain });
+      cleanupIndex++;
+    }
   },
   removeItem: (key: string): void => {
     if (typeof window === 'undefined') return;
 
     const hostname = window.location.hostname;
+    const domain = hostname.endsWith('fastestcrm.com') ? '.fastestcrm.com' : undefined;
 
-    // Attempt removal on exactly the current hostname
+    // Remove legacy un-chunked
     Cookies.remove(key, { path: '/' });
+    if (domain) Cookies.remove(key, { path: '/', domain });
 
-    // Also attempt removal on the root domain if applicable
-    if (hostname.endsWith('fastestcrm.com')) {
-      Cookies.remove(key, { path: '/', domain: '.fastestcrm.com' });
+    // Remove chunks
+    let i = 0;
+    let hasChunk = true;
+    while (hasChunk || i < 10) { // Check up to 10 chunks to be completely safe
+      const exists = Cookies.get(`${key}_${i}`);
+      if (!exists && i > 5) hasChunk = false;
+
+      Cookies.remove(`${key}_${i}`, { path: '/' });
+      if (domain) Cookies.remove(`${key}_${i}`, { path: '/', domain });
+
+      i++;
     }
   },
 };
