@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { SubdomainProvider } from "@/contexts/SubdomainContext";
+import { SubdomainProvider, useSubdomainContext } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
 import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
 import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
@@ -51,175 +51,65 @@ import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
 
 // ─── Query client ─────────────────────────────────────────────────────────────
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error: any) => {
-        const isNetwork =
-          error?.message?.includes('Failed to fetch') ||
-          error?.message?.includes('abort');
-        return !isNetwork && failureCount < 2;
-      },
-    },
-  },
-});
+const queryClient = new QueryClient();
 
-// ─── AuthRoute ────────────────────────────────────────────────────────────────
-/**
- * Wraps the <Auth /> login page.
- * • If the user is already logged in → redirect to their home.
- * • If auth is still loading from localStorage → tiny spinner.
- * • Otherwise → show the login form.
- */
+// ─── Route Components ──────────────────────────────────────────────────────────
+
+/** Redirect already-logged-in users. Redirect logic centrally managed here. */
 function AuthRoute() {
   const { user, loading: authLoading } = useAuth();
   const { data: isPlatformAdmin, isLoading: isCheckingAdmin } = usePlatformAdmin();
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
-  // Already logged in — wait for admin check, then redirect
   if (user) {
-    if (isCheckingAdmin) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      );
-    }
+    if (isCheckingAdmin) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     return <Navigate to={isPlatformAdmin ? '/platform' : '/dashboard'} replace />;
   }
 
   return <Auth />;
 }
 
-// ─── ProtectedRoute ───────────────────────────────────────────────────────────
-/**
- * Guards routes that require authentication.
- * Saves the attempted path so we can redirect back after login.
- */
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+/** Basic protected route guard */
+function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const location = useLocation();
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
 
   return <>{children}</>;
 }
 
-// ─── Shared dashboard routes (Outlet-based, used by AppLayout) ────────────────
-/**
- * These routes sit INSIDE <AppLayout> via React Router's <Outlet>.
- * AppLayout renders <Outlet /> at line 346 — do NOT wrap AppLayout with
- * {children}; always use it as a route element with nested child routes.
- */
-const DashboardRoutes = () => (
-  <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-    <Route path="dashboard" element={<Dashboard />} />
-    <Route path="dashboard/lg" element={<LGDashboard />} />
-    <Route path="dashboard/leads" element={<AllLeads />} />
-    <Route path="dashboard/interested" element={<Interested />} />
-    <Route path="dashboard/paid" element={<Paid />} />
-    <Route path="dashboard/pending" element={<PendingPayments />} />
-    <Route path="dashboard/dialer" element={<AutoDialer />} />
-    <Route path="dashboard/report" element={<Report />} />
-    <Route path="dashboard/ai" element={<AIInsights />} />
-    <Route path="dashboard/team" element={<Team />} />
-    <Route path="dashboard/automations" element={<Automations />} />
-    <Route path="dashboard/integrations" element={<Integrations />} />
-    <Route path="dashboard/settings" element={<Settings />} />
-    <Route path="dashboard/forms" element={<Forms />} />
-    <Route path="dashboard/forms/:id/responses" element={<FormResponses />} />
-    <Route path="dashboard/forms/new" element={<FormBuilder />} />
-    <Route path="dashboard/forms/:id" element={<FormBuilder />} />
-    <Route path="dashboard/company" element={<ManageCompany />} />
-    <Route path="dashboard/statuses" element={<ManageStatuses />} />
-    <Route path="dashboard/products" element={<ManageProducts />} />
-    <Route path="dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
-    <Route path="dashboard/properties" element={<ManageProperties />} />
-    <Route path="dashboard/lead-profiling" element={<ManageLeadProfiling />} />
-    <Route path="dashboard/bigdata-sql" element={<BigdataSQL />} />
-    <Route path="dashboard/tasks" element={<Tasks />} />
-  </Route>
-);
+/** The main route structure, unified for both main domain and subdomains */
+function AppRoutes() {
+  const { isMainDomain } = useSubdomainContext();
 
-// ─── Main-domain route tree ───────────────────────────────────────────────────
-const MainDomainRoutes = () => (
-  <Routes>
-    <Route path="/" element={<Landing />} />
-    <Route path="/auth" element={<AuthRoute />} />
-    <Route path="/terms" element={<TermsOfService />} />
-    <Route path="/privacy" element={<PrivacyPolicy />} />
-    <Route path="/register-company" element={<RegisterCompany />} />
-    <Route path="/reset-password" element={<ResetPassword />} />
-    <Route path="/platform" element={<ProtectedRoute><PlatformAdmin /></ProtectedRoute>} />
-    <Route path="/form/:id" element={<PublicForm />} />
-    <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
-    <Route path="/blog" element={<Blog />} />
-    <Route path="/blog/:slug" element={<BlogPost />} />
-
-    {/* AppLayout (Outlet-based) wraps all dashboard routes */}
-    <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dashboard/lg" element={<LGDashboard />} />
-      <Route path="/dashboard/leads" element={<AllLeads />} />
-      <Route path="/dashboard/interested" element={<Interested />} />
-      <Route path="/dashboard/paid" element={<Paid />} />
-      <Route path="/dashboard/pending" element={<PendingPayments />} />
-      <Route path="/dashboard/dialer" element={<AutoDialer />} />
-      <Route path="/dashboard/report" element={<Report />} />
-      <Route path="/dashboard/ai" element={<AIInsights />} />
-      <Route path="/dashboard/team" element={<Team />} />
-      <Route path="/dashboard/automations" element={<Automations />} />
-      <Route path="/dashboard/integrations" element={<Integrations />} />
-      <Route path="/dashboard/settings" element={<Settings />} />
-      <Route path="/dashboard/forms" element={<Forms />} />
-      <Route path="/dashboard/forms/:id/responses" element={<FormResponses />} />
-      <Route path="/dashboard/forms/new" element={<FormBuilder />} />
-      <Route path="/dashboard/forms/:id" element={<FormBuilder />} />
-      <Route path="/dashboard/company" element={<ManageCompany />} />
-      <Route path="/dashboard/statuses" element={<ManageStatuses />} />
-      <Route path="/dashboard/products" element={<ManageProducts />} />
-      <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
-      <Route path="/dashboard/properties" element={<ManageProperties />} />
-      <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
-      <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
-      <Route path="/dashboard/tasks" element={<Tasks />} />
-    </Route>
-
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
-
-// ─── Workspace subdomain route tree ──────────────────────────────────────────
-const SubdomainRoutes = () => (
-  <SubdomainAccessGuard>
+  return (
     <Routes>
-      {/* On a workspace subdomain, "/" and "/auth" go to the login form */}
-      <Route path="/" element={<AuthRoute />} />
+      {/* Home Path Logic */}
+      {isMainDomain ? (
+        <Route path="/" element={<Landing />} />
+      ) : (
+        <Route path="/" element={<AuthRoute />} />
+      )}
+
+      {/* Shared Auth/Public Routes */}
       <Route path="/auth" element={<AuthRoute />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/register-company" element={<RegisterCompany />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/platform" element={<ProtectedRoute><PlatformAdmin /></ProtectedRoute>} />
       <Route path="/form/:id" element={<PublicForm />} />
       <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+      <Route path="/blog" element={<Blog />} />
+      <Route path="/blog/:slug" element={<BlogPost />} />
 
-      {/* AppLayout (Outlet-based) wraps all dashboard routes */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      {/* Platform Admin */}
+      <Route path="/platform" element={<Protected><PlatformAdmin /></Protected>} />
+
+      {/* Dashboard Routes — Wrapped in Layout & Guards */}
+      <Route element={<Protected><SubdomainAccessGuard><AppLayout /></SubdomainAccessGuard></Protected>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/lg" element={<LGDashboard />} />
         <Route path="/dashboard/leads" element={<AllLeads />} />
@@ -249,21 +139,11 @@ const SubdomainRoutes = () => (
 
       <Route path="*" element={<NotFound />} />
     </Routes>
-  </SubdomainAccessGuard>
-);
+  );
+}
 
 // ─── App ─────────────────────────────────────────────────────────────────────
-/**
- * Provider order (outermost → innermost):
- *
- *  QueryClient → BrowserRouter → AuthProvider → SubdomainProvider →
- *    CompanyBrandingProvider → TooltipProvider → SubdomainGate → Routes
- *
- * AuthProvider is OUTSIDE SubdomainProvider so:
- *  • Auth reads the existing Supabase session from localStorage instantly
- *  • The login form renders with zero dependency on subdomain lookups
- *  • Subdomain resolution runs in parallel and adds branding only
- */
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
@@ -273,8 +153,9 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <SubdomainGate mainDomainContent={<MainDomainRoutes />}>
-                <SubdomainRoutes />
+              {/* Gate only handles showing a spinner while resolving non-main domains */}
+              <SubdomainGate mainDomainContent={<AppRoutes />}>
+                <AppRoutes />
               </SubdomainGate>
             </TooltipProvider>
           </CompanyBrandingProvider>

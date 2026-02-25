@@ -39,10 +39,9 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [networkDown, setNetworkDown] = useState(false);
 
   // Auth — only used for signIn.  Redirect handled by AuthRoute in App.tsx.
-  const { signIn, networkError } = useAuth();
+  const { signIn } = useAuth();
 
   // Subdomain / branding — purely cosmetic, never blocks login
   const { isSubdomain, isCustomDomain, company: subdomainCompany } = useSubdomainContext();
@@ -50,11 +49,6 @@ export default function Auth() {
   const { companyName, logoUrl, applyBranding } = useCompanyBranding();
 
   const { toast } = useToast();
-
-  // Propagate auth-level network errors (e.g. getSession failed on init)
-  useEffect(() => {
-    if (networkError) setNetworkDown(true);
-  }, [networkError]);
 
   // ── Form validation ────────────────────────────────────────────────────────
   const validateForm = (): boolean => {
@@ -105,33 +99,16 @@ export default function Auth() {
   // ── Sign-in ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNetworkDown(false);
     if (!validateForm()) return;
 
     setSubmitting(true);
     try {
       const { error } = await signIn(email, password);
 
-      if (!error) {
-        // Success — AuthRoute in App.tsx will redirect when user state updates.
-        // Nothing to do here.
-        return;
-      }
-
-      const msg = error.message ?? '';
-      const isNetworkError =
-        msg.includes('Failed to fetch') ||
-        msg.includes('timed out') ||
-        msg.includes('NetworkError') ||
-        msg.includes('abort') ||
-        msg.includes('network');
-
-      if (isNetworkError) {
-        setNetworkDown(true);
-      } else {
+      if (error) {
         toast({
           title: 'Sign in failed',
-          description: msg || 'Invalid email or password. Please try again.',
+          description: error.message || 'Invalid email or password. Please try again.',
           variant: 'destructive',
         });
       }
@@ -139,46 +116,6 @@ export default function Auth() {
       setSubmitting(false);
     }
   };
-
-  // ── Network-error screen ───────────────────────────────────────────────────
-  if (networkDown) {
-    return (
-      <div className="min-h-screen bg-background dark flex items-center justify-center p-6 relative overflow-hidden">
-        <div className="absolute inset-0 dot-grid-bg opacity-40" />
-        <div className="w-full max-w-md relative">
-          <Card className="glass border-border/50 shadow-2xl text-center">
-            <CardContent className="pt-10 pb-8 space-y-6">
-              <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
-                <WifiOff className="h-8 w-8 text-destructive" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-xl font-bold text-foreground">Cannot Reach Server</h2>
-                <p className="text-sm text-muted-foreground">
-                  The connection to the Supabase backend is being blocked by your network.
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-left space-y-2 text-sm text-muted-foreground">
-                <p className="font-semibold text-foreground">Quick fixes:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Switch to a mobile hotspot</li>
-                  <li>Enable a VPN, then reload</li>
-                  <li>Try a different network</li>
-                </ul>
-              </div>
-              <Button
-                className="w-full gradient-primary shimmer-overlay font-semibold"
-                style={{ color: 'hsl(222 28% 5%)' }}
-                onClick={() => { setNetworkDown(false); window.location.reload(); }}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Retry Connection
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   // ── Normal auth UI ─────────────────────────────────────────────────────────
   return (

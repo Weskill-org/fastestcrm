@@ -62,9 +62,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  networkError: boolean; // true when Supabase is unreachable
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -76,7 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [networkError, setNetworkError] = useState(false);
 
   const sessionRegistered = useRef(false);
   const validationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -114,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isValidatingSession.current = false;
       if (error) {
         console.warn('[Auth] Session validation error:', error.message);
-        return true; // Permissive on error
+        return true;
       }
       return data === true;
     } catch (err) {
@@ -156,16 +154,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Auth state subscription ───────────────────────────────────────────────
 
   useEffect(() => {
-    // 1. Subscribe first so we never miss a state change
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
-        setNetworkError(false); // Successful communication → clear network error
 
         if (event === 'SIGNED_IN' && newSession?.user) {
-          // Fire-and-forget — never block the UI on this
           setTimeout(() => registerSession(newSession.user.id), 0);
         } else if (event === 'SIGNED_OUT') {
           sessionRegistered.current = false;
@@ -177,14 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // 2. Check for an existing session (handles page reloads)
     supabase.auth
       .getSession()
       .then(({ data: { session: existingSession } }) => {
         setSession(existingSession);
         setUser(existingSession?.user ?? null);
         setLoading(false);
-        setNetworkError(false);
 
         if (existingSession?.user) {
           setTimeout(() => registerSession(existingSession.user.id), 0);
@@ -192,9 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch((err) => {
         console.error('[Auth] getSession failed:', err);
-        // Network error — still allow the page to render
         setLoading(false);
-        setNetworkError(true);
       });
 
     return () => {
@@ -226,52 +217,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (
     email: string,
     password: string
-  ): Promise<{ error: AuthError | Error | null }> => {
-    setNetworkError(false);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        // Distinguish network errors from credential errors
-        const isNetwork =
-          error.message?.includes('Failed to fetch') ||
-          error.message?.includes('NetworkError') ||
-          error.message?.includes('abort') ||
-          error.message?.includes('timeout');
-        if (isNetwork) setNetworkError(true);
-      }
-      return { error };
-    } catch (err: any) {
-      // Fetch-level failure (timeout, connection refused, etc.)
-      const isAbort = err?.name === 'AbortError';
-      setNetworkError(true);
-      return {
-        error: new Error(
-          isAbort
-            ? 'Request timed out. Supabase may be unreachable from your network. Try a VPN or different connection.'
-            : `Network error: ${err?.message ?? 'Unknown error'}`
-        ),
-      };
-    }
+  ): Promise<{ error: AuthError | null }> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
   };
 
   const signUp = async (
     email: string,
     password: string,
     fullName: string
-  ): Promise<{ error: AuthError | Error | null }> => {
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: { full_name: fullName },
-        },
-      });
-      return { error };
-    } catch (err: any) {
-      return { error: new Error(err?.message ?? 'Sign up failed') };
-    }
+  ): Promise<{ error: AuthError | null }> => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: { full_name: fullName },
+      },
+    });
+    return { error };
   };
 
   const signOut = async () => {
@@ -281,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, loading, networkError, signIn, signUp, signOut }}
+      value={{ user, session, loading, signIn, signUp, signOut }}
     >
       {children}
     </AuthContext.Provider>
