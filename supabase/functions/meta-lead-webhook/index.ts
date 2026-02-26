@@ -28,15 +28,15 @@ async function fetchLeadDetails(leadgenId: string, accessToken: string): Promise
   try {
     const url = `https://graph.facebook.com/v19.0/${leadgenId}?fields=id,created_time,field_data,ad_id,adset_id,campaign_id,form_id&access_token=${accessToken}`;
     console.log('Fetching lead details from Meta:', leadgenId);
-    
+
     const response = await fetch(url);
     const data = await response.json();
-    
+
     if (data.error) {
       console.error('Meta API error fetching lead:', data.error);
       return null;
     }
-    
+
     console.log('Lead details from Meta:', JSON.stringify(data, null, 2));
     return data as MetaLeadData;
   } catch (error) {
@@ -47,7 +47,7 @@ async function fetchLeadDetails(leadgenId: string, accessToken: string): Promise
 
 // Extract field value from Meta's field_data array
 function getFieldValue(fieldData: LeadFieldData[], fieldName: string): string | null {
-  const field = fieldData.find(f => 
+  const field = fieldData.find(f =>
     f.name.toLowerCase() === fieldName.toLowerCase() ||
     f.name.toLowerCase().includes(fieldName.toLowerCase())
   );
@@ -57,15 +57,15 @@ function getFieldValue(fieldData: LeadFieldData[], fieldName: string): string | 
 // Map Meta field names to our lead fields
 function mapMetaLeadToDbFields(metaLead: MetaLeadData): Record<string, any> {
   const fieldData = metaLead.field_data || [];
-  
+
   // Common Meta form field names mapped to our schema
   const mappedData: Record<string, any> = {};
-  
+
   // Name fields - Meta often uses full_name, first_name, last_name
   const fullName = getFieldValue(fieldData, 'full_name');
   const firstName = getFieldValue(fieldData, 'first_name');
   const lastName = getFieldValue(fieldData, 'last_name');
-  
+
   if (fullName) {
     mappedData.name = fullName;
   } else if (firstName || lastName) {
@@ -75,37 +75,37 @@ function mapMetaLeadToDbFields(metaLead: MetaLeadData): Record<string, any> {
     const anyName = getFieldValue(fieldData, 'name');
     mappedData.name = anyName || `Meta Lead ${metaLead.id.substring(0, 8)}`;
   }
-  
+
   // Email
   const email = getFieldValue(fieldData, 'email');
   if (email) mappedData.email = email;
-  
+
   // Phone - Meta uses phone_number, phone, mobile
-  const phone = getFieldValue(fieldData, 'phone_number') || 
-                getFieldValue(fieldData, 'phone') || 
-                getFieldValue(fieldData, 'mobile');
+  const phone = getFieldValue(fieldData, 'phone_number') ||
+    getFieldValue(fieldData, 'phone') ||
+    getFieldValue(fieldData, 'mobile');
   if (phone) mappedData.phone = phone;
-  
+
   // WhatsApp (sometimes separate)
-  const whatsapp = getFieldValue(fieldData, 'whatsapp') || 
-                   getFieldValue(fieldData, 'whatsapp_number');
+  const whatsapp = getFieldValue(fieldData, 'whatsapp') ||
+    getFieldValue(fieldData, 'whatsapp_number');
   if (whatsapp) mappedData.whatsapp = whatsapp;
-  
+
   // City/State/Location
   const city = getFieldValue(fieldData, 'city');
   const state = getFieldValue(fieldData, 'state');
   if (state) mappedData.state = state;
   if (city) mappedData.preferred_location = city;
-  
+
   // Company
-  const company = getFieldValue(fieldData, 'company_name') || 
-                  getFieldValue(fieldData, 'company');
+  const company = getFieldValue(fieldData, 'company_name') ||
+    getFieldValue(fieldData, 'company');
   if (company) mappedData.company = company;
-  
+
   // Job title / role
   const jobTitle = getFieldValue(fieldData, 'job_title');
   if (jobTitle) mappedData.domain = jobTitle;
-  
+
   // Budget (for real estate)
   const budget = getFieldValue(fieldData, 'budget');
   if (budget) {
@@ -115,19 +115,19 @@ function mapMetaLeadToDbFields(metaLead: MetaLeadData): Record<string, any> {
       mappedData.budget_max = budgetNum;
     }
   }
-  
+
   // Property type (for real estate)
-  const propertyType = getFieldValue(fieldData, 'property_type') || 
-                       getFieldValue(fieldData, 'property');
+  const propertyType = getFieldValue(fieldData, 'property_type') ||
+    getFieldValue(fieldData, 'property');
   if (propertyType) mappedData.property_type = propertyType;
-  
+
   // Notes - combine any other fields
   const otherFields: string[] = [];
   for (const field of fieldData) {
-    const knownFields = ['full_name', 'first_name', 'last_name', 'name', 'email', 
-                         'phone_number', 'phone', 'mobile', 'whatsapp', 'city', 
-                         'state', 'company_name', 'company', 'job_title', 'budget',
-                         'property_type', 'property', 'whatsapp_number'];
+    const knownFields = ['full_name', 'first_name', 'last_name', 'name', 'email',
+      'phone_number', 'phone', 'mobile', 'whatsapp', 'city',
+      'state', 'company_name', 'company', 'job_title', 'budget',
+      'property_type', 'property', 'whatsapp_number'];
     if (!knownFields.some(k => field.name.toLowerCase().includes(k.toLowerCase()))) {
       otherFields.push(`${field.name}: ${field.values.join(', ')}`);
     }
@@ -135,7 +135,7 @@ function mapMetaLeadToDbFields(metaLead: MetaLeadData): Record<string, any> {
   if (otherFields.length > 0) {
     mappedData.notes = otherFields.join('\n');
   }
-  
+
   return mappedData;
 }
 
@@ -208,7 +208,7 @@ serve(async (req) => {
 
       for (const entry of body.entry) {
         const pageId = entry.id;
-        
+
         // Find the integration for this page
         const { data: integration, error: integrationError } = await supabase
           .from('performance_marketing_integrations')
@@ -234,7 +234,7 @@ serve(async (req) => {
             .neq('is_active', false)
             .limit(1)
             .maybeSingle();
-          
+
           if (!fallbackIntegration) {
             console.log('No fallback integration found either');
             continue;
@@ -247,13 +247,13 @@ serve(async (req) => {
 
         const accessToken = activeIntegration.access_token;
         const industry = activeIntegration.companies?.industry;
-        
+
         // Determine table name based on industry
         let tableName = activeIntegration.companies?.custom_leads_table || 'leads';
         if (industry === 'real_estate' && !activeIntegration.companies?.custom_leads_table) {
           tableName = 'leads_real_estate';
         }
-        
+
         const adminId = activeIntegration.companies?.admin_id;
 
         // Process each leadgen change
@@ -289,7 +289,7 @@ serve(async (req) => {
           if (leadDetails) {
             const mappedFields = mapMetaLeadToDbFields(leadDetails);
             leadData = { ...leadData, ...mappedFields };
-            
+
             // Add form/campaign info to lead source
             if (formId) {
               leadData.lead_source = `Meta Lead Ads (Form: ${formId})`;
@@ -314,7 +314,7 @@ serve(async (req) => {
 
           if (insertError) {
             console.error('Error inserting Meta lead:', insertError);
-            
+
             // Try with minimal fields if full insert failed
             const minimalLead = {
               name: leadData.name,
@@ -326,11 +326,11 @@ serve(async (req) => {
               email: leadData.email || null,
               phone: leadData.phone || null,
             };
-            
+
             const { error: retryError } = await supabase
               .from(tableName)
               .insert(minimalLead);
-            
+
             if (retryError) {
               console.error('Retry insert also failed:', retryError);
             } else {
@@ -338,12 +338,25 @@ serve(async (req) => {
             }
           } else {
             console.log('Meta lead created successfully:', insertedLead?.id);
-            
+
+            // Send notification to the owner/admin
+            if (leadData.sales_owner_id) {
+              await supabase
+                .from('notifications')
+                .insert({
+                  user_id: leadData.sales_owner_id,
+                  title: 'New Lead Received! 🚀',
+                  message: `New lead "${leadData.name}" has been captured via Meta Ads.`,
+                  type: 'info',
+                  lead_id: insertedLead.id
+                });
+            }
+
             // Update campaign connection stats
             if (formId) {
               await supabase
                 .from('marketing_campaign_connections')
-                .update({ 
+                .update({
                   leads_received: supabase.rpc('increment_leads_received'),
                   updated_at: new Date().toISOString()
                 })
@@ -360,9 +373,9 @@ serve(async (req) => {
       });
     }
 
-    return new Response('Method not allowed', { 
+    return new Response('Method not allowed', {
       status: 405,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
 
   } catch (error: unknown) {

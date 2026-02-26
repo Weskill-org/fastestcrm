@@ -25,11 +25,11 @@ export function useNotifications() {
 
         try {
             const { data, error } = await supabase
-                .from('notifications')
+                .from('notifications' as any)
                 .select('*')
                 .eq('user_id', session.user.id)
                 .order('created_at', { ascending: false })
-                .limit(50); // Limit to last 50 for now
+                .limit(50) as { data: Notification[] | null, error: any };
 
             if (error) throw error;
             setNotifications(data || []);
@@ -44,7 +44,7 @@ export function useNotifications() {
     const markAsRead = async (id: string) => {
         try {
             const { error } = await supabase
-                .from('notifications')
+                .from('notifications' as any)
                 .update({ read: true })
                 .eq('id', id);
 
@@ -65,7 +65,7 @@ export function useNotifications() {
         if (!session?.user?.id) return;
         try {
             const { error } = await supabase
-                .from('notifications')
+                .from('notifications' as any)
                 .update({ read: true })
                 .eq('user_id', session.user.id)
                 .eq('read', false);
@@ -82,22 +82,31 @@ export function useNotifications() {
         }
     };
 
+    const requestPermission = async () => {
+        const granted = await requestWebNotificationPermission();
+        if (granted) {
+            toast.success('Notifications enabled!');
+        } else {
+            toast.error('Notification permission denied. Please enable them in your browser settings.');
+        }
+    };
+
     useEffect(() => {
         if (session?.user?.id) {
             fetchNotifications();
 
-            // Request browser notification permission once the user is logged in
+            // Request permission (may be blocked if not triggered by event, but we'll try)
             requestWebNotificationPermission();
 
             // Subscribe to real-time changes
             const channel = supabase
-                .channel('public:notifications')
+                .channel(`public:notifications:${session.user.id}`) // More specific channel
                 .on(
                     'postgres_changes',
                     {
                         event: 'INSERT',
                         schema: 'public',
-                        table: 'notifications',
+                        table: 'notifications' as any,
                         filter: `user_id=eq.${session.user.id}`,
                     },
                     (payload) => {
@@ -128,6 +137,8 @@ export function useNotifications() {
         notifications,
         unreadCount,
         loading,
+        permissionStatus: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
+        requestPermission,
         markAsRead,
         markAllAsRead,
         refresh: fetchNotifications
