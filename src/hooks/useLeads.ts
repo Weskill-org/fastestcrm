@@ -4,10 +4,12 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, Database } from '@/integrations/supabase/types';
 
-type Lead = Tables<'leads'> & {
+export type Lead = Tables<'leads'> & Partial<Tables<'leads_real_estate'>> & {
   sales_owner?: {
     full_name: string | null;
   } | null;
+  reminder_at?: string | null;
+  notes?: string | null;
 };
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
@@ -15,16 +17,19 @@ interface UseLeadsOptions {
   search?: string;
   statusFilter?: string | string[];
   ownerFilter?: string[];
+  /** All currently active owner IDs — used to compute the 'unassigned' (deleted user) filter */
+  activeOwnerIds?: string[];
   productFilter?: string[];
   page?: number;
   pageSize?: number;
   fetchAll?: boolean;
+  limit?: number;
   pendingPaymentOnly?: boolean;
 }
 
 import { useLeadsTable } from './useLeadsTable';
 
-export function useLeads({ search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page = 1, pageSize = 25, fetchAll = false }: UseLeadsOptions & { fetchAll?: boolean; pendingPaymentOnly?: boolean } = {}) {
+export function useLeads({ search, statusFilter, ownerFilter, activeOwnerIds, productFilter, pendingPaymentOnly, page = 1, pageSize = 25, fetchAll = false, limit }: UseLeadsOptions = {}) {
   const queryClient = useQueryClient();
   const { tableName, companyId, loading: tableLoading } = useLeadsTable();
 
@@ -33,7 +38,7 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
 
 
   const query = useQuery({
-    queryKey: ['leads', search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page, pageSize, fetchAll, tableName, companyId],
+    queryKey: ['leads', search, statusFilter, ownerFilter, activeOwnerIds, productFilter, pendingPaymentOnly, page, pageSize, fetchAll, limit, tableName, companyId],
     queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
       // Early exit if no company context
       if (!companyId) {
@@ -69,7 +74,31 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
       }
 
       if (ownerFilter && ownerFilter.length > 0) {
-        query = query.in('sales_owner_id', ownerFilter);
+        const hasUnassigned = ownerFilter.includes('unassigned');
+        const realOwnerIds = ownerFilter.filter(id => id !== 'unassigned');
+        if (hasUnassigned) {
+          // 'Unassigned' means: no owner set OR owner is a deleted user (not in active profiles)
+          if (activeOwnerIds && activeOwnerIds.length > 0) {
+            // Leads where owner is null OR owner ID is not among active profiles
+            // Combined with any explicitly selected real owners via OR
+            const activeIdList = activeOwnerIds.join(',');
+            if (realOwnerIds.length > 0) {
+              // Show unassigned/deleted-owner leads PLUS specifically chosen owners
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList}),sales_owner_id.in.(${realOwnerIds.join(',')})`);
+            } else {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList})`);
+            }
+          } else {
+            // Fallback: no active owners known, just filter null
+            if (realOwnerIds.length > 0) {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.in.(${realOwnerIds.join(',')})`);
+            } else {
+              query = query.is('sales_owner_id', null);
+            }
+          }
+        } else {
+          query = query.in('sales_owner_id', realOwnerIds);
+        }
       }
 
       if (productFilter && productFilter.length > 0) {
@@ -89,12 +118,21 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
       if (fetchAll) {
         let allLeads: Lead[] = [];
         let hasMore = true;
-        let pageIndex = 0;
         const CHUNK_SIZE = 1000;
-
         while (hasMore) {
-          const from = pageIndex * CHUNK_SIZE;
-          const to = from + CHUNK_SIZE - 1;
+          const from = allLeads.length;
+          let fetchSize = CHUNK_SIZE;
+
+          if (limit && limit > 0) {
+            const remaining = limit - from;
+            if (remaining <= 0) {
+              hasMore = false;
+              break;
+            }
+            fetchSize = Math.min(CHUNK_SIZE, remaining);
+          }
+
+          const to = from + fetchSize - 1;
 
           // Clone the base query for this chunk
           let chunkQuery = supabase
@@ -110,7 +148,28 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
               chunkQuery = chunkQuery.eq('status', statusFilter as LeadStatus);
             }
           }
-          if (ownerFilter && ownerFilter.length > 0) chunkQuery = chunkQuery.in('sales_owner_id', ownerFilter);
+          if (ownerFilter && ownerFilter.length > 0) {
+            const hasUnassigned = ownerFilter.includes('unassigned');
+            const realOwnerIds = ownerFilter.filter(id => id !== 'unassigned');
+            if (hasUnassigned) {
+              if (activeOwnerIds && activeOwnerIds.length > 0) {
+                const activeIdList = activeOwnerIds.join(',');
+                if (realOwnerIds.length > 0) {
+                  chunkQuery = chunkQuery.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList}),sales_owner_id.in.(${realOwnerIds.join(',')})`);
+                } else {
+                  chunkQuery = chunkQuery.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList})`);
+                }
+              } else {
+                if (realOwnerIds.length > 0) {
+                  chunkQuery = chunkQuery.or(`sales_owner_id.is.null,sales_owner_id.in.(${realOwnerIds.join(',')})`);
+                } else {
+                  chunkQuery = chunkQuery.is('sales_owner_id', null);
+                }
+              }
+            } else {
+              chunkQuery = chunkQuery.in('sales_owner_id', realOwnerIds);
+            }
+          }
           if (productFilter && productFilter.length > 0) chunkQuery = chunkQuery.in('product_purchased', productFilter);
           if (pendingPaymentOnly) chunkQuery = chunkQuery.gt('revenue_received', 0);
           if (search) {
@@ -127,14 +186,14 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
           }
 
           if (chunkData) {
-            allLeads = [...allLeads, ...(chunkData as unknown as Lead[])];
-            if (chunkData.length < CHUNK_SIZE) {
+            const fetched = chunkData as unknown as Lead[];
+            allLeads = [...allLeads, ...fetched];
+            if (fetched.length < fetchSize || (limit && limit > 0 && allLeads.length >= limit)) {
               hasMore = false;
             }
           } else {
             hasMore = false;
           }
-          pageIndex++;
         }
 
         return { leads: allLeads, count: allLeads.length };

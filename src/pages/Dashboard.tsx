@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import {
   Users, Brain, TrendingUp, DollarSign, Target, BarChart3, CreditCard, Loader2
@@ -9,9 +11,10 @@ import { useLeads } from '@/hooks/useLeads';
 import { format } from 'date-fns';
 
 export default function Dashboard() {
-  // Fetch all leads for accurate revenue calculations
+  const [reportLimit, setReportLimit] = useState<number>(1000);
+  // Fetch leads based on limit for accurate revenue calculations
   // TODO: Move aggregation to backend for better performance with large datasets
-  const { data: leadsData, isLoading } = useLeads({ fetchAll: true });
+  const { data: leadsData, isLoading } = useLeads({ fetchAll: true, limit: reportLimit });
   const leads = leadsData?.leads || [];
 
   // Calculate stats
@@ -83,6 +86,23 @@ export default function Dashboard() {
           <div>
             <h1 className="text-2xl font-bold" style={{ fontFamily: "'Syne', sans-serif" }}>Dashboard</h1>
             <p className="text-muted-foreground text-sm">Welcome back! Here's your sales overview.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:inline">Report Range:</span>
+            <Select
+              value={reportLimit.toString()}
+              onValueChange={(value) => setReportLimit(Number(value))}
+            >
+              <SelectTrigger className="w-[180px] bg-card/50 backdrop-blur-sm border-border/50">
+                <SelectValue placeholder="Select limit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1000">Recent 1,000</SelectItem>
+                <SelectItem value="10000">Recent 10,000</SelectItem>
+                <SelectItem value="50000">Recent 50,000</SelectItem>
+                <SelectItem value="1000000">All Leads</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </header>
@@ -174,10 +194,10 @@ export default function Dashboard() {
                       </div>
                       <div className="text-right">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold mb-1 ${lead.status === 'paid' ? 'bg-emerald-500/15 text-emerald-400' :
-                            lead.status === 'interested' ? 'bg-primary/15 text-primary' :
-                              lead.status === 'follow_up' ? 'bg-amber-500/15 text-amber-400' :
-                                lead.status === 'dropped' ? 'bg-red-500/15 text-red-400' :
-                                  'bg-muted text-muted-foreground'
+                          lead.status === 'interested' ? 'bg-primary/15 text-primary' :
+                            lead.status === 'follow_up' ? 'bg-amber-500/15 text-amber-400' :
+                              lead.status === 'dropped' ? 'bg-red-500/15 text-red-400' :
+                                'bg-muted text-muted-foreground'
                           }`}>
                           {lead.status.replace('_', ' ')}
                         </span>

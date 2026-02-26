@@ -7,10 +7,23 @@ import {
 } from '@/components/ui/dialog';
 import { Tables } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
-import { Mail, Phone, Building, Calendar, User, CreditCard, Link, MapPin, Home, DollarSign, Megaphone, Globe, Layers, CalendarClock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mail, Phone, Building, Calendar, User, CreditCard, Link, MapPin, Home, DollarSign, Megaphone, Globe, Layers, CalendarClock, Pencil, Save } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MaskedValue } from '@/components/ui/MaskedValue';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { useUpdateLead } from '@/hooks/useLeads';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { toast } from 'sonner';
 
 type Lead = Tables<'leads'> & Partial<Tables<'leads_real_estate'>> & {
     sales_owner?: {
@@ -24,10 +37,43 @@ interface LeadDetailsDialogProps {
     lead: any;
     owners: { label: string; value: string }[];
     maskLeads?: boolean;
+    onEdit?: (lead: any) => void;
+    onUpdate?: () => void;
 }
 
-export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads = false }: LeadDetailsDialogProps) {
+export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads = false, onEdit, onUpdate }: LeadDetailsDialogProps) {
+    const updateLead = useUpdateLead();
+    const { statuses } = useLeadStatuses();
+    const [quickStatus, setQuickStatus] = useState(lead?.status || 'new');
+    const [quickNotes, setQuickNotes] = useState(lead?.notes || '');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (lead) {
+            setQuickStatus(lead.status || 'new');
+            setQuickNotes(lead.notes || '');
+        }
+    }, [lead]);
+
     if (!lead) return null;
+
+    const handleQuickSave = async () => {
+        setIsSaving(true);
+        try {
+            await updateLead.mutateAsync({
+                id: lead.id,
+                status: quickStatus as any,
+                notes: quickNotes,
+            });
+            toast.success('Lead updated successfully');
+            if (onUpdate) onUpdate();
+        } catch (error) {
+            toast.error('Failed to update lead');
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Helper to format currency
     const formatCurrency = (amount: number | null) => {
@@ -48,11 +94,23 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Lead Details</DialogTitle>
-                    <DialogDescription>
-                        Detailed information about {lead.name}
-                    </DialogDescription>
+                <DialogHeader className="flex flex-row items-center justify-between pr-8">
+                    <div className="space-y-1.5">
+                        <DialogTitle>Lead Details</DialogTitle>
+                        <DialogDescription>
+                            Detailed information about {lead.name}
+                        </DialogDescription>
+                    </div>
+                    {onEdit && (
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => onEdit(lead)}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                    )}
                 </DialogHeader>
                 <div className="grid gap-6 py-4">
                     {/* Role / Basic Info Section */}
@@ -273,6 +331,51 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
                             </div>
                         </div>
                     )}
+
+                    {/* Quick Update Section */}
+                    <div className="space-y-4 pt-4 mt-2 border-t">
+                        <h3 className="font-semibold text-primary/80">Quick Update</h3>
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                                <Select value={quickStatus} onValueChange={setQuickStatus}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {statuses.map((status) => (
+                                            <SelectItem key={status.id} value={status.value}>
+                                                {status.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">Notes</label>
+                                <Textarea
+                                    value={quickNotes}
+                                    onChange={(e) => setQuickNotes(e.target.value)}
+                                    placeholder="Add notes about this lead..."
+                                    className="min-h-[100px]"
+                                />
+                            </div>
+                            <Button
+                                className="w-full"
+                                onClick={handleQuickSave}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? (
+                                    'Saving...'
+                                ) : (
+                                    <>
+                                        <Save className="mr-2 h-4 w-4" />
+                                        Save Changes
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>

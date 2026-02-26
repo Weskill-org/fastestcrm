@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // DashboardLayout removed
 import { useLeads } from "@/hooks/useLeads";
@@ -25,11 +26,13 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
 
 export default function Report() {
-    const { data: leadsData, isLoading: leadsLoading } = useLeads({ fetchAll: true });
+    const [reportLimit, setReportLimit] = useState<number>(1000);
+    const { data: leadsData, isLoading: leadsLoading } = useLeads({ fetchAll: true, limit: reportLimit });
     const { members, loading: teamLoading } = useTeam();
     const leads = leadsData?.leads || [];
 
@@ -114,11 +117,30 @@ export default function Report() {
     return (
         <>
             <div className="p-8 space-y-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Report Analysis</h1>
-                    <p className="text-muted-foreground">
-                        Detailed insights into team performance and lead conversion.
-                    </p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Report Analysis</h1>
+                        <p className="text-muted-foreground">
+                            Detailed insights into team performance and lead conversion.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:inline">Report Range:</span>
+                        <Select
+                            value={reportLimit.toString()}
+                            onValueChange={(value) => setReportLimit(Number(value))}
+                        >
+                            <SelectTrigger className="w-[180px] bg-card/50 backdrop-blur-sm border-border/50">
+                                <SelectValue placeholder="Select limit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="1000">Recent 1,000</SelectItem>
+                                <SelectItem value="10000">Recent 10,000</SelectItem>
+                                <SelectItem value="50000">Recent 50,000</SelectItem>
+                                <SelectItem value="1000000">All Leads</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <Tabs defaultValue="overview" className="space-y-4">
