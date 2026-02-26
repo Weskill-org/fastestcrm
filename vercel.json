@@ -1,4 +1,61 @@
 {
+    "headers": [
+        {
+            "source": "/rest/:path*",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, if-none-match"
+                },
+                {
+                    "key": "Access-Control-Expose-Headers",
+                    "value": "Content-Range, X-Supabase-Api-Version"
+                }
+            ]
+        },
+        {
+            "source": "/auth/:path*",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer"
+                }
+            ]
+        },
+        {
+            "source": "/storage/:path*",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer"
+                }
+            ]
+        }
+    ],
     "rewrites": [
         {
             "source": "/rest/:path*",
