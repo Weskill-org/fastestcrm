@@ -10,6 +10,8 @@ import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone,
 import { useTaskLeads } from '@/hooks/useTaskLeads';
 import { useEffect } from 'react';
 import MobileBottomNav from './MobileBottomNav';
+import { NotificationsBell } from './NotificationsBell';
+import { AnnouncementBanner } from './AnnouncementBanner';
 
 const navItems = [{
     icon: LayoutDashboard,
@@ -201,6 +203,9 @@ export default function AppLayout() {
                         </h1>
                         <p className="text-xs text-muted-foreground">Fastest CRM by Upmarking.com</p>
                     </div>
+                    <div className="ml-auto flex items-center gap-2">
+                        <NotificationsBell />
+                    </div>
                 </div>
             </div>
 
@@ -211,8 +216,8 @@ export default function AppLayout() {
                         key={item.label}
                         onClick={() => navigate(item.path)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === item.path && !isTasksActive
-                                ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
-                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
                             }`}
                     >
                         <item.icon className={`h-4 w-4 transition-colors ${location.pathname === item.path && !isTasksActive ? 'text-primary' : ''}`} />
@@ -305,8 +310,8 @@ export default function AppLayout() {
                         key={item.label}
                         onClick={() => navigate(item.path)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === item.path
-                                ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
-                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
                             }`}
                     >
                         <item.icon className={`h-4 w-4 transition-colors ${location.pathname === item.path ? 'text-primary' : ''}`} />
@@ -341,6 +346,7 @@ export default function AppLayout() {
 
         {/* Main Content */}
         <main className={`flex-1 overflow-auto ${isMobile ? 'pb-20' : ''}`}>
+            <AnnouncementBanner />
             <div className="p-4 md:p-8 min-h-[calc(100vh-2rem)] flex flex-col">
                 <div className="flex-1">
                     <Outlet />
