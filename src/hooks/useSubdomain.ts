@@ -14,6 +14,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, anonSupabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+
+// Deep fallback for workspace resolution in case the proxy has CORS/Body issues
+const fallbackClient = createClient(
+  "https://uykdyqdeyilpulaqlqip.supabase.co",
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+  { auth: { persistSession: false } }
+);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,10 +162,31 @@ export function useSubdomain(): SubdomainResult {
           if (cancelled) return;
 
           if (rpcError) {
-            console.error('[useSubdomain] RPC Error (Subdomain):', rpcError);
-            console.error('[useSubdomain] Full RPC URL used:', `${anonSupabase.rpc}`);
-            // Network/RPC error — fail-open so login still works
-            setError(`Failed to load workspace: ${rpcError.message || 'Unknown error'}`);
+            console.error('[useSubdomain] Proxy RPC failed, trying fallback...', rpcError);
+
+            // EMERGENCY FALLBACK: Hit Supabase direct if proxy failed
+            const { data: fallbackData, error: fallbackError } = await fallbackClient.rpc(
+              'get_subdomain_company', { _slug: subdomain }
+            );
+
+            if (fallbackError) {
+              console.error('[useSubdomain] Fallback RPC also failed:', fallbackError);
+              setError(`Failed to load workspace: ${fallbackError.message}`);
+              return;
+            }
+
+            const fallbackRows = Array.isArray(fallbackData) ? fallbackData : fallbackData ? [fallbackData] : [];
+            if (fallbackRows.length === 0) {
+              setError('Workspace not found');
+              return;
+            }
+
+            const fallbackRow = fallbackRows[0] as unknown as SubdomainCompany;
+            if (!fallbackRow.is_active) {
+              setError('This workspace is currently inactive');
+              return;
+            }
+            setCompany(fallbackRow);
             return;
           }
 
