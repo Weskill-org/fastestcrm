@@ -2,6 +2,12 @@
     "headers": [
         {
             "source": "/rest/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
             "headers": [
                 {
                     "key": "Access-Control-Allow-Origin",
@@ -23,6 +29,12 @@
         },
         {
             "source": "/auth/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
             "headers": [
                 {
                     "key": "Access-Control-Allow-Origin",
@@ -44,6 +56,12 @@
         },
         {
             "source": "/storage/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
             "headers": [
                 {
                     "key": "Access-Control-Allow-Origin",
@@ -67,18 +85,42 @@
     "rewrites": [
         {
             "source": "/rest/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/rest/:path*"
         },
         {
             "source": "/auth/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/auth/:path*"
         },
         {
             "source": "/storage/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/storage/:path*"
         },
         {
             "source": "/functions/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/:path*"
         },
         {
