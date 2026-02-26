@@ -205,6 +205,9 @@ export default function DashboardLayout({
             </h1>
             <p className="text-xs text-muted-foreground">Fastest CRM by Upmarking.com</p>
           </div>
+          <div className="ml-auto">
+            <NotificationsBell />
+          </div>
         </div>
       </div>
 
@@ -302,9 +305,6 @@ export default function DashboardLayout({
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
-        <div className="flex justify-end mb-2">
-          <NotificationsBell />
-        </div>
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
             <span className="text-sm font-medium text-primary">
