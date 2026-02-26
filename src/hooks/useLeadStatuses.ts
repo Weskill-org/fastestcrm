@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from './useCompany';
@@ -39,16 +40,16 @@ export function useLeadStatuses() {
     });
 
     // Helper to get color for a status value
-    const getStatusColor = (value: string) => {
+    const getStatusColor = useCallback((value: string) => {
         const status = statuses?.find(s => s.value === value);
         return status?.color || '#6B7280'; // Default gray
-    };
+    }, [statuses]);
 
     // Helper to get label
-    const getStatusLabel = (value: string) => {
+    const getStatusLabel = useCallback((value: string) => {
         const status = statuses?.find(s => s.value === value);
         return status?.label || value.replace(/_/g, ' ');
-    };
+    }, [statuses]);
 
     return {
         statuses: statuses || [],

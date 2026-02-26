@@ -1,16 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Tables } from '@/integrations/supabase/types';
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Phone, Mail, MoreHorizontal, ChevronDown } from 'lucide-react';
+import { Phone, Mail, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +18,6 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import {
   Select,
@@ -31,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useUpdateLead } from '@/hooks/useLeads';
 import { useProducts } from '@/hooks/useProducts';
-import { useUserRole, isRoleAllowedToMarkPaid } from '@/hooks/useUserRole';
+import { useUserRole } from '@/hooks/useUserRole';
 
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -41,13 +38,7 @@ import { LeadDetailsDialog } from './LeadDetailsDialog';
 import { LeadHistoryDialog } from './LeadHistoryDialog';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { MaskedValue } from '@/components/ui/MaskedValue';
-
-type Lead = Tables<'leads'> & {
-  sales_owner?: {
-    full_name: string | null;
-  } | null;
-  lead_history?: any[] | null;
-};
+import { LeadRow, Lead } from './LeadRow';
 
 interface ColumnConfigItem {
   id: string;
@@ -73,7 +64,13 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
   const [viewingHistoryLead, setViewingHistoryLead] = useState<Lead | null>(null);
   const { statuses, getStatusColor } = useLeadStatuses();
 
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
+  // Use ref to keep track of selectedLeads without triggering re-renders in useCallback
+  const selectedLeadsRef = useRef(selectedLeads);
+  useEffect(() => {
+    selectedLeadsRef.current = selectedLeads;
+  }, [selectedLeads]);
+
+  const handleStatusChange = useCallback(async (leadId: string, newStatus: string) => {
     try {
       await updateLead.mutateAsync({
         id: leadId,
@@ -83,12 +80,11 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     } catch (error) {
       toast.error('Failed to update status');
     }
-  };
+  }, [updateLead]);
 
-  const handleProductChange = async (leadId: string, productName: string) => {
+  const handleProductChange = useCallback(async (leadId: string, productName: string) => {
     // If clearing (if we support that)
     if (!productName || productName === 'none') {
-      // logic to clear if needed, for now assuming selection mandatory or switch
       return;
     }
 
@@ -108,9 +104,9 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     } catch (error) {
       toast.error('Failed to update product');
     }
-  };
+  }, [products, updateLead]);
 
-  const handleCreatePaymentLink = async (lead: Lead) => {
+  const handleCreatePaymentLink = useCallback(async (lead: Lead) => {
     if (!lead.product_purchased) {
       toast.error('Please select a specific product to create a payment link');
       return;
@@ -175,17 +171,17 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
       console.error('Payment Link Error:', error);
       toast.error(error.message || 'Failed to create payment link');
     }
-  };
+  }, [products, updateLead]);
 
   // Define Column Renderers
-  const columnDefinitions: Record<string, { label: string, render: (lead: Lead) => React.ReactNode }> = {
+  const columnDefinitions = useMemo(() => ({
     name: {
       label: 'Name',
-      render: (lead) => <div className="font-medium">{lead.name}</div>
+      render: (lead: Lead) => <div className="font-medium">{lead.name}</div>
     },
     email: {
       label: 'Email',
-      render: (lead) => lead.email ? (
+      render: (lead: Lead) => lead.email ? (
         <span className="flex items-center gap-1 text-muted-foreground w-full">
           <Mail className="h-3 w-3 shrink-0" />
           <MaskedValue value={lead.email} type="email" enabled={maskLeads} showIcon={false} />
@@ -194,7 +190,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     },
     phone: {
       label: 'Phone Number',
-      render: (lead) => lead.phone ? (
+      render: (lead: Lead) => lead.phone ? (
         <span className="flex items-center gap-1 text-muted-foreground w-full">
           <Phone className="h-3 w-3 shrink-0" />
           <MaskedValue value={lead.phone} type="phone" enabled={maskLeads} showIcon={false} />
@@ -203,15 +199,15 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     },
     college: {
       label: 'College',
-      render: (lead) => lead.college || '-'
+      render: (lead: Lead) => lead.college || '-'
     },
     lead_source: {
       label: 'Lead Source',
-      render: (lead) => lead.lead_source || '-'
+      render: (lead: Lead) => lead.lead_source || '-'
     },
     status: {
       label: 'Status',
-      render: (lead) => (
+      render: (lead: Lead) => (
         <Select
           defaultValue={lead.status}
           onValueChange={(value) => handleStatusChange(lead.id, value)}
@@ -238,15 +234,15 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     },
     owner: {
       label: 'Owner',
-      render: (lead) => lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'
+      render: (lead: Lead) => lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label || 'Unknown'
     },
     created_at: {
       label: 'Date',
-      render: (lead) => format(new Date(lead.created_at), 'MMM d, yyyy')
+      render: (lead: Lead) => format(new Date(lead.created_at), 'MMM d, yyyy')
     },
     product_purchased: {
       label: 'Product',
-      render: (lead) => (
+      render: (lead: Lead) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-[180px] h-8 justify-between px-3 text-sm font-normal text-muted-foreground">
@@ -286,7 +282,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     },
     payment_link: {
       label: 'Payment Link',
-      render: (lead) => lead.payment_link ? (
+      render: (lead: Lead) => lead.payment_link ? (
         <Button
           variant={lead.status === 'paid' ? 'default' : 'outline'}
           size="sm"
@@ -316,7 +312,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     },
     whatsapp: {
       label: 'WhatsApp',
-      render: (lead) => lead.whatsapp ? (
+      render: (lead: Lead) => lead.whatsapp ? (
         <a
           href={`https://wa.me/${lead.whatsapp}`}
           target="_blank"
@@ -329,13 +325,13 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     },
     updated_at: {
       label: 'Last Updated',
-      render: (lead) => format(new Date(lead.updated_at), 'MMM d, yyyy')
+      render: (lead: Lead) => format(new Date(lead.updated_at), 'MMM d, yyyy')
     },
     company_id: {
       label: 'Company ID',
-      render: (lead) => <span className="text-xs text-muted-foreground">{lead.company_id || '-'}</span>
+      render: (lead: Lead) => <span className="text-xs text-muted-foreground">{lead.company_id || '-'}</span>
     }
-  };
+  }), [maskLeads, owners, statuses, getStatusColor, products, handleStatusChange, handleProductChange, handleCreatePaymentLink]);
 
   const visibleColumnIds = useMemo(() => {
     if (!columnConfig) {
@@ -353,8 +349,8 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
         'payment_link'
       ];
     }
-    return columnConfig.filter(c => c.visible).map(c => c.id).filter(id => columnDefinitions[id]);
-  }, [columnConfig]);
+    return columnConfig.filter(c => c.visible).map(c => c.id).filter(id => columnDefinitions[id as keyof typeof columnDefinitions]);
+  }, [columnConfig, columnDefinitions]);
 
 
   if (loading) {
@@ -389,15 +385,17 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     }
   };
 
-  const toggleOne = (id: string) => {
-    const newSelected = new Set(selectedLeads);
+  // Stable toggle handler for row component
+  const handleToggle = useCallback((id: string) => {
+    const currentSelected = selectedLeadsRef.current;
+    const newSelected = new Set(currentSelected);
     if (newSelected.has(id)) {
       newSelected.delete(id);
     } else {
       newSelected.add(id);
     }
     onSelectionChange(newSelected);
-  };
+  }, [onSelectionChange]);
 
   return (
     <>
@@ -415,7 +413,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
               </TableHead>
               {visibleColumnIds.map(colId => (
                 <TableHead key={colId} className="font-semibold">
-                  {columnDefinitions[colId]?.label}
+                  {columnDefinitions[colId as keyof typeof columnDefinitions]?.label}
                 </TableHead>
               ))}
               <TableHead className="font-semibold">Actions</TableHead>
@@ -423,62 +421,20 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
           </TableHeader>
           <TableBody>
             {leads.map((lead) => (
-              <TableRow key={lead.id} className="group">
-                <TableCell>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    checked={selectedLeads.has(lead.id)}
-                    onChange={() => toggleOne(lead.id)}
-                  />
-                </TableCell>
-
-                {visibleColumnIds.map(colId => (
-                  <TableCell key={colId}>
-                    {columnDefinitions[colId]?.render(lead)}
-                  </TableCell>
-                ))}
-
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem onClick={() => setViewingLead(lead)}>
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setViewingHistoryLead(lead)}>
-                        View History
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setEditingLead(lead)}>
-                        Edit Lead
-                      </DropdownMenuItem>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                          <DropdownMenuRadioGroup value={lead.status} onValueChange={(value) => handleStatusChange(lead.id, value)}>
-                            {statuses.map((status) => (
-                              <DropdownMenuRadioItem
-                                key={status.id}
-                                value={status.value}
-                                className="capitalize"
-                              >
-                                {status.label}
-                              </DropdownMenuRadioItem>
-                            ))}
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                      <DropdownMenuItem onClick={() => handleCreatePaymentLink(lead)}>
-                        Create Payment Link
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
+              <LeadRow
+                key={lead.id}
+                lead={lead}
+                isSelected={selectedLeads.has(lead.id)}
+                onToggle={handleToggle}
+                visibleColumnIds={visibleColumnIds}
+                columnDefinitions={columnDefinitions}
+                statuses={statuses}
+                onViewDetails={setViewingLead}
+                onViewHistory={setViewingHistoryLead}
+                onEdit={setEditingLead}
+                onStatusChange={handleStatusChange}
+                onCreatePaymentLink={handleCreatePaymentLink}
+              />
             ))}
           </TableBody>
         </Table>
