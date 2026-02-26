@@ -1,15 +1,15 @@
 /**
  * SubdomainAccessGuard
  *
- * Ensures that a logged-in user can only access the workspace that belongs to
- * their company. If they land on a different company's subdomain they are
- * redirected to their own workspace.
+ * Ensures that a logged-in user on a WRONG subdomain is redirected to their
+ * own workspace subdomain.
  *
  * KEY RULES:
+ *  • Main domain (fastestcrm.com) → always pass through — no redirects
  *  • Unauthenticated users → always pass through (login page handles them)
  *  • Auth/subdomain still loading → show minimal spinner
  *  • User's company = workspace company → pass through
- *  • Company mismatch → hard redirect to correct workspace
+ *  • Wrong subdomain mismatch → hard redirect to correct workspace
  *
  * Company lookup (useCompany) is only triggered AFTER the user is logged in,
  * so it never delays the login page render.
@@ -40,6 +40,10 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
   const isWorkspaceDomain = isSubdomain || isCustomDomain;
 
   useEffect(() => {
+    // On the main domain — no redirect. Users stay on fastestcrm.com and load
+    // their dashboard with company branding via useCompany.
+    if (isMainDomain) return;
+
     // Wait for everything we need
     if (authLoading || subdomainLoading) return;
     // Not logged in — pass through (Auth page will handle)
@@ -51,31 +55,17 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
     // User has no company yet (still being set up) — pass through
     if (!userCompany) return;
 
-    // SCENARIO A: We are on the Main Domain (fastestcrm.com/dashboard)
-    if (isMainDomain) {
-      // User has a company, so they shouldn't be here. Redirect to their workspace.
-      if (!redirected.current) {
-        redirected.current = true;
-        const correctUrl = getWorkspaceUrl(userCompany.slug);
-        window.location.href = `${correctUrl}${window.location.pathname}`;
-      }
-      return;
-    }
-
     // SCENARIO B: We are on a Workspace Domain (acme.fastestcrm.com or crm.acme.com)
-    // If not a workspace domain (should be caught above, but TypeScript needs it), pass through
+    // If not a workspace domain, pass through
     if (!isWorkspaceDomain || !workspaceCompany) return;
 
     // Correct workspace — pass through
     if (userCompany.id === workspaceCompany.id) return;
 
-    // Mismatch — redirect once to the user's correct workspace
+    // Wrong subdomain mismatch — redirect once to the user's correct workspace
     if (!redirected.current) {
       redirected.current = true;
       const correctUrl = getWorkspaceUrl(userCompany.slug);
-
-      // If we are on the main domain, take them to the exact same path on their subdomain
-      // If we are on a wrong subdomain, redirect them to the exact same path on their correct subdomain
       window.location.href = `${correctUrl}${window.location.pathname}`;
     }
   }, [
@@ -89,11 +79,13 @@ export function SubdomainAccessGuard({ children }: SubdomainAccessGuardProps) {
     companyLoading,
   ]);
 
-  // Only show a spinner if we're actually waiting for something meaningful
+  // Only show a spinner when on a workspace subdomain and actively verifying access
   const isChecking =
-    (authLoading && !user) ||
-    (subdomainLoading && isWorkspaceDomain) ||
-    (user && companyLoading && isWorkspaceDomain && !!workspaceCompany);
+    !isMainDomain &&
+    (
+      (subdomainLoading && isWorkspaceDomain) ||
+      (user && companyLoading && isWorkspaceDomain && !!workspaceCompany)
+    );
 
   if (isChecking) {
     return (

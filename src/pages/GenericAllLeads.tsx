@@ -184,7 +184,10 @@ export default function GenericAllLeads() {
                 : Constants.public.Enums.lead_status.map(s => ({ label: s.replace('_', ' '), value: s, group: 'System' }));
 
             return {
-                owners: activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id })),
+                owners: [
+                    { label: 'Unassigned', value: 'unassigned' },
+                    ...activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id })),
+                ],
                 products: Array.from(new Set(((products as any[]) || []).map(p => p.name))).map(name => ({ label: name, value: name })),
                 statuses: statuses
             };
@@ -193,10 +196,17 @@ export default function GenericAllLeads() {
         staleTime: 1000 * 60 * 5, // Cache filter options for 5 minutes
     });
 
+    // Active owner IDs (excludes the 'unassigned' sentinel) — used by useLeads to build the
+    // "deleted-user" filter: leads where sales_owner_id NOT IN (activeOwnerIds)
+    const activeOwnerIds = (filterOptions?.owners ?? [])
+        .filter(o => o.value !== 'unassigned')
+        .map(o => o.value);
+
     const { data: leadsData, isLoading, refetch } = useLeads({
         search: searchQuery,
         statusFilter: selectedStatuses.size === 1 ? Array.from(selectedStatuses)[0] : undefined,
         ownerFilter: Array.from(selectedOwners),
+        activeOwnerIds,
         productFilter: Array.from(selectedProducts),
         page,
         pageSize
