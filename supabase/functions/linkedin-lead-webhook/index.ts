@@ -11,7 +11,7 @@ async function computeHmacSha256(key: string, data: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(key);
   const messageData = encoder.encode(data);
-  
+
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyData,
@@ -19,7 +19,7 @@ async function computeHmacSha256(key: string, data: string): Promise<string> {
     false,
     ['sign']
   );
-  
+
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
   return new TextDecoder().decode(encode(new Uint8Array(signature)));
 }
@@ -41,7 +41,7 @@ serve(async (req) => {
     // Handle LinkedIn webhook validation (GET with challengeCode)
     if (req.method === 'GET') {
       const challengeCode = url.searchParams.get('challengeCode');
-      
+
       if (!challengeCode || !companyId) {
         return new Response('Missing parameters', { status: 400 });
       }
@@ -114,7 +114,7 @@ serve(async (req) => {
       // }
 
       const eventType = body.eventType || body.event_type;
-      
+
       // Only process CREATED events
       if (eventType === 'LEAD_GEN_FORM_RESPONSE_DELETED') {
         console.log('Ignoring deleted lead event');
@@ -143,9 +143,9 @@ serve(async (req) => {
       const formName = body.formName || body.form_name;
 
       const leadData = {
-        name: answers.name || answers.fullname || answers.full_name || 
-              `${answers.firstname || answers.first_name || ''} ${answers.lastname || answers.last_name || ''}`.trim() ||
-              `LinkedIn Lead ${body.leadId?.substring(0, 8) || 'Unknown'}`,
+        name: answers.name || answers.fullname || answers.full_name ||
+          `${answers.firstname || answers.first_name || ''} ${answers.lastname || answers.last_name || ''}`.trim() ||
+          `LinkedIn Lead ${body.leadId?.substring(0, 8) || 'Unknown'}`,
         email: answers.email || answers.emailaddress || answers.email_address || null,
         phone: answers.phone || answers.phonenumber || answers.phone_number || null,
         company: answers.company || answers.companyname || answers.company_name || null,
@@ -159,14 +159,29 @@ serve(async (req) => {
         utm_campaign: campaignId?.toString() || null,
       };
 
-      const { error: insertError } = await supabase
-        .from(tableName)
-        .insert(leadData);
+      const { data: insertedLead, error: insertError } = await supabase
+        .from(tableName || 'leads')
+        .insert(leadData)
+        .select('id')
+        .maybeSingle();
 
       if (insertError) {
         console.error('Error inserting LinkedIn lead:', insertError);
       } else {
         console.log('LinkedIn lead created successfully');
+
+        // Send notification to the owner/admin
+        if (leadData.sales_owner_id && insertedLead) {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_id: leadData.sales_owner_id,
+              title: 'New Lead Received! 🚀',
+              message: `New lead "${leadData.name}" has been captured via LinkedIn.`,
+              type: 'info',
+              lead_id: insertedLead.id
+            });
+        }
       }
 
       return new Response(JSON.stringify({ success: true }), {

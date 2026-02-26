@@ -107,6 +107,26 @@ serve(async (req) => {
         throw error
       }
       console.log(`Lead ${leadId} updated to paid`)
+
+      // Fetch lead details to notify the owner
+      const { data: lead } = await supabase
+        .from(tableName)
+        .select('name, sales_owner_id')
+        .eq('id', leadId)
+        .single()
+
+      if (lead?.sales_owner_id) {
+        console.log(`Sending notification to owner: ${lead.sales_owner_id}`)
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: lead.sales_owner_id,
+            title: 'Lead Paid! 💰',
+            message: `Lead "${lead.name}" has completed the payment of ₹${amount}.`,
+            type: 'success',
+            lead_id: leadId
+          })
+      }
     } else {
       console.log(`Event ${payload.event} processed but no action taken (leadId: ${leadId}, status: ${status})`)
     }
