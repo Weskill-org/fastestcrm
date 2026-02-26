@@ -20,11 +20,12 @@ interface UseLeadsOptions {
   pageSize?: number;
   fetchAll?: boolean;
   pendingPaymentOnly?: boolean;
+  select?: string;
 }
 
 import { useLeadsTable } from './useLeadsTable';
 
-export function useLeads({ search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page = 1, pageSize = 25, fetchAll = false }: UseLeadsOptions & { fetchAll?: boolean; pendingPaymentOnly?: boolean } = {}) {
+export function useLeads({ search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page = 1, pageSize = 25, fetchAll = false, select }: UseLeadsOptions = {}) {
   const queryClient = useQueryClient();
   const { tableName, companyId, loading: tableLoading } = useLeadsTable();
 
@@ -33,7 +34,7 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
 
 
   const query = useQuery({
-    queryKey: ['leads', search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page, pageSize, fetchAll, tableName, companyId],
+    queryKey: ['leads', search, statusFilter, ownerFilter, productFilter, pendingPaymentOnly, page, pageSize, fetchAll, tableName, companyId, select],
     queryFn: async (): Promise<{ leads: Lead[]; count: number }> => {
       // Early exit if no company context
       if (!companyId) {
@@ -44,9 +45,11 @@ export function useLeads({ search, statusFilter, ownerFilter, productFilter, pen
       // Build select query with dynamic foreign key reference
       // For custom tables, we can't use named FK joins because CREATE TABLE LIKE doesn't copy FK constraints
       // We'll just select all fields without joins for custom tables
-      const selectQuery = tableName === 'leads'
+      const defaultSelect = tableName === 'leads'
         ? '*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)'
         : '*';
+
+      const selectQuery = select || defaultSelect;
 
       let query = supabase
         .from(tableName as any)
