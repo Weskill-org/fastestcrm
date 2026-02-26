@@ -17,8 +17,10 @@ import { supabase, anonSupabase } from '@/integrations/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 
 // Deep fallback for workspace resolution in case the proxy has CORS/Body issues
+// We use the direct Supabase URL as the ultimate source of truth
+const SUPABASE_PROJECT_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || 'uykdyqdeyilpulaqlqip'}.supabase.co`;
 const fallbackClient = createClient(
-  "https://uykdyqdeyilpulaqlqip.supabase.co",
+  SUPABASE_PROJECT_URL,
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
   { auth: { persistSession: false } }
 );
