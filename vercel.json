@@ -13,7 +13,7 @@
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
-                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, if-none-match"
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, if-none-match, x-supabase-api-version"
                 },
                 {
                     "key": "Access-Control-Expose-Headers",
@@ -34,7 +34,11 @@
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
-                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer"
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, x-supabase-api-version"
+                },
+                {
+                    "key": "Access-Control-Expose-Headers",
+                    "value": "Content-Range, X-Supabase-Api-Version"
                 }
             ]
         },
@@ -51,7 +55,11 @@
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
-                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer"
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, x-supabase-api-version"
+                },
+                {
+                    "key": "Access-Control-Expose-Headers",
+                    "value": "Content-Range, X-Supabase-Api-Version"
                 }
             ]
         }
