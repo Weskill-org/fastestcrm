@@ -31,6 +31,16 @@
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/storage/:path*"
         },
         {
+            "source": "/functions/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "api.fastestcrm.com"
+                }
+            ],
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/:path*"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }

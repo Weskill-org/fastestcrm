@@ -154,9 +154,10 @@ export function useSubdomain(): SubdomainResult {
           if (cancelled) return;
 
           if (rpcError) {
-            console.error('[useSubdomain] get_subdomain_company error:', rpcError);
+            console.error('[useSubdomain] RPC Error (Subdomain):', rpcError);
+            console.error('[useSubdomain] Full RPC URL used:', `${anonSupabase.rpc}`);
             // Network/RPC error — fail-open so login still works
-            setError('Failed to load workspace. Please try again.');
+            setError(`Failed to load workspace: ${rpcError.message || 'Unknown error'}`);
             return;
           }
 
@@ -188,7 +189,8 @@ export function useSubdomain(): SubdomainResult {
 
           if (rpcError) {
             // Fail-open: don't block users for custom-domain errors
-            console.warn('[useSubdomain] get_custom_domain_company error:', rpcError);
+            console.error('[useSubdomain] RPC Error (Custom Domain):', rpcError);
+            setError(`Failed to load workspace: ${rpcError.message || 'Unknown error'}`);
             return;
           }
 
