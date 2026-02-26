@@ -15,6 +15,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, anonSupabase } from '@/integrations/supabase/client';
 import { createClient } from '@supabase/supabase-js';
+import { proxifySupabaseUrl } from '@/lib/utils';
 
 // Deep fallback for workspace resolution in case the proxy has CORS/Body issues
 // We use the direct Supabase URL as the ultimate source of truth
@@ -188,6 +189,8 @@ export function useSubdomain(): SubdomainResult {
               setError('This workspace is currently inactive');
               return;
             }
+            // Proxify logo URL
+            fallbackRow.logo_url = proxifySupabaseUrl(fallbackRow.logo_url);
             setCompany(fallbackRow);
             return;
           }
@@ -206,6 +209,8 @@ export function useSubdomain(): SubdomainResult {
             return;
           }
 
+          // Proxify logo URL
+          row.logo_url = proxifySupabaseUrl(row.logo_url);
           setCompany(row);
 
         } else if (isCustomDomain) {
@@ -228,7 +233,10 @@ export function useSubdomain(): SubdomainResult {
           const rows = Array.isArray(data) ? data : data ? [data] : [];
           if (rows.length > 0) {
             const row = rows[0] as unknown as SubdomainCompany;
-            if (row.is_active) setCompany(row);
+            if (row.is_active) {
+              row.logo_url = proxifySupabaseUrl(row.logo_url);
+              setCompany(row);
+            }
           }
         }
       } catch (err: unknown) {

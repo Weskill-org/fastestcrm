@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { proxifySupabaseUrl } from '@/lib/utils';
 
 interface Company {
   id: string;
@@ -39,7 +40,12 @@ async function fetchCompanyData(userId: string): Promise<Company | null> {
     return null;
   }
 
-  return companyData as Company;
+  const company = companyData as Company;
+  if (company) {
+    company.logo_url = proxifySupabaseUrl(company.logo_url);
+  }
+
+  return company;
 }
 
 export function useCompany() {

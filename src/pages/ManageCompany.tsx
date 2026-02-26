@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { proxifySupabaseUrl } from '@/lib/utils';
 import {
   Building2, Users, CreditCard, Globe, Palette,
   Loader2, Save, ExternalLink, Copy, CheckCircle, AlertCircle, Upload,
@@ -155,7 +156,7 @@ export default function ManageCompany() {
       setCompanySlug(mappedCompany.slug);
       setCustomDomain(mappedCompany.custom_domain || '');
       setPrimaryColor(mappedCompany.primary_color || '#8B5CF6');
-      setLogoUrl(mappedCompany.logo_url);
+      setLogoUrl(proxifySupabaseUrl(mappedCompany.logo_url));
       setMaskLeads(mappedCompany.mask_leads);
 
       // Get Wallet
@@ -791,7 +792,7 @@ export default function ManageCompany() {
                           const { error } = await supabase.storage.from('company_assets').upload(filePath, file);
                           if (error) throw error;
                           const { data: { publicUrl } } = supabase.storage.from('company_assets').getPublicUrl(filePath);
-                          setLogoUrl(publicUrl);
+                          setLogoUrl(proxifySupabaseUrl(publicUrl));
                           toast({ title: "Logo uploaded", description: "Remember to save." });
                         } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
                         finally { setUploadingLogo(false); }
