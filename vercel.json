@@ -2,12 +2,6 @@
     "headers": [
         {
             "source": "/rest/:path*",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
             "headers": [
                 {
                     "key": "Access-Control-Allow-Origin",
@@ -19,7 +13,7 @@
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
-                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, if-none-match, x-supabase-api-version"
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, if-none-match"
                 },
                 {
                     "key": "Access-Control-Expose-Headers",
@@ -29,12 +23,6 @@
         },
         {
             "source": "/auth/:path*",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
             "headers": [
                 {
                     "key": "Access-Control-Allow-Origin",
@@ -46,22 +34,12 @@
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
-                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, x-supabase-api-version"
-                },
-                {
-                    "key": "Access-Control-Expose-Headers",
-                    "value": "Content-Range, X-Supabase-Api-Version"
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer"
                 }
             ]
         },
         {
             "source": "/storage/:path*",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
             "headers": [
                 {
                     "key": "Access-Control-Allow-Origin",
@@ -73,11 +51,7 @@
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
-                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer, x-supabase-api-version"
-                },
-                {
-                    "key": "Access-Control-Expose-Headers",
-                    "value": "Content-Range, X-Supabase-Api-Version"
+                    "value": "X-Client-Info, apikey, Authorization, Content-Type, Range, Prefer"
                 }
             ]
         }
@@ -85,42 +59,18 @@
     "rewrites": [
         {
             "source": "/rest/:path*",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/rest/:path*"
         },
         {
             "source": "/auth/:path*",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/auth/:path*"
         },
         {
             "source": "/storage/:path*",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/storage/:path*"
         },
         {
             "source": "/functions/:path*",
-            "has": [
-                {
-                    "type": "host",
-                    "value": "api.fastestcrm.com"
-                }
-            ],
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/:path*"
         },
         {
