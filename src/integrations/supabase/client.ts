@@ -3,12 +3,15 @@ import Cookies from 'js-cookie';
 import type { Database } from './types';
 
 // ─── Environment ─────────────────────────────────────────────────────────────
+// api.fastestcrm.com is a custom domain that points directly to Supabase.
+// The Vercel frontend (fastestcrm.com) does NOT proxy API traffic —
+// the browser hits api.fastestcrm.com directly for all REST/Auth/Storage calls.
 const SUPABASE_URL = "https://api.fastestcrm.com";
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-// Vercel rewrites cannot proxy WebSocket connections, so Realtime MUST connect
-// directly to the Supabase project URL. All other traffic (REST, Auth, Storage)
-// continues to flow through the api.fastestcrm.com proxy as before.
+// Realtime WebSockets must bypass the api.fastestcrm.com domain entirely
+// if it does not support WebSocket upgrades. We fall back to the direct
+// Supabase project URL for the persistent WS connection.
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'uykdyqdeyilpulaqlqip';
 const REALTIME_URL = `wss://${SUPABASE_PROJECT_ID}.supabase.co/realtime/v1`;
 
@@ -122,11 +125,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     // Add 10s margin for refresh retry logic
     storageKey: 'sb-auth-token',
   },
-  realtime: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  realtime: ({
     // Vercel cannot proxy WebSockets — bypass the proxy for Realtime only.
-    // REST / Auth / Storage still go through api.fastestcrm.com as normal.
+    // Cast needed: 'url' is valid at runtime but missing from the type defs
+    // in this version of @supabase/supabase-js.
     url: REALTIME_URL,
-  },
+  } as any),
 });
 
 // A lightweight, unauthenticated client strictly used for fast public lookups (e.g. subdomains)

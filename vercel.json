@@ -1,19 +1,19 @@
 {
     "rewrites": [
         {
-            "source": "/rest/:path*",
+            "source": "/sb-rest/:path*",
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/rest/:path*"
         },
         {
-            "source": "/auth/:path*",
+            "source": "/sb-auth/:path*",
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/auth/:path*"
         },
         {
-            "source": "/storage/:path*",
+            "source": "/sb-storage/:path*",
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/storage/:path*"
         },
         {
-            "source": "/functions/:path*",
+            "source": "/sb-functions/:path*",
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/:path*"
         },
         {
