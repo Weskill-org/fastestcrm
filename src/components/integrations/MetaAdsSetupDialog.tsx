@@ -45,7 +45,7 @@ interface FacebookPage {
 const META_APP_ID = '1222309222740033';
 
 // Use the already-deployed edge function URL as redirect_uri.
-`https://api.fastestcrm.com/functions/v1/meta-oauth-callback`;
+const META_OAUTH_REDIRECT_URI = `https://api.fastestcrm.com/functions/v1/meta-oauth-callback`;
 
 // Only accept postMessage events from our callback origins.
 const META_OAUTH_ALLOWED_ORIGINS = new Set([

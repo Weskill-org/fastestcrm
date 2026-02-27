@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function PublicForm() {
     const { id } = useParams();
@@ -56,26 +57,20 @@ export default function PublicForm() {
             const utmSource = searchParams.get('utm_source');
 
             // Call secure edge function for public form submission
-            const response = await fetch(
-                `https://api.fastestcrm.com/functions/v1/submit-public-form`,
+            const { data: result, error: invokeError } = await supabase.functions.invoke(
+                'submit-public-form',
                 {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
+                    body: {
                         formId: form.id,
                         formData,
                         linkId: linkId || undefined,
                         utmSource: utmSource || undefined
-                    })
+                    }
                 }
             );
 
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.error || 'Failed to submit form');
+            if (invokeError) {
+                throw new Error(invokeError.message || 'Failed to submit form');
             }
 
             setSubmitted(true);
