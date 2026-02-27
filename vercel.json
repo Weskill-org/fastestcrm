@@ -13,11 +13,15 @@
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/storage/:path*"
         },
         {
+            "source": "/functions/v1/submit-external-lead",
+            "destination": "/api/submit-external-lead"
+        },
+        {
             "source": "/functions/:path*",
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/:path*"
         },
         {
-            "source": "/(.*)",
+            "source": "/((?!api/).*)",
             "destination": "/index.html"
         }
     ]

@@ -289,9 +289,7 @@ export default function FormBuilder() {
     const [showApiInfo, setShowApiInfo] = useState(false);
     const [copiedUrl, setCopiedUrl] = useState(false);
     const [copiedJson, setCopiedJson] = useState(false);
-    const [copiedApiKey, setCopiedApiKey] = useState(false);
 
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "YOUR_PUBLISHABLE_KEY";
     const apiUrl = `https://api.fastestcrm.com/functions/v1/submit-external-lead`;
     const canViewApiInfo = (userRole === 'company' || userRole === 'company_subadmin');
 
@@ -487,38 +485,6 @@ export default function FormBuilder() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label>Required Headers</Label>
-                                            <div className="bg-muted p-4 rounded-md space-y-4">
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-semibold text-muted-foreground uppercase">apikey</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <code className="flex-1 text-sm font-mono break-all bg-background/50 p-2 rounded border">
-                                                            {supabaseKey}
-                                                        </code>
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(supabaseKey, false)}>
-                                                            <Copy className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-semibold text-muted-foreground uppercase">Authorization</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <code className="flex-1 text-sm font-mono break-all bg-background/50 p-2 rounded border">
-                                                            Bearer {supabaseKey}
-                                                        </code>
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(`Bearer ${supabaseKey}`, false)}>
-                                                            <Copy className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                                <p className="text-[10px] text-destructive">
-                                                    Important: These headers are required for the API to accept your submission.
-                                                    Direct hits without headers will return a 401 error.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <Label>Sample JSON Payload</Label>
                                                 <Button
@@ -541,81 +507,82 @@ export default function FormBuilder() {
                                             </p>
                                         </div>
                                     </div>
-                                </DialogContent>
+                                </div>
+                            </DialogContent>
                             </Dialog>
                         )}
-                        <Button onClick={handleSave} className="gradient-primary">
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Form
-                        </Button>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Form Settings */}
-                    <Card className="glass h-fit">
-                        <CardHeader>
-                            <CardTitle>Form Settings</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="formName">Form Name</Label>
-                                <Input
-                                    id="formName"
-                                    value={formName}
-                                    onChange={(e) => setFormName(e.target.value)}
-                                    placeholder="e.g., Webinar Registration"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Description</Label>
-                                <Input
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Enter form description"
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Field Builder */}
-                    <Card className="glass lg:col-span-2">
-                        <CardHeader>
-                            <CardTitle>Form Fields</CardTitle>
-                            <CardDescription>Add and configure fields for your form.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragEnd={handleDragEnd}
-                            >
-                                <SortableContext
-                                    items={fields.map(f => f.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {fields.map((field) => (
-                                        <SortableField
-                                            key={field.id}
-                                            field={field}
-                                            leadAttributes={leadAttributes}
-                                            companyStatuses={companyStatuses || []}
-                                            companyUsers={companyUsers || []}
-                                            updateField={updateField}
-                                            removeField={removeField}
-                                        />
-                                    ))}
-                                </SortableContext>
-                            </DndContext>
-
-                            <Button variant="outline" className="w-full border-dashed" onClick={addField}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Field
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <Button onClick={handleSave} className="gradient-primary">
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Form
+                    </Button>
                 </div>
             </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Form Settings */}
+                <Card className="glass h-fit">
+                    <CardHeader>
+                        <CardTitle>Form Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="formName">Form Name</Label>
+                            <Input
+                                id="formName"
+                                value={formName}
+                                onChange={(e) => setFormName(e.target.value)}
+                                placeholder="e.g., Webinar Registration"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Description</Label>
+                            <Input
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Enter form description"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Field Builder */}
+                <Card className="glass lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle>Form Fields</CardTitle>
+                        <CardDescription>Add and configure fields for your form.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={fields.map(f => f.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {fields.map((field) => (
+                                    <SortableField
+                                        key={field.id}
+                                        field={field}
+                                        leadAttributes={leadAttributes}
+                                        companyStatuses={companyStatuses || []}
+                                        companyUsers={companyUsers || []}
+                                        updateField={updateField}
+                                        removeField={removeField}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
+
+                        <Button variant="outline" className="w-full border-dashed" onClick={addField}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Field
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        </div >
         </>
     );
 
