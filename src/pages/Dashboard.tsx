@@ -14,7 +14,12 @@ export default function Dashboard() {
   const [reportLimit, setReportLimit] = useState<number>(1000);
   // Fetch leads based on limit for accurate revenue calculations
   // TODO: Move aggregation to backend for better performance with large datasets
-  const { data: leadsData, isLoading } = useLeads({ fetchAll: true, limit: reportLimit });
+  const { data: leadsData, isLoading } = useLeads({
+    fetchAll: true,
+    limit: reportLimit,
+    // Optimization: Select only columns needed for dashboard stats and list
+    select: 'id, name, email, phone, status, revenue_received, revenue_projected, created_at, updated_at, company_id'
+  });
   const leads = leadsData?.leads || [];
 
   // Calculate stats
