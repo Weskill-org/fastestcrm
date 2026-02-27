@@ -64,9 +64,12 @@ const industries = [
   { name: 'Consultancy', icon: '🤝' }
 ];
 
+import { isAndroidWebView } from '@/lib/platform';
+
 export default function Landing() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const isWebView = isAndroidWebView();
 
   return (
     <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -143,18 +146,20 @@ export default function Landing() {
 
         <div className="container mx-auto text-center max-w-5xl">
           {/* Badge */}
-          <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-10 border-primary/30"
-            style={{ animationDelay: '0ms' }}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-            <span className="text-xs font-semibold tracking-wide text-foreground/80 uppercase">
-              India's First AI-Powered CRM
-            </span>
-          </div>
+          {!isWebView && (
+            <div
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-10 border-primary/30"
+              style={{ animationDelay: '0ms' }}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+              </span>
+              <span className="text-xs font-semibold tracking-wide text-foreground/80 uppercase">
+                India's First AI-Powered CRM
+              </span>
+            </div>
+          )}
 
           {/* Headline */}
           <h1
@@ -398,7 +403,9 @@ export default function Landing() {
                 <span className="font-bold text-base" style={{ fontFamily: "'Syne', sans-serif" }}>Fastest CRM</span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                India's first AI-powered CRM built for the fastest sales teams. Powered by Google Gemini.
+                {isWebView
+                  ? "The smartest CRM built for the fastest sales teams. Powered by Google Gemini."
+                  : "India's first AI-powered CRM built for the fastest sales teams. Powered by Google Gemini."}
               </p>
             </div>
 

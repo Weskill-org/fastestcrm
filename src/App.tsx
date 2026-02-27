@@ -50,6 +50,8 @@ import BlogPost from "./pages/BlogPost";
 import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
 
+import { isAndroidWebView } from "@/lib/platform";
+
 // ─── Query client ─────────────────────────────────────────────────────────────
 const queryClient = new QueryClient();
 
@@ -86,12 +88,13 @@ function Protected({ children }: { children: React.ReactNode }) {
 /** The main route structure, unified for both main domain and subdomains */
 function AppRoutes() {
   const { isMainDomain } = useSubdomainContext();
+  const isWebView = isAndroidWebView();
 
   return (
     <Routes>
       {/* Home Path Logic */}
       {isMainDomain ? (
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={isWebView ? <Navigate to="/auth" replace /> : <Landing />} />
       ) : (
         <Route path="/" element={<AuthRoute />} />
       )}
