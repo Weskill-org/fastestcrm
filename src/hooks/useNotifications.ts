@@ -83,11 +83,19 @@ export function useNotifications() {
     };
 
     const requestPermission = async () => {
-        const granted = await requestWebNotificationPermission();
-        if (granted) {
-            toast.success('Notifications enabled!');
-        } else {
-            toast.error('Notification permission denied. Please enable them in your browser settings.');
+        const status = await requestWebNotificationPermission();
+        if (status === 'granted') {
+            toast.success('Notifications enabled!', {
+                description: 'You will now receive real-time updates.'
+            });
+        } else if (status === 'denied') {
+            toast.error('Permission Denied', {
+                description: 'Please enable notifications in your browser address bar settings to receive alerts.'
+            });
+        } else if (status === 'unsupported') {
+            toast.error('Not Supported', {
+                description: 'Your browser does not support web notifications.'
+            });
         }
     };
 
@@ -95,12 +103,25 @@ export function useNotifications() {
         if (session?.user?.id) {
             fetchNotifications();
 
-            // Request permission (may be blocked if not triggered by event, but we'll try)
-            requestWebNotificationPermission();
+            // Check permission status on mount
+            const currentStatus = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+            if (currentStatus === 'default') {
+                // Show a gentle reminder toast after a short delay
+                const timer = setTimeout(() => {
+                    toast('Enable Notifications', {
+                        description: 'Stay updated with new leads and payments even when you are not looking.',
+                        action: {
+                            label: 'Enable',
+                            onClick: () => requestPermission()
+                        },
+                    });
+                }, 3000);
+                return () => clearTimeout(timer);
+            }
 
             // Subscribe to real-time changes
             const channel = supabase
-                .channel(`public:notifications:${session.user.id}`) // More specific channel
+                .channel(`public:notifications:${session.user.id}`)
                 .on(
                     'postgres_changes',
                     {
@@ -121,7 +142,7 @@ export function useNotifications() {
 
                         // Native OS browser popup
                         sendWebNotification(newNotification.title, newNotification.message, {
-                            tag: newNotification.id, // prevents duplicate popups for same notification
+                            tag: newNotification.id,
                         });
                     }
                 )

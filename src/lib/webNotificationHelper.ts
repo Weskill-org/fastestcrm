@@ -8,16 +8,18 @@ const isSupported = (): boolean => 'Notification' in window;
 
 /**
  * Requests permission to show browser notifications.
- * Resolves to `true` if permission is granted, `false` otherwise.
- * Safe to call multiple times – will not prompt again if already granted/denied.
+ * Resolves to the permission status: 'granted', 'denied', or 'default'.
  */
-export async function requestWebNotificationPermission(): Promise<boolean> {
-    if (!isSupported()) return false;
-    if (Notification.permission === 'granted') return true;
-    if (Notification.permission === 'denied') return false;
+export async function requestWebNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
+    if (!isSupported()) return 'unsupported';
+    if (Notification.permission !== 'default') return Notification.permission;
 
-    const permission = await Notification.requestPermission();
-    return permission === 'granted';
+    try {
+        return await Notification.requestPermission();
+    } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        return Notification.permission;
+    }
 }
 
 /**
