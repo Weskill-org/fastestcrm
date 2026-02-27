@@ -5,8 +5,8 @@
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/rest/:path*"
         },
         {
-            "source": "/auth/:path*",
-            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/auth/:path*"
+            "source": "/auth/v1/:path*",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/auth/v1/:path*"
         },
         {
             "source": "/storage/:path*",
