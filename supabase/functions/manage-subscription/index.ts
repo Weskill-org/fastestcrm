@@ -117,8 +117,27 @@ import { corsHeaders } from "../_shared/cors.ts";
 
         if (companyError) {
             // Critical: Money deducted but product not given.
-            // TODO: Rollback wallet?
             console.error('Company Update Failed', companyError);
+
+            // Rollback wallet transaction
+            const { error: rollbackError } = await supabaseAdmin
+                .from('wallets')
+                .update({ balance: currentBalance, updated_at: new Date().toISOString() })
+                .eq('company_id', companyId);
+
+            if (rollbackError) {
+                console.error('CRITICAL: Failed to rollback wallet after subscription update failed', rollbackError);
+            } else {
+                // Log rollback transaction
+                await supabaseAdmin.from('wallet_transactions').insert({
+                    wallet_id: companyId,
+                    amount: cost,
+                    type: 'credit_manual_adjustment',
+                    description: 'Refund: Subscription update failed',
+                    status: 'success'
+                });
+            }
+
             throw new Error('Failed to update subscription. Please contact support.');
         }
 
