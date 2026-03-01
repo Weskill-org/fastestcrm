@@ -12,6 +12,7 @@ import { EditLeadDialog } from '@/components/leads/EditLeadDialog';
 import { LeadDetailsDialog } from '@/components/leads/LeadDetailsDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCompany } from '@/hooks/useCompany';
@@ -28,6 +29,21 @@ export default function PendingPayments() {
     const [configOpen, setConfigOpen] = useState(false);
     const { data: userRole } = useUserRole();
     const { company } = useCompany();
+
+    const { data: owners } = useQuery({
+        queryKey: ['profiles', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return [];
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .eq('company_id', company.id)
+                .not('full_name', 'is', null);
+            return (data || []).map((p) => ({ label: p.full_name || 'Unknown', value: p.id }));
+        },
+        enabled: !!company?.id,
+        staleTime: 5 * 60 * 1000,
+    });
 
     const defaultColumns = [
         { id: 'name', label: 'Name' },
@@ -285,7 +301,7 @@ export default function PendingPayments() {
                 open={!!viewingLead}
                 onOpenChange={(open) => !open && setViewingLead(null)}
                 lead={viewingLead}
-                owners={[]}
+                owners={owners || []}
             />
         </>
     );

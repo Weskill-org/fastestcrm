@@ -21,6 +21,8 @@ import { EditLeadDialog } from '@/components/leads/EditLeadDialog';
 import { RealEstateEditLeadDialog } from '@/industries/real_estate/components/RealEstateEditLeadDialog';
 import { useCompany } from '@/hooks/useCompany';
 import { Tables } from '@/integrations/supabase/types';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 /* ─── Tab config ─────────────────────────────── */
 type TabDef = {
@@ -73,11 +75,13 @@ function formatReminderDate(iso: string): string {
 function LeadTaskCard({
     lead,
     bucket,
+    owners = [],
     onView,
     onEdit,
 }: {
     lead: TaskLead;
     bucket: TaskBucket;
+    owners?: { label: string; value: string }[];
     onView: (lead: TaskLead) => void;
     onEdit: (lead: TaskLead) => void;
 }) {
@@ -152,10 +156,10 @@ function LeadTaskCard({
                     </span>
 
                     <div className="flex items-center gap-2">
-                        {lead.sales_owner?.full_name && (
+                        {(lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label) && (
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <User className="h-3 w-3" />
-                                {lead.sales_owner.full_name}
+                                {lead.sales_owner?.full_name || owners.find(o => o.value === lead.sales_owner_id)?.label}
                             </span>
                         )}
                         <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -227,6 +231,21 @@ export default function Tasks() {
     const [viewingLead, setViewingLead] = useState<TaskLead | null>(null);
     const [editingLead, setEditingLead] = useState<TaskLead | null>(null);
     const { company } = useCompany();
+
+    const { data: owners } = useQuery({
+        queryKey: ['profiles', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return [];
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .eq('company_id', company.id)
+                .not('full_name', 'is', null);
+            return (data || []).map((p) => ({ label: p.full_name || 'Unknown', value: p.id }));
+        },
+        enabled: !!company?.id,
+        staleTime: 5 * 60 * 1000,
+    });
 
     const { urgent, today, upcoming, isLoading, error, refetch } = useTaskLeads();
 
@@ -322,6 +341,7 @@ export default function Tasks() {
                             key={lead.id}
                             lead={lead}
                             bucket={activeTabId}
+                            owners={owners || []}
                             onView={setViewingLead}
                             onEdit={setEditingLead}
                         />
@@ -335,7 +355,7 @@ export default function Tasks() {
                     open={!!viewingLead}
                     onOpenChange={(open) => !open && setViewingLead(null)}
                     lead={viewingLead as unknown as Tables<'leads'>}
-                    owners={[]}
+                    owners={owners || []}
                     onEdit={(lead) => {
                         setViewingLead(null);
                         setEditingLead(lead);
