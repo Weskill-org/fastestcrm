@@ -318,8 +318,18 @@ export default function Auth() {
           <Link to="/privacy" className="underline hover:text-primary">Privacy Policy</Link>.
         </p>
 
-        <footer className="mt-8 text-center text-sm text-muted-foreground">
-          © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+        <footer className="mt-8 flex flex-col items-center gap-4">
+          <p className="text-xs text-center text-muted-foreground">
+            © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+          </p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+              Download FastestCRM App
+            </p>
+            <a href="https://play.google.com/store/apps/details?id=com.fastestcrm" target="_blank" rel="noopener noreferrer">
+              <img src="/getitongoogleplay.png" alt="Get it on Google Play" className="h-7 hover:opacity-90 transition-opacity" />
+            </a>
+          </div>
         </footer>
       </div>
     </div>

@@ -33,7 +33,8 @@ import { useCompany } from '@/hooks/useCompany';
 import { Constants } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
-import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { useLeadStatuses, CompanyLeadStatus } from '@/hooks/useLeadStatuses';
+import { StatusReminderDialog } from './StatusReminderDialog';
 
 const formSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -59,6 +60,9 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
     const { company } = useCompany();
     const createLead = useCreateLead();
     const { statuses } = useLeadStatuses();
+    const [statusReminderOpen, setStatusReminderOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
+    const [reminderAt, setReminderAt] = useState<Date | null>(null);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -71,6 +75,32 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
             lead_source: 'Others',
         },
     });
+
+    const handleStatusChange = (newStatusValue: string) => {
+        const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+        if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived')) {
+            setPendingStatus(newStatus);
+            setStatusReminderOpen(true);
+        } else {
+            form.setValue('status', newStatusValue);
+            setReminderAt(null);
+        }
+    };
+
+    const handleReminderConfirm = (date: Date | null, sendNotification: boolean) => {
+        if (pendingStatus) {
+            form.setValue('status', pendingStatus.value);
+            setReminderAt(date);
+        }
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+    };
+
+    const handleReminderCancel = () => {
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+    };
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         if (!user || !company) {
@@ -89,10 +119,12 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
                 created_by_id: user.id,
                 sales_owner_id: user.id,
                 company_id: company.id,
+                reminder_at: reminderAt ? reminderAt.toISOString() : null,
             });
             toast.success('Lead added successfully');
             setOpen(false);
             form.reset();
+            setReminderAt(null);
         } catch (error: any) {
             console.error('Error adding lead:', error);
             toast.error(error.message || 'Failed to add lead. Please try again.');
@@ -191,7 +223,11 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select
+                                        onValueChange={handleStatusChange}
+                                        value={field.value}
+                                        defaultValue={field.value}
+                                    >
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select a status" />
@@ -215,6 +251,16 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
                     </form>
                 </Form>
             </DialogContent>
+
+            {pendingStatus && (
+                <StatusReminderDialog
+                    open={statusReminderOpen}
+                    onOpenChange={setStatusReminderOpen}
+                    status={pendingStatus}
+                    onConfirm={handleReminderConfirm}
+                    onCancel={handleReminderCancel}
+                />
+            )}
         </Dialog>
     );
 }

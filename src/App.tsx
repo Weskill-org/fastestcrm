@@ -49,6 +49,7 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
+import RedirectToApp from "./pages/RedirectToApp";
 
 import { isAndroidWebView } from "@/lib/platform";
 
@@ -109,6 +110,7 @@ function AppRoutes() {
       <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:slug" element={<BlogPost />} />
+      <Route path="/app" element={<RedirectToApp />} />
 
       {/* Platform Admin */}
       <Route path="/platform" element={<Protected><PlatformAdmin /></Protected>} />

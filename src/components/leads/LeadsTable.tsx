@@ -39,13 +39,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { EditLeadDialog } from './EditLeadDialog';
 import { LeadDetailsDialog } from './LeadDetailsDialog';
 import { LeadHistoryDialog } from './LeadHistoryDialog';
-import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { useLeadStatuses, CompanyLeadStatus } from '@/hooks/useLeadStatuses';
+import { StatusReminderDialog } from './StatusReminderDialog';
 import { MaskedValue } from '@/components/ui/MaskedValue';
 
 type Lead = Tables<'leads'> & {
   sales_owner?: {
     full_name: string | null;
   } | null;
+  reminder_at?: string | null;
   lead_history?: any[] | null;
 };
 
@@ -72,17 +74,69 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
   const [viewingHistoryLead, setViewingHistoryLead] = useState<Lead | null>(null);
   const { statuses, getStatusColor } = useLeadStatuses();
+  const [pendingStatus, setPendingStatus] = useState<{ leadId: string; status: CompanyLeadStatus } | null>(null);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
 
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatusValue: string, metadata?: Record<string, any>) => {
+    const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+    // Check if status requires date/time input (Derived Status)
+    if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived') && !metadata) {
+      setPendingStatus({ leadId, status: newStatus });
+      setReminderDialogOpen(true);
+      return;
+    }
+
     try {
-      await updateLead.mutateAsync({
+      const updates: any = {
         id: leadId,
-        status: newStatus as any
-      });
+        status: newStatusValue as any
+      };
+
+      if (metadata && metadata.reminder_at) {
+        updates.reminder_at = metadata.reminder_at;
+      } else if (newStatus && newStatus.status_type === 'simple') {
+        updates.reminder_at = null;
+      }
+
+      await updateLead.mutateAsync(updates);
       toast.success('Status updated successfully');
     } catch (error) {
       toast.error('Failed to update status');
     }
+  };
+
+  const handleReminderConfirm = async (dateTime: Date | null, sendNotification: boolean) => {
+    if (!pendingStatus) return;
+
+    const metadata: Record<string, any> = {};
+    if (dateTime) {
+      metadata.reminder_at = dateTime.toISOString();
+    }
+
+    await handleStatusChange(pendingStatus.leadId, pendingStatus.status.value, metadata);
+    setReminderDialogOpen(false);
+    setPendingStatus(null);
+  };
+
+  const handleReminderCancel = () => {
+    setReminderDialogOpen(false);
+    setPendingStatus(null);
+  };
+
+  const getStatusDisplay = (lead: Lead) => {
+    const status = statuses.find(s => s.value === lead.status);
+    const label = status?.label || lead.status;
+
+    if (lead.reminder_at && (status?.status_type === 'date_derived' || status?.status_type === 'time_derived')) {
+      try {
+        return `${label} - ${format(new Date(lead.reminder_at), 'dd MMM, hh:mm a')}`;
+      } catch (e) {
+        return label;
+      }
+    }
+
+    return label;
   };
 
   const handleProductChange = async (leadId: string, productName: string) => {
@@ -217,10 +271,10 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
           onValueChange={(value) => handleStatusChange(lead.id, value)}
         >
           <SelectTrigger
-            className="w-[140px] h-8 text-white border-0"
+            className="w-auto min-w-[140px] h-8 text-white border-0 px-3"
             style={{ backgroundColor: getStatusColor(lead.status) }}
           >
-            <SelectValue placeholder="Status" />
+            <SelectValue>{getStatusDisplay(lead)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {statuses.map((status) => (
@@ -503,6 +557,16 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
         onOpenChange={(open) => !open && setViewingHistoryLead(null)}
         lead={viewingHistoryLead}
       />
+
+      {pendingStatus && (
+        <StatusReminderDialog
+          open={reminderDialogOpen}
+          onOpenChange={setReminderDialogOpen}
+          status={pendingStatus.status}
+          onConfirm={handleReminderConfirm}
+          onCancel={handleReminderCancel}
+        />
+      )}
     </>
   );
 }

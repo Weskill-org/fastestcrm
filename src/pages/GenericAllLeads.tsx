@@ -25,6 +25,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { EditLeadDialog } from '@/components/leads/EditLeadDialog';
 import { LeadDetailsDialog } from '@/components/leads/LeadDetailsDialog';
 import { ColumnConfigDialog } from '@/components/leads/ColumnConfigDialog';
+import { StatusReminderDialog } from '@/components/leads/StatusReminderDialog';
+import { useLeadStatuses, CompanyLeadStatus } from '@/hooks/useLeadStatuses';
 
 import { useSearchParams } from 'react-router-dom';
 
@@ -52,6 +54,9 @@ export default function GenericAllLeads() {
     const [viewingLead, setViewingLead] = useState<any>(null);
     const { tableName } = useLeadsTable();
     const [configOpen, setConfigOpen] = useState(false);
+    const { statuses } = useLeadStatuses();
+    const [pendingStatus, setPendingStatus] = useState<{ leadId: string; status: CompanyLeadStatus } | null>(null);
+    const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
 
     const defaultColumns = [
         { id: 'name', label: 'Name' },
@@ -240,11 +245,27 @@ export default function GenericAllLeads() {
         }
     };
 
-    const handleStatusChange = async (leadId: string, newStatus: string) => {
+    const handleStatusChange = async (leadId: string, newStatusValue: string, metadata?: Record<string, any>) => {
+        const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+        // Check if status requires date/time input (Derived Status)
+        if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived') && !metadata) {
+            setPendingStatus({ leadId, status: newStatus });
+            setReminderDialogOpen(true);
+            return;
+        }
+
         try {
+            const updates: any = { status: newStatusValue };
+            if (metadata && metadata.reminder_at) {
+                updates.reminder_at = metadata.reminder_at;
+            } else if (newStatus && newStatus.status_type === 'simple') {
+                updates.reminder_at = null;
+            }
+
             const { error } = await supabase
                 .from(tableName as any)
-                .update({ status: newStatus })
+                .update(updates)
                 .eq('id', leadId);
 
             if (error) throw error;
@@ -253,6 +274,24 @@ export default function GenericAllLeads() {
         } catch (error) {
             toast.error('Failed to update status');
         }
+    };
+
+    const handleReminderConfirm = async (dateTime: Date | null, sendNotification: boolean) => {
+        if (!pendingStatus) return;
+
+        const metadata: Record<string, any> = {};
+        if (dateTime) {
+            metadata.reminder_at = dateTime.toISOString();
+        }
+
+        await handleStatusChange(pendingStatus.leadId, pendingStatus.status.value, metadata);
+        setReminderDialogOpen(false);
+        setPendingStatus(null);
+    };
+
+    const handleReminderCancel = () => {
+        setReminderDialogOpen(false);
+        setPendingStatus(null);
     };
 
     const toggleLead = (id: string) => {
@@ -416,6 +455,16 @@ export default function GenericAllLeads() {
                 tableId="all_leads"
                 defaultColumns={defaultColumns}
             />
+
+            {pendingStatus && (
+                <StatusReminderDialog
+                    open={reminderDialogOpen}
+                    onOpenChange={setReminderDialogOpen}
+                    status={pendingStatus.status}
+                    onConfirm={handleReminderConfirm}
+                    onCancel={handleReminderCancel}
+                />
+            )}
         </>
     );
 }

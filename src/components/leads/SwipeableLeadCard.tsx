@@ -150,8 +150,22 @@ export function SwipeableLeadCard({
     return `Up to ${formatNum(max!)}`;
   };
 
-  const statusLabel = statuses.find(s => s.value === lead.status)?.label || lead.status;
   const statusColor = getStatusColor(lead.status);
+
+  const getStatusDisplay = () => {
+    const status = statuses.find(s => s.value === lead.status);
+    const label = status?.label || lead.status;
+
+    if (lead.reminder_at && (status?.status_type === 'date_derived' || status?.status_type === 'time_derived')) {
+      try {
+        return `${label} - ${format(new Date(lead.reminder_at), 'dd MMM, hh:mm a')}`;
+      } catch (e) {
+        return label;
+      }
+    }
+
+    return label;
+  };
 
   return (
     <div className="relative overflow-hidden rounded-lg">
@@ -337,7 +351,7 @@ export function SwipeableLeadCard({
             className="text-white text-xs"
             style={{ backgroundColor: statusColor }}
           >
-            {statusLabel}
+            {getStatusDisplay()}
           </Badge>
           {lead.lead_source && (
             <span className="text-xs text-muted-foreground">

@@ -395,7 +395,7 @@ export default function Landing() {
       {/* ── Footer ── */}
       <footer className="py-12 px-6 border-t border-border/50 bg-card/30">
         <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
             {/* Brand */}
             <div>
               <div className="flex items-center gap-2.5 mb-3">
@@ -425,6 +425,19 @@ export default function Landing() {
               <div className="flex flex-col gap-2.5 text-sm text-muted-foreground">
                 <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
                 <Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+              </div>
+            </div>
+
+            {/* Mobile App */}
+            <div className="flex flex-col items-center md:items-start lg:items-end">
+              <p className="font-semibold text-sm mb-4 text-foreground/80 md:w-full md:text-left lg:text-right" style={{ fontFamily: "'Syne', sans-serif" }}>Mobile App</p>
+              <div className="flex flex-col items-center md:items-start lg:items-end gap-3 text-right">
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px] text-center md:text-left lg:text-right">
+                  Download "FastestCRM App" for Seamless Experience
+                </p>
+                <a href="https://play.google.com/store/apps/details?id=com.fastestcrm" target="_blank" rel="noopener noreferrer">
+                  <img src="/getitongoogleplay.png" alt="Get it on Google Play" className="h-10 hover:opacity-90 transition-opacity" />
+                </a>
               </div>
             </div>
           </div>

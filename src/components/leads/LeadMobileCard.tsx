@@ -41,7 +41,7 @@ export function LeadMobileCard({
   variant = 'education'
 }: LeadMobileCardProps) {
   const { statuses, getStatusColor } = useLeadStatuses();
-  
+
   const getOwnerName = (ownerId: string | null, ownerObj?: { full_name: string | null } | null) => {
     if (ownerObj?.full_name) return ownerObj.full_name;
     if (!ownerId) return '-';
@@ -60,8 +60,22 @@ export function LeadMobileCard({
     return `Up to ${formatNum(max!)}`;
   };
 
-  const statusLabel = statuses.find(s => s.value === lead.status)?.label || lead.status;
   const statusColor = getStatusColor(lead.status);
+
+  const getStatusDisplay = () => {
+    const status = statuses.find(s => s.value === lead.status);
+    const label = status?.label || lead.status;
+
+    if (lead.reminder_at && (status?.status_type === 'date_derived' || status?.status_type === 'time_derived')) {
+      try {
+        return `${label} - ${format(new Date(lead.reminder_at), 'dd MMM, hh:mm a')}`;
+      } catch (e) {
+        return label;
+      }
+    }
+
+    return label;
+  };
 
   return (
     <div className={cn(
@@ -192,11 +206,11 @@ export function LeadMobileCard({
 
       {/* Status Badge */}
       <div className="flex items-center justify-between">
-        <Badge 
+        <Badge
           className="text-white text-xs"
           style={{ backgroundColor: statusColor }}
         >
-          {statusLabel}
+          {getStatusDisplay()}
         </Badge>
         {lead.lead_source && (
           <span className="text-xs text-muted-foreground">

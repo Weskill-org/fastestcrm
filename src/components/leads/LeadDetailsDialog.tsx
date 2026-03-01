@@ -22,7 +22,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useUpdateLead } from '@/hooks/useLeads';
-import { useLeadStatuses } from '@/hooks/useLeadStatuses';
+import { useLeadStatuses, CompanyLeadStatus } from '@/hooks/useLeadStatuses';
+import { StatusReminderDialog } from './StatusReminderDialog';
 import { toast } from 'sonner';
 
 type Lead = Tables<'leads'> & Partial<Tables<'leads_real_estate'>> & {
@@ -47,6 +48,9 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
     const [quickStatus, setQuickStatus] = useState(lead?.status || 'new');
     const [quickNotes, setQuickNotes] = useState(lead?.notes || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [statusReminderOpen, setStatusReminderOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
+    const [reminderAt, setReminderAt] = useState<Date | null>(null);
 
     useEffect(() => {
         if (lead) {
@@ -57,6 +61,32 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
 
     if (!lead) return null;
 
+    const handleStatusChange = (newStatusValue: string) => {
+        const newStatus = statuses?.find(s => s.value === newStatusValue);
+
+        if (newStatus && (newStatus.status_type === 'date_derived' || newStatus.status_type === 'time_derived')) {
+            setPendingStatus(newStatus);
+            setStatusReminderOpen(true);
+        } else {
+            setQuickStatus(newStatusValue);
+            setReminderAt(null);
+        }
+    };
+
+    const handleReminderConfirm = (date: Date | null, sendNotification: boolean) => {
+        if (pendingStatus) {
+            setQuickStatus(pendingStatus.value);
+            setReminderAt(date);
+        }
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+    };
+
+    const handleReminderCancel = () => {
+        setStatusReminderOpen(false);
+        setPendingStatus(null);
+    };
+
     const handleQuickSave = async () => {
         setIsSaving(true);
         try {
@@ -64,6 +94,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
                 id: lead.id,
                 status: quickStatus as any,
                 notes: quickNotes,
+                reminder_at: reminderAt ? reminderAt.toISOString() : (lead.status === quickStatus ? lead.reminder_at : null),
             });
             toast.success('Lead updated successfully');
             if (onUpdate) onUpdate();
@@ -338,7 +369,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
                         <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-muted-foreground">Status</label>
-                                <Select value={quickStatus} onValueChange={setQuickStatus}>
+                                <Select value={quickStatus} onValueChange={handleStatusChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select Status" />
                                     </SelectTrigger>
@@ -378,6 +409,16 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
                     </div>
                 </div>
             </DialogContent>
+
+            {pendingStatus && (
+                <StatusReminderDialog
+                    open={statusReminderOpen}
+                    onOpenChange={setStatusReminderOpen}
+                    status={pendingStatus}
+                    onConfirm={handleReminderConfirm}
+                    onCancel={handleReminderCancel}
+                />
+            )}
         </Dialog>
     );
 }

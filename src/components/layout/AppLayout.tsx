@@ -351,8 +351,18 @@ export default function AppLayout() {
                 <div className="flex-1">
                     <Outlet />
                 </div>
-                <footer className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
-                    © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+                <footer className="mt-auto pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+                    <p className="text-sm text-muted-foreground order-2 md:order-1">
+                        © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+                    </p>
+                    <div className="flex flex-col md:flex-row items-center gap-4 order-1 md:order-2">
+                        <p className="text-xs text-muted-foreground max-w-[200px] text-center md:text-right font-medium">
+                            Download "FastestCRM App" for Seamless Experience
+                        </p>
+                        <a href="https://play.google.com/store/apps/details?id=com.fastestcrm" target="_blank" rel="noopener noreferrer">
+                            <img src="/getitongoogleplay.png" alt="Get it on Google Play" className="h-8 hover:opacity-90 transition-opacity" />
+                        </a>
+                    </div>
                 </footer>
             </div>
         </main>
