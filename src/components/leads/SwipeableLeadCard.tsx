@@ -75,7 +75,13 @@ export function SwipeableLeadCard({
       case 'property_type': return lead.property_type;
       case 'budget': return formatBudget(lead.budget_min, lead.budget_max);
       case 'location': return lead.preferred_location;
-      case 'lead_profile': return lead.lead_profile;
+      case 'lead_profile': {
+        if (lead.lead_profile && typeof lead.lead_profile === 'object') {
+          const values = Object.values(lead.lead_profile).filter(Boolean);
+          return values.length > 0 ? values.join(' > ') : null;
+        }
+        return lead.lead_profile;
+      }
       case 'pre_sales_owner': return getOwnerName(lead.pre_sales_owner_id, lead.pre_sales_owner);
       case 'sales_owner': return getOwnerName(lead.sales_owner_id, lead.sales_owner);
       case 'post_sales_owner': return getOwnerName(lead.post_sales_owner_id, lead.post_sales_owner);
