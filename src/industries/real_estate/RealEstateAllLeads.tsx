@@ -86,7 +86,7 @@ export default function RealEstateAllLeads() {
 
   // Fetch filter options — all queries run in parallel via Promise.all
   const { data: filterOptions } = useQuery({
-    queryKey: ['realEstateLeadsFilterOptions', company?.id, canViewAll, accessibleUserIds],
+    queryKey: ['realEstateLeadsFilterOptions', company?.id, canViewAll, accessibleUserIds, hierarchyLoading],
     queryFn: async () => {
       if (!company?.id) return null;
 
@@ -116,8 +116,8 @@ export default function RealEstateAllLeads() {
         activeOwners = activeOwners.filter(o => activeUserIds.has(o.id));
       }
 
-      // Filter owners based on hierarchy for the dropdown
-      if (!canViewAll && accessibleUserIds.length > 0) {
+      // Filter owners based on hierarchy for the dropdown (skip if hierarchy still loading)
+      if (!hierarchyLoading && !canViewAll && accessibleUserIds.length > 0) {
         const accessibleSet = new Set(accessibleUserIds);
         activeOwners = activeOwners.filter(o => accessibleSet.has(o.id));
       }
@@ -137,7 +137,7 @@ export default function RealEstateAllLeads() {
         propertyTypes: REAL_ESTATE_PROPERTY_TYPES.map(t => ({ label: t, value: t })),
       };
     },
-    enabled: !!company?.id && !hierarchyLoading,
+    enabled: !!company?.id,
     staleTime: 1000 * 60 * 5, // Cache filter options for 5 minutes
   });
 

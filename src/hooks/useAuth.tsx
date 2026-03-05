@@ -11,35 +11,7 @@ import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-import Cookies from 'js-cookie';
 
-// ─── Session helpers (kept for cross-domain usage) ──────────────────────────
-
-function setSharedCookie(key: string, value: string) {
-  const hostname = window.location.hostname;
-  const cookieOptions: Cookies.CookieAttributes = {
-    expires: 365,
-    path: '/',
-    secure: window.location.protocol === 'https:' || window.location.hostname === 'localhost',
-    sameSite: 'None', // Critical for cross-subdomain in strict browsers (Safari/Brave)
-  };
-
-  if (hostname.endsWith('fastestcrm.com')) {
-    cookieOptions.domain = '.fastestcrm.com';
-  }
-
-  Cookies.set(key, value, cookieOptions);
-}
-
-function removeSharedCookie(key: string) {
-  const hostname = window.location.hostname;
-  Cookies.remove(key, { path: '/' });
-  if (hostname.endsWith('fastestcrm.com')) {
-    Cookies.remove(key, { path: '/', domain: '.fastestcrm.com' });
-  }
-}
-
-// Removed custom device and token tracking functions in favor of standard Supabase auth
 
 // ─── Context type ─────────────────────────────────────────────────────────────
 
