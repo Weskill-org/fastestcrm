@@ -24,8 +24,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // Add 10s margin for refresh retry logic
     storageKey: 'sb-auth-token',
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
   },
