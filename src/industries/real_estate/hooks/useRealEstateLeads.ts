@@ -21,6 +21,8 @@ export function useRealEstateLeads({
   propertyTypeFilter,
   page = 1,
   pageSize = 25,
+  accessibleUserIds = [],
+  canViewAll = true,
 }: UseRealEstateLeadsOptions = {}) {
   const { company, loading: companyLoading } = useCompany();
 
@@ -33,7 +35,9 @@ export function useRealEstateLeads({
       propertyTypeFilter,
       page,
       pageSize,
-      company?.id
+      company?.id,
+      accessibleUserIds,
+      canViewAll
     ],
     queryFn: async (): Promise<{ leads: RealEstateLead[]; count: number }> => {
       if (!company?.id) {
@@ -64,6 +68,11 @@ export function useRealEstateLeads({
 
       if (propertyTypeFilter && propertyTypeFilter.length > 0) {
         query = query.in('property_type', propertyTypeFilter);
+      }
+
+      // Hierarchy filtering: restrict to accessible users' leads
+      if (!canViewAll && accessibleUserIds.length > 0) {
+        query = query.in('sales_owner_id', accessibleUserIds);
       }
 
       if (search) {
