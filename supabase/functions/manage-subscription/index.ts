@@ -2,33 +2,71 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { corsHeaders } from "../_shared/cors.ts";
 
+const PRICE_PER_SEAT = 500;
 
+serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
 
+    try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) throw new Error('Missing authorization');
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !user) throw new Error('Unauthorized');
+
+        const { action, quantity, months } = await req.json();
+
+        // Get user's company
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile?.company_id) throw new Error('No company found');
+        const companyId = profile.company_id;
+
+        // Get company details
+        const { data: company } = await supabaseAdmin
+            .from('companies')
+            .select('id, total_licenses, subscription_valid_until, subscription_status, admin_id')
+            .eq('id', companyId)
+            .single();
+
+        if (!company) throw new Error('Company not found');
+        if (company.admin_id !== user.id) throw new Error('Only admin can manage subscription');
+
+        // Get wallet balance
+        const { data: wallet } = await supabaseAdmin
+            .from('wallets')
+            .select('balance')
+            .eq('company_id', companyId)
+            .single();
+
+        const currentBalance = wallet ? Number(wallet.balance) : 0;
+
+        let cost = 0;
+        let description = '';
+        let updates: Record<string, any> = {};
 
         if (action === 'add_seats') {
             const qty = Number(quantity);
             if (qty < 1) throw new Error('Invalid quantity');
 
-            // Logic: Calculate cost for remaining duration of current subscription
-            // If no subscription or expired, assume 1 month start or specific logic?
-            // Let's assume if expired/null, we add 1 month from now for THESE seats? 
-            // Or simpler: We align with existing expiry. If expired, we must extend first (UI should handle).
-            // Let's assume valid_until is valid or we charge for 30 days.
-
             const now = new Date();
             const validUntil = company.subscription_valid_until ? new Date(company.subscription_valid_until) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
             let daysRemaining = Math.ceil((validUntil.getTime() - now.getTime()) / (1000 * 3600 * 24));
-            if (daysRemaining < 0) daysRemaining = 0; // Expired
-
-            // If expired, maybe we just charge for 30 days and reset subscription date?
-            // But that desyncs if they have other seats.
-            // Let's assume 'Extend Subscription' handles revival. 
-            // 'Add Seats' only adds to ACTIVE or newly Active period.
+            if (daysRemaining < 0) daysRemaining = 0;
 
             if (daysRemaining === 0) {
-                // If expired, adding seats essentially restarts sub? 
-                // Let's enforce 30 days minimum for new seats if expired
                 daysRemaining = 30;
                 updates = {
                     subscription_valid_until: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -36,8 +74,6 @@ import { corsHeaders } from "../_shared/cors.ts";
                 }
             }
 
-            // Pro-rated cost
-            // Cost = (Price / 30) * Days * Qty
             const dailyRate = PRICE_PER_SEAT / 30;
             cost = Math.ceil(dailyRate * daysRemaining * qty);
 
@@ -45,7 +81,6 @@ import { corsHeaders } from "../_shared/cors.ts";
             updates = {
                 ...updates,
                 total_licenses: (company.total_licenses || 0) + qty,
-                // If subscription was null, set valid_until
                 ...(company.subscription_valid_until ? {} : {
                     subscription_valid_until: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                     subscription_status: 'active'
@@ -53,12 +88,10 @@ import { corsHeaders } from "../_shared/cors.ts";
             };
 
         } else if (action === 'extend_subscription') {
-            const durationMonths = Number(months); // 1, 3, 6, 12
+            const durationMonths = Number(months);
             if (![1, 3, 6, 12].includes(durationMonths)) throw new Error('Invalid duration');
 
-            const totalSeats = company.total_licenses || 1; // At least charge for 1 seat if 0? Or user block?
-            // If 0 seats, maybe charge base fee? Let's assume 0 seats = 0 cost? No, usually a platform fee.
-            // Let's assume we charge for total_licenses.
+            const totalSeats = company.total_licenses || 1;
 
             let discount = 0;
             if (durationMonths === 3) discount = 0.10;
@@ -74,7 +107,6 @@ import { corsHeaders } from "../_shared/cors.ts";
                 ? new Date(company.subscription_valid_until)
                 : new Date();
 
-            // Add months
             const newValidUntil = new Date(currentValidUntil);
             newValidUntil.setMonth(newValidUntil.getMonth() + durationMonths);
 
@@ -86,13 +118,10 @@ import { corsHeaders } from "../_shared/cors.ts";
             throw new Error('Invalid action');
         }
 
-        // Check Balance
         if (currentBalance < cost) {
             throw new Error(`Insufficient wallet balance. Required: ₹${cost}, Available: ₹${currentBalance}. Please recharge.`);
         }
 
-        // Process Transaction
-        // 1. Deduct Wallet
         const { error: walletError } = await supabaseAdmin
             .from('wallets')
             .update({ balance: currentBalance - cost, updated_at: new Date().toISOString() })
@@ -100,26 +129,22 @@ import { corsHeaders } from "../_shared/cors.ts";
 
         if (walletError) throw new Error('Wallet deduction failed');
 
-        // 2. Log Transaction
         await supabaseAdmin.from('wallet_transactions').insert({
             wallet_id: companyId,
             amount: cost,
-            type: 'debit_license_purchase', // or auto_renewal if generic
+            type: 'debit_license_purchase',
             description: description,
             status: 'success'
         });
 
-        // 3. Update Company Subscription
         const { error: companyError } = await supabaseAdmin
             .from('companies')
             .update(updates)
             .eq('id', companyId);
 
         if (companyError) {
-            // Critical: Money deducted but product not given.
             console.error('Company Update Failed', companyError);
 
-            // Rollback wallet transaction
             const { error: rollbackError } = await supabaseAdmin
                 .from('wallets')
                 .update({ balance: currentBalance, updated_at: new Date().toISOString() })
@@ -128,7 +153,6 @@ import { corsHeaders } from "../_shared/cors.ts";
             if (rollbackError) {
                 console.error('CRITICAL: Failed to rollback wallet after subscription update failed', rollbackError);
             } else {
-                // Log rollback transaction
                 await supabaseAdmin.from('wallet_transactions').insert({
                     wallet_id: companyId,
                     amount: cost,
