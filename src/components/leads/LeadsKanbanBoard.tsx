@@ -62,6 +62,8 @@ function useStatusLeads(
 
       const selectQuery = tableName === 'leads'
         ? '*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)'
+        : tableName === 'leads_real_estate'
+        ? '*, sales_owner:profiles!leads_real_estate_sales_owner_id_fkey(full_name)'
         : '*';
 
       let query = supabase
@@ -74,9 +76,10 @@ function useStatusLeads(
         .range(0, limit - 1);
 
       if (searchQuery) {
-        query = query.or(
-          `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,college.ilike.%${searchQuery}%`
-        );
+        const searchFields = tableName === 'leads_real_estate'
+          ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,property_name.ilike.%${searchQuery}%`
+          : `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,college.ilike.%${searchQuery}%`;
+        query = query.or(searchFields);
       }
 
       if (ownerFilter && ownerFilter.length > 0) {
