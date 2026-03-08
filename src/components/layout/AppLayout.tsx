@@ -134,6 +134,23 @@ export default function AppLayout() {
     const taskCounts = { urgent: urgentLeads.length, today: todayLeads.length, upcoming: upcomingLeads.length };
     const totalTaskCount = taskCounts.urgent + taskCounts.today + taskCounts.upcoming;
 
+    // Check if email dashboard is enabled for this company
+    const { data: emailIntegration } = useQuery({
+        queryKey: ['email-integration-nav', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return null;
+            const { data } = await supabase
+                .from('email_integrations' as any)
+                .select('email_dashboard_enabled, is_active')
+                .eq('company_id', company.id)
+                .single();
+            return data as any;
+        },
+        enabled: !!company?.id,
+        staleTime: 1000 * 60 * 5,
+    });
+    const emailDashboardEnabled = emailIntegration?.email_dashboard_enabled && emailIntegration?.is_active;
+
     const isTasksActive = location.pathname.startsWith('/dashboard/tasks');
     const activeTaskTab = searchParams.get('tab') || 'today';
 
