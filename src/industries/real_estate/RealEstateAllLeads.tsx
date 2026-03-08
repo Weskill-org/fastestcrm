@@ -25,7 +25,8 @@ import { MobileLeadsHeader } from '@/components/leads/MobileLeadsHeader';
 import { SwipeableLeadCard } from '@/components/leads/SwipeableLeadCard';
 import { FloatingAddButton } from '@/components/leads/FloatingAddButton';
 import { ColumnConfigDialog } from '@/components/leads/ColumnConfigDialog';
-
+import { LeadsKanbanBoard } from '@/components/leads/LeadsKanbanBoard';
+import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 export default function RealEstateAllLeads() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
