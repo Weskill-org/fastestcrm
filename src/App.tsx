@@ -50,6 +50,7 @@ import BlogPost from "./pages/BlogPost";
 import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
 import RedirectToApp from "./pages/RedirectToApp";
+import Documentation from "./pages/Documentation";
 
 import { isAndroidWebView } from "@/lib/platform";
 
@@ -111,6 +112,7 @@ function AppRoutes() {
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:slug" element={<BlogPost />} />
       <Route path="/app" element={<RedirectToApp />} />
+      <Route path="/documentation" element={<Documentation />} />
 
       {/* Platform Admin */}
       <Route path="/platform" element={<Protected><PlatformAdmin /></Protected>} />
