@@ -257,6 +257,8 @@ export default function FormBuilder() {
             columns = SAAS_LEAD_COLUMNS;
         } else if (company?.industry === 'healthcare') {
             columns = HEALTHCARE_LEAD_COLUMNS;
+        } else if (company?.industry === 'insurance') {
+            columns = INSURANCE_LEAD_COLUMNS;
         } else {
             // Default to Education / Generic if no industry or education
             columns = EDUCATION_LEAD_COLUMNS;
