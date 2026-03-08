@@ -69,3 +69,10 @@ export const TRIP_TYPES = [
   'Adventure',
   'Pilgrimage',
 ];
+
+export const PACKAGE_TYPES = [
+  'Budget',
+  'Standard',
+  'Premium',
+  'Luxury',
+];

@@ -1901,6 +1901,191 @@ export type Database = {
           },
         ]
       }
+      leads_travel: {
+        Row: {
+          advance_paid: number | null
+          balance_due: number | null
+          booking_id: string | null
+          budget: number | null
+          company_id: string | null
+          created_at: string
+          created_by_id: string
+          destination: string | null
+          email: string | null
+          flight_details: string | null
+          form_id: string | null
+          hotel_name: string | null
+          id: string
+          last_notification_sent_at: string | null
+          lead_history: Json | null
+          lead_profile: Json | null
+          lead_source: string | null
+          lg_link_id: string | null
+          name: string
+          notes: string | null
+          package_cost: number | null
+          package_type: string | null
+          payment_link: string | null
+          phone: string | null
+          post_sales_owner_id: string | null
+          pre_sales_owner_id: string | null
+          reminder_at: string | null
+          return_date: string | null
+          revenue_projected: number | null
+          revenue_received: number | null
+          sales_owner_id: string | null
+          special_requests: string | null
+          status: string
+          status_metadata: Json | null
+          travel_date: string | null
+          travelers_count: number | null
+          trip_type: string | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          advance_paid?: number | null
+          balance_due?: number | null
+          booking_id?: string | null
+          budget?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by_id: string
+          destination?: string | null
+          email?: string | null
+          flight_details?: string | null
+          form_id?: string | null
+          hotel_name?: string | null
+          id?: string
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          name: string
+          notes?: string | null
+          package_cost?: number | null
+          package_type?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          reminder_at?: string | null
+          return_date?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          special_requests?: string | null
+          status?: string
+          status_metadata?: Json | null
+          travel_date?: string | null
+          travelers_count?: number | null
+          trip_type?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          advance_paid?: number | null
+          balance_due?: number | null
+          booking_id?: string | null
+          budget?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by_id?: string
+          destination?: string | null
+          email?: string | null
+          flight_details?: string | null
+          form_id?: string | null
+          hotel_name?: string | null
+          id?: string
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          name?: string
+          notes?: string | null
+          package_cost?: number | null
+          package_type?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          reminder_at?: string | null
+          return_date?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          special_requests?: string | null
+          status?: string
+          status_metadata?: Json | null
+          travel_date?: string | null
+          travelers_count?: number | null
+          trip_type?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_travel_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_travel_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_travel_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_travel_lg_link_id_fkey"
+            columns: ["lg_link_id"]
+            isOneToOne: false
+            referencedRelation: "lg_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_travel_post_sales_owner_id_fkey"
+            columns: ["post_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_travel_pre_sales_owner_id_fkey"
+            columns: ["pre_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_travel_sales_owner_id_fkey"
+            columns: ["sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads_weskill: {
         Row: {
           batch_month: string | null
