@@ -2,7 +2,7 @@ import { useState } from 'react';
 // DashboardLayout removed
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, ChevronLeft, ChevronRight, LayoutGrid, Table2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
