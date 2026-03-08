@@ -398,12 +398,15 @@ export default function GenericAllLeads() {
                 ) : viewMode === 'kanban' ? (
                     /* Kanban Board View */
                     <LeadsKanbanBoard
-                        leads={leads as any}
                         statuses={statuses}
                         loading={isLoading}
                         onStatusChange={(leadId, newStatus) => handleStatusChange(leadId, newStatus)}
                         onLeadClick={(lead) => setViewingLead(lead)}
                         owners={filterOptions?.owners}
+                        searchQuery={searchQuery}
+                        ownerFilter={Array.from(selectedOwners)}
+                        activeOwnerIds={activeOwnerIds}
+                        productFilter={Array.from(selectedProducts)}
                     />
                 ) : (
                     /* Desktop Table View */
