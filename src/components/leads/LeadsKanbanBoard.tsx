@@ -156,10 +156,12 @@ function KanbanStatusColumn({
   const totalCount = data?.totalCount || 0;
   const hasMore = leads.length < totalCount;
 
-  // Report leads to parent for drag-and-drop lookup
-  useMemo(() => {
-    setColumnLeads(status.value, leads, totalCount);
-  }, [leads, totalCount, status.value]);
+  // Report leads to parent for drag-and-drop lookup - use useEffect to avoid render-phase side effects
+  const leadsRef = { leads, totalCount, statusValue: status.value };
+  if (leads.length > 0 || totalCount > 0) {
+    // Deferred update to avoid cascading re-renders
+    queueMicrotask(() => setColumnLeads(leadsRef.statusValue, leadsRef.leads, leadsRef.totalCount));
+  }
 
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status.value}`,
