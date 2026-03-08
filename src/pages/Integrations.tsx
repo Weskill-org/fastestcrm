@@ -62,9 +62,27 @@ export default function Integrations() {
         enabled: !!company?.id
     });
 
+    // Query for email integration
+    const { data: emailIntegration } = useQuery({
+        queryKey: ['email-integration', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return null;
+            const { data } = await supabase
+                .from('email_integrations' as any)
+                .select('is_active')
+                .eq('company_id', company.id)
+                .single();
+            return data as any;
+        },
+        enabled: !!company?.id
+    });
+
     const isConnected = (serviceId: string) => {
         if (serviceId === 'performance_marketing') {
             return (pmIntegrations?.length || 0) > 0;
+        }
+        if (serviceId === 'gmail') {
+            return emailIntegration?.is_active || false;
         }
         return connectedKeys?.some(key => key.service_name === serviceId && key.is_active);
     };
