@@ -217,7 +217,6 @@ export default function GenericAllLeads() {
         productFilter: Array.from(selectedProducts),
         page,
         pageSize,
-        fetchAll: viewMode === 'kanban',
     });
     const leads = leadsData?.leads || [];
     const totalCount = leadsData?.count || 0;
