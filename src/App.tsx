@@ -11,6 +11,7 @@ import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
 import AppLayout from "@/components/layout/AppLayout";
 import { usePlatformAdmin } from "@/hooks/usePlatformAdmin";
 import { Loader2 } from "lucide-react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // ─── Page imports ─────────────────────────────────────────────────────────────
 import Landing from "./pages/Landing";
