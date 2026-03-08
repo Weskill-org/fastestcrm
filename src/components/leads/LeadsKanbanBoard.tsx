@@ -68,6 +68,8 @@ function useStatusLeads(
         ? '*, sales_owner:profiles!leads_saas_sales_owner_id_fkey(full_name)'
         : tableName === 'leads_healthcare'
         ? '*, sales_owner:profiles!leads_healthcare_sales_owner_id_fkey(full_name)'
+        : tableName === 'leads_insurance'
+        ? '*, sales_owner:profiles!leads_insurance_sales_owner_id_fkey(full_name)'
         : '*';
 
       let query = supabase
