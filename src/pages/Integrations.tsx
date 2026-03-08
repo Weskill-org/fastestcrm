@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AddIntegrationDialog } from '@/components/integrations/AddIntegrationDialog';
 import { PerformanceMarketingDialog } from '@/components/integrations/PerformanceMarketingDialog';
+import { EmailIntegrationDialog } from '@/components/integrations/EmailIntegrationDialog';
 import { useCompany } from '@/hooks/useCompany';
 
 const integrationTypes = [
