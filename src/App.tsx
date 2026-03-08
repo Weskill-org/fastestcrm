@@ -52,6 +52,8 @@ import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
 import RedirectToApp from "./pages/RedirectToApp";
 import Documentation from "./pages/Documentation";
+import CalendarPage from "./pages/CalendarPage";
+import PublicBooking from "./pages/PublicBooking";
 
 import { isAndroidWebView } from "@/lib/platform";
 
