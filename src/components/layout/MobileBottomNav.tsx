@@ -31,6 +31,7 @@ const allNavItems = [
   { icon: Users, label: 'Team', path: '/dashboard/team' },
   { icon: Workflow, label: 'Automations', path: '/dashboard/automations' },
   { icon: Link2, label: 'Integrations', path: '/dashboard/integrations' },
+  { icon: Calendar, label: 'Calendar', path: '/dashboard/calendar' },
   { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
 ];
 
