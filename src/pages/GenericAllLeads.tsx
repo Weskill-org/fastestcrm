@@ -58,6 +58,7 @@ export default function GenericAllLeads() {
     const { statuses } = useLeadStatuses();
     const [pendingStatus, setPendingStatus] = useState<{ leadId: string; status: CompanyLeadStatus } | null>(null);
     const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
 
     const defaultColumns = [
         { id: 'name', label: 'Name' },
