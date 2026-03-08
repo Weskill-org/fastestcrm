@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -19,33 +19,146 @@ import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from '@dnd-kit/core';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Mail, User, Clock, GripVertical } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Phone, Mail, User, Clock, GripVertical, Loader2, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { CompanyLeadStatus } from '@/hooks/useLeadStatuses';
 import { Lead } from '@/hooks/useLeads';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useLeadsTable } from '@/hooks/useLeadsTable';
+
+const PER_STATUS_LIMIT = 25;
 
 interface LeadsKanbanBoardProps {
-  leads: Lead[];
   statuses: CompanyLeadStatus[];
   loading: boolean;
   onStatusChange: (leadId: string, newStatus: string) => void;
   onLeadClick?: (lead: Lead) => void;
   owners?: { label: string; value: string }[];
+  searchQuery?: string;
+  ownerFilter?: string[];
+  activeOwnerIds?: string[];
+  productFilter?: string[];
 }
 
-// Droppable column wrapper
-function KanbanColumn({
+// Hook to fetch leads for a single status column
+function useStatusLeads(
+  statusValue: string,
+  companyId: string | undefined,
+  tableName: string,
+  limit: number,
+  searchQuery?: string,
+  ownerFilter?: string[],
+  activeOwnerIds?: string[],
+  productFilter?: string[],
+) {
+  return useQuery({
+    queryKey: ['kanban-leads', statusValue, companyId, tableName, limit, searchQuery, ownerFilter, activeOwnerIds, productFilter],
+    queryFn: async (): Promise<{ leads: Lead[]; totalCount: number }> => {
+      if (!companyId) return { leads: [], totalCount: 0 };
+
+      const selectQuery = tableName === 'leads'
+        ? '*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)'
+        : '*';
+
+      let query = supabase
+        .from(tableName as any)
+        .select(selectQuery, { count: 'exact' })
+        .eq('company_id', companyId)
+        .eq('status', statusValue)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(0, limit - 1);
+
+      if (searchQuery) {
+        query = query.or(
+          `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,college.ilike.%${searchQuery}%`
+        );
+      }
+
+      if (ownerFilter && ownerFilter.length > 0) {
+        const hasUnassigned = ownerFilter.includes('unassigned');
+        const realOwnerIds = ownerFilter.filter(id => id !== 'unassigned');
+        if (hasUnassigned) {
+          if (activeOwnerIds && activeOwnerIds.length > 0) {
+            const activeIdList = activeOwnerIds.join(',');
+            if (realOwnerIds.length > 0) {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList}),sales_owner_id.in.(${realOwnerIds.join(',')})`);
+            } else {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList})`);
+            }
+          } else {
+            if (realOwnerIds.length > 0) {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.in.(${realOwnerIds.join(',')})`);
+            } else {
+              query = query.is('sales_owner_id', null);
+            }
+          }
+        } else {
+          query = query.in('sales_owner_id', realOwnerIds);
+        }
+      }
+
+      if (productFilter && productFilter.length > 0) {
+        query = query.in('product_purchased', productFilter);
+      }
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+      return { leads: (data as unknown as Lead[]) || [], totalCount: count || 0 };
+    },
+    enabled: !!companyId,
+    staleTime: 30000,
+  });
+}
+
+// Single column component that manages its own data
+function KanbanStatusColumn({
   status,
-  children,
-  count,
+  companyId,
+  tableName,
+  onStatusChange,
+  onLeadClick,
+  owners,
+  searchQuery,
+  ownerFilter,
+  activeOwnerIds,
+  productFilter,
+  allLeadsForDrag,
+  setColumnLeads,
 }: {
   status: CompanyLeadStatus;
-  children: React.ReactNode;
-  count: number;
+  companyId: string | undefined;
+  tableName: string;
+  onStatusChange: (leadId: string, newStatus: string) => void;
+  onLeadClick?: (lead: Lead) => void;
+  owners?: { label: string; value: string }[];
+  searchQuery?: string;
+  ownerFilter?: string[];
+  activeOwnerIds?: string[];
+  productFilter?: string[];
+  allLeadsForDrag: Lead[];
+  setColumnLeads: (status: string, leads: Lead[], total: number) => void;
 }) {
+  const [visibleLimit, setVisibleLimit] = useState(PER_STATUS_LIMIT);
+
+  const { data, isLoading } = useStatusLeads(
+    status.value, companyId, tableName, visibleLimit,
+    searchQuery, ownerFilter, activeOwnerIds, productFilter,
+  );
+
+  const leads = data?.leads || [];
+  const totalCount = data?.totalCount || 0;
+  const hasMore = leads.length < totalCount;
+
+  // Report leads to parent for drag-and-drop lookup
+  useMemo(() => {
+    setColumnLeads(status.value, leads, totalCount);
+  }, [leads, totalCount, status.value]);
+
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status.value}`,
     data: { status: status.value },
@@ -57,13 +170,10 @@ function KanbanColumn({
         className="flex items-center gap-2 px-3 py-2.5 rounded-t-lg border border-b-0 border-border"
         style={{ backgroundColor: `${status.color}15` }}
       >
-        <div
-          className="w-3 h-3 rounded-full shrink-0"
-          style={{ backgroundColor: status.color }}
-        />
+        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
         <span className="font-semibold text-sm truncate">{status.label}</span>
         <Badge variant="secondary" className="ml-auto text-xs shrink-0">
-          {count}
+          {totalCount}
         </Badge>
       </div>
       <div
@@ -73,7 +183,41 @@ function KanbanColumn({
           isOver && "bg-primary/5 border-primary/30"
         )}
       >
-        {children}
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
+          </div>
+        ) : (
+          <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+            {leads.length === 0 ? (
+              <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
+                Drop leads here
+              </div>
+            ) : (
+              <>
+                {leads.map(lead => (
+                  <KanbanLeadCard
+                    key={lead.id}
+                    lead={lead}
+                    onClick={() => onLeadClick?.(lead)}
+                    owners={owners}
+                  />
+                ))}
+                {hasMore && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-muted-foreground hover:text-foreground gap-1"
+                    onClick={() => setVisibleLimit(prev => prev + PER_STATUS_LIMIT)}
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                    Load more ({totalCount - leads.length} remaining)
+                  </Button>
+                )}
+              </>
+            )}
+          </SortableContext>
+        )}
       </div>
     </div>
   );
@@ -199,14 +343,20 @@ function DragOverlayCard({ lead, owners }: { lead: Lead; owners?: { label: strin
 }
 
 export function LeadsKanbanBoard({
-  leads,
   statuses,
   loading,
   onStatusChange,
   onLeadClick,
   owners,
+  searchQuery,
+  ownerFilter,
+  activeOwnerIds,
+  productFilter,
 }: LeadsKanbanBoardProps) {
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [allColumnLeads, setAllColumnLeads] = useState<Record<string, { leads: Lead[]; total: number }>>({});
+  const { tableName, companyId } = useLeadsTable();
+  const queryClient = useQueryClient();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -214,27 +364,21 @@ export function LeadsKanbanBoard({
     })
   );
 
-  // Group leads by status
-  const leadsByStatus = useMemo(() => {
-    const grouped: Record<string, Lead[]> = {};
-    statuses.forEach(s => {
-      grouped[s.value] = [];
+  const setColumnLeads = useCallback((status: string, leads: Lead[], total: number) => {
+    setAllColumnLeads(prev => {
+      // Avoid unnecessary re-renders
+      if (prev[status]?.leads === leads) return prev;
+      return { ...prev, [status]: { leads, total } };
     });
-    leads.forEach(lead => {
-      if (grouped[lead.status]) {
-        grouped[lead.status].push(lead);
-      } else {
-        // Lead has a status not in our list — put in first column
-        if (statuses.length > 0) {
-          grouped[statuses[0].value]?.push(lead);
-        }
-      }
-    });
-    return grouped;
-  }, [leads, statuses]);
+  }, []);
+
+  // Flatten all leads for drag lookup
+  const allLeads = useMemo(() => {
+    return Object.values(allColumnLeads).flatMap(col => col.leads);
+  }, [allColumnLeads]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    const lead = leads.find(l => l.id === event.active.id);
+    const lead = allLeads.find(l => l.id === event.active.id);
     setActiveLead(lead || null);
   };
 
@@ -244,29 +388,23 @@ export function LeadsKanbanBoard({
     if (!over) return;
 
     const leadId = active.id as string;
-    const lead = leads.find(l => l.id === leadId);
+    const lead = allLeads.find(l => l.id === leadId);
     if (!lead) return;
 
-    // Determine target status from drop target
     let targetStatus: string | null = null;
-
     if (over.id.toString().startsWith('column-')) {
       targetStatus = over.id.toString().replace('column-', '');
     } else {
-      // Dropped on another lead card — find which column it belongs to
-      const targetLead = leads.find(l => l.id === over.id);
-      if (targetLead) {
-        targetStatus = targetLead.status;
-      }
+      const targetLead = allLeads.find(l => l.id === over.id);
+      if (targetLead) targetStatus = targetLead.status;
     }
 
     if (targetStatus && targetStatus !== lead.status) {
       onStatusChange(leadId, targetStatus);
+      // Invalidate both source and target columns
+      queryClient.invalidateQueries({ queryKey: ['kanban-leads', lead.status] });
+      queryClient.invalidateQueries({ queryKey: ['kanban-leads', targetStatus] });
     }
-  };
-
-  const handleDragOver = (_event: DragOverEvent) => {
-    // Could be used for live reordering within columns
   };
 
   if (loading) {
@@ -290,39 +428,25 @@ export function LeadsKanbanBoard({
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
     >
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
-        {statuses.map(status => {
-          const columnLeads = leadsByStatus[status.value] || [];
-          return (
-            <KanbanColumn
-              key={status.value}
-              status={status}
-              count={columnLeads.length}
-            >
-              <SortableContext
-                items={columnLeads.map(l => l.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {columnLeads.length === 0 ? (
-                  <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-                    Drop leads here
-                  </div>
-                ) : (
-                  columnLeads.map(lead => (
-                    <KanbanLeadCard
-                      key={lead.id}
-                      lead={lead}
-                      onClick={() => onLeadClick?.(lead)}
-                      owners={owners}
-                    />
-                  ))
-                )}
-              </SortableContext>
-            </KanbanColumn>
-          );
-        })}
+        {statuses.map(status => (
+          <KanbanStatusColumn
+            key={status.value}
+            status={status}
+            companyId={companyId}
+            tableName={tableName}
+            onStatusChange={onStatusChange}
+            onLeadClick={onLeadClick}
+            owners={owners}
+            searchQuery={searchQuery}
+            ownerFilter={ownerFilter}
+            activeOwnerIds={activeOwnerIds}
+            productFilter={productFilter}
+            allLeadsForDrag={allLeads}
+            setColumnLeads={setColumnLeads}
+          />
+        ))}
       </div>
 
       <DragOverlay>
