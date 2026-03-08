@@ -757,6 +757,94 @@ export type Database = {
           },
         ]
       }
+      email_aliases: {
+        Row: {
+          alias_email: string
+          company_id: string
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          alias_email: string
+          company_id: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          alias_email?: string
+          company_id?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_aliases_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_integrations: {
+        Row: {
+          access_token: string | null
+          admin_email: string | null
+          company_id: string
+          created_at: string
+          email_dashboard_enabled: boolean
+          id: string
+          is_active: boolean
+          provider: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          admin_email?: string | null
+          company_id: string
+          created_at?: string
+          email_dashboard_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          admin_email?: string | null
+          company_id?: string
+          created_at?: string
+          email_dashboard_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       features_unlocked: {
         Row: {
           amount_paid: number
