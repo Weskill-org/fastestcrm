@@ -169,24 +169,26 @@ function AppRoutes() {
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <AuthProvider>
-        <SubdomainProvider>
-          <CompanyBrandingProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              {/* Gate only handles showing a spinner while resolving non-main domains */}
-              <SubdomainGate mainDomainContent={<AppRoutes />}>
-                <AppRoutes />
-              </SubdomainGate>
-            </TooltipProvider>
-          </CompanyBrandingProvider>
-        </SubdomainProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <SubdomainProvider>
+            <CompanyBrandingProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                {/* Gate only handles showing a spinner while resolving non-main domains */}
+                <SubdomainGate mainDomainContent={<AppRoutes />}>
+                  <AppRoutes />
+                </SubdomainGate>
+              </TooltipProvider>
+            </CompanyBrandingProvider>
+          </SubdomainProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
