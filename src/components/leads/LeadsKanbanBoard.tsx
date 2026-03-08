@@ -80,6 +80,8 @@ function useStatusLeads(
       if (searchQuery) {
         const searchFields = tableName === 'leads_real_estate'
           ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,property_name.ilike.%${searchQuery}%`
+          : tableName === 'leads_saas'
+          ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`
           : `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,college.ilike.%${searchQuery}%`;
         query = query.or(searchFields);
       }

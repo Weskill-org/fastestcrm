@@ -379,8 +379,7 @@ export function SaaSLeadsTable({
         <LeadHistoryDialog
           open={!!viewingHistoryLead}
           onOpenChange={(open) => !open && setViewingHistoryLead(null)}
-          leadHistory={viewingHistoryLead.lead_history || []}
-          leadName={viewingHistoryLead.name}
+          lead={viewingHistoryLead as any}
         />
       )}
     </>
