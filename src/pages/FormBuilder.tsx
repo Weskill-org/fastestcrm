@@ -17,6 +17,7 @@ import { EDUCATION_LEAD_COLUMNS } from '@/industries/education/config';
 import { REAL_ESTATE_LEAD_COLUMNS } from '@/industries/real_estate/config';
 import { SAAS_LEAD_COLUMNS } from '@/industries/saas/config';
 import { HEALTHCARE_LEAD_COLUMNS } from '@/industries/healthcare/config';
+import { INSURANCE_LEAD_COLUMNS } from '@/industries/insurance/config';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -256,6 +257,8 @@ export default function FormBuilder() {
             columns = SAAS_LEAD_COLUMNS;
         } else if (company?.industry === 'healthcare') {
             columns = HEALTHCARE_LEAD_COLUMNS;
+        } else if (company?.industry === 'insurance') {
+            columns = INSURANCE_LEAD_COLUMNS;
         } else {
             // Default to Education / Generic if no industry or education
             columns = EDUCATION_LEAD_COLUMNS;

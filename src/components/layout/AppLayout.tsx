@@ -74,7 +74,12 @@ const navItems = [{
     icon: Package,
     label: 'Products',
     path: '/dashboard/products',
-    industryExclude: 'real_estate'
+    industryExclude: ['real_estate', 'insurance']
+}, {
+    icon: Shield,
+    label: 'Insurance Plans',
+    path: '/dashboard/insurance-plans',
+    industryOnly: 'insurance'
 }, {
     icon: Building2,
     label: 'Properties',
@@ -84,7 +89,7 @@ const navItems = [{
     icon: Users,
     label: 'Lead Profiling',
     path: '/dashboard/lead-profiling',
-    industryOnly: 'real_estate'
+    industryOnly: ['real_estate', 'insurance']
 }, {
     icon: Building2,
     label: 'Manage Company',
@@ -155,7 +160,7 @@ export default function AppLayout() {
         if (item.label === 'Integrations') {
             return role === 'company' || role === 'company_subadmin';
         }
-        if (item.label === 'Products' || item.label === 'Properties') {
+        if (item.label === 'Products' || item.label === 'Properties' || item.label === 'Insurance Plans') {
             return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
         }
         if (item.label === 'Lead Profiling') {

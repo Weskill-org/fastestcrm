@@ -44,6 +44,9 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
 import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
 import ManageProperties from "./industries/real_estate/pages/ManageProperties";
+import ManageInsurancePlans from "./industries/insurance/ManageInsurancePlans";
+import InsuranceLeadProfiling from "./industries/insurance/InsuranceLeadProfiling";
+import { useCompany } from "@/hooks/useCompany";
 import Report from "./pages/Report";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import Blog from "./pages/Blog";
@@ -104,6 +107,13 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Routes lead profiling to correct industry component */
+function LeadProfilingRouter() {
+  const { company } = useCompany();
+  if (company?.industry === 'insurance') return <InsuranceLeadProfiling />;
+  return <ManageLeadProfiling />;
+}
+
 /** The main route structure, unified for both main domain and subdomains */
 function AppRoutes() {
   const { isMainDomain } = useSubdomainContext();
@@ -159,7 +169,8 @@ function AppRoutes() {
         <Route path="/dashboard/products" element={<ManageProducts />} />
         <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
         <Route path="/dashboard/properties" element={<ManageProperties />} />
-        <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
+        <Route path="/dashboard/lead-profiling" element={<LeadProfilingRouter />} />
+        <Route path="/dashboard/insurance-plans" element={<ManageInsurancePlans />} />
         <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
         <Route path="/dashboard/tasks" element={<Tasks />} />
         <Route path="/dashboard/calendar" element={<CalendarPage />} />
