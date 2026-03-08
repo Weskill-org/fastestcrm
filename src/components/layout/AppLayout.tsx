@@ -66,6 +66,10 @@ const navItems = [{
     label: 'Integrations',
     path: '/dashboard/integrations'
 }, {
+    icon: Calendar,
+    label: 'Calendar',
+    path: '/dashboard/calendar'
+}, {
     icon: Package,
     label: 'Products',
     path: '/dashboard/products',
