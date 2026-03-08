@@ -347,6 +347,30 @@ export default function GenericAllLeads() {
                     onEditLayout={userRole === 'company' || userRole === 'company_subadmin' ? () => setConfigOpen(true) : undefined}
                 />
 
+                {/* View Mode Toggle (Desktop only) */}
+                {!isMobile && (
+                    <div className="flex items-center gap-1 border border-border rounded-lg p-0.5 w-fit">
+                        <Button
+                            variant={viewMode === 'table' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-8 px-3 gap-1.5"
+                            onClick={() => setViewMode('table')}
+                        >
+                            <Table2 className="h-4 w-4" />
+                            Table
+                        </Button>
+                        <Button
+                            variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-8 px-3 gap-1.5"
+                            onClick={() => setViewMode('kanban')}
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                            Kanban
+                        </Button>
+                    </div>
+                )}
+
                 {/* Mobile Card View */}
                 {isMobile ? (
                     <div className="space-y-3">
@@ -372,12 +396,22 @@ export default function GenericAllLeads() {
                             ))
                         )}
                     </div>
+                ) : viewMode === 'kanban' ? (
+                    /* Kanban Board View */
+                    <LeadsKanbanBoard
+                        leads={leads as any}
+                        statuses={statuses}
+                        loading={isLoading}
+                        onStatusChange={(leadId, newStatus) => handleStatusChange(leadId, newStatus)}
+                        onLeadClick={(lead) => setViewingLead(lead)}
+                        owners={filterOptions?.owners}
+                    />
                 ) : (
                     /* Desktop Table View */
                     <Card>
                         <CardContent className="pt-6">
                             <LeadsTable
-                                leads={leads}
+                                leads={leads as any}
                                 loading={isLoading}
                                 selectedLeads={selectedLeads}
                                 onSelectionChange={setSelectedLeads}
@@ -389,8 +423,8 @@ export default function GenericAllLeads() {
                     </Card>
                 )}
 
-                {/* Pagination */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
+                {/* Pagination (hide in kanban mode) */}
+                {viewMode === 'table' && (
                     <div className="text-sm text-muted-foreground">
                         Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount}
                     </div>
