@@ -14,6 +14,188 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_reads: {
+        Row: {
+          announcement_id: string
+          id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          id?: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          scheduled_at: string | null
+          target_company_ids: string[] | null
+          target_subscription_statuses: string[] | null
+          target_type: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          scheduled_at?: string | null
+          target_company_ids?: string[] | null
+          target_subscription_statuses?: string[] | null
+          target_type?: string
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          scheduled_at?: string | null
+          target_company_ids?: string[] | null
+          target_subscription_statuses?: string[] | null
+          target_type?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      automation_logs: {
+        Row: {
+          automation_id: string
+          created_at: string | null
+          id: string
+          logs: string | null
+          status: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string | null
+          id?: string
+          logs?: string | null
+          status: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string | null
+          id?: string
+          logs?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_states: {
+        Row: {
+          automation_id: string
+          last_index: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          automation_id: string
+          last_index?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          automation_id?: string
+          last_index?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_states_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: true
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automations: {
+        Row: {
+          action_config: Json | null
+          action_type: string
+          company_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action_config?: Json | null
+          action_type: string
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          trigger_config?: Json | null
+          trigger_type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          action_config?: Json | null
+          action_type?: string
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           admin_id: string
@@ -28,6 +210,7 @@ export type Database = {
           industry_locked: boolean | null
           is_active: boolean | null
           logo_url: string | null
+          mask_leads: boolean | null
           name: string
           primary_color: string | null
           slug: string
@@ -51,6 +234,7 @@ export type Database = {
           industry_locked?: boolean | null
           is_active?: boolean | null
           logo_url?: string | null
+          mask_leads?: boolean | null
           name: string
           primary_color?: string | null
           slug: string
@@ -74,6 +258,7 @@ export type Database = {
           industry_locked?: boolean | null
           is_active?: boolean | null
           logo_url?: string | null
+          mask_leads?: boolean | null
           name?: string
           primary_color?: string | null
           slug?: string
@@ -182,9 +367,11 @@ export type Database = {
           is_active: boolean | null
           label: string
           order_index: number
+          status_type: string | null
           sub_statuses: string[] | null
           updated_at: string
           value: string
+          web_push_enabled: boolean | null
         }
         Insert: {
           category: string
@@ -195,9 +382,11 @@ export type Database = {
           is_active?: boolean | null
           label: string
           order_index?: number
+          status_type?: string | null
           sub_statuses?: string[] | null
           updated_at?: string
           value: string
+          web_push_enabled?: boolean | null
         }
         Update: {
           category?: string
@@ -208,9 +397,11 @@ export type Database = {
           is_active?: boolean | null
           label?: string
           order_index?: number
+          status_type?: string | null
           sub_statuses?: string[] | null
           updated_at?: string
           value?: string
+          web_push_enabled?: boolean | null
         }
         Relationships: [
           {
@@ -382,6 +573,48 @@ export type Database = {
           },
         ]
       }
+      features_unlocked: {
+        Row: {
+          amount_paid: number
+          company_id: string
+          feature_name: string
+          id: string
+          unlocked_at: string | null
+          unlocked_by: string | null
+        }
+        Insert: {
+          amount_paid: number
+          company_id: string
+          feature_name: string
+          id?: string
+          unlocked_at?: string | null
+          unlocked_by?: string | null
+        }
+        Update: {
+          amount_paid?: number
+          company_id?: string
+          feature_name?: string
+          id?: string
+          unlocked_at?: string | null
+          unlocked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "features_unlocked_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "features_unlocked_unlocked_by_fkey"
+            columns: ["unlocked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forms: {
         Row: {
           created_at: string
@@ -545,9 +778,12 @@ export type Database = {
           form_id: string | null
           graduating_year: number | null
           id: string
+          last_notification_sent_at: string | null
+          lead_history: Json | null
           lead_source: string | null
           lg_link_id: string | null
           name: string
+          notes: string | null
           payment_link: string | null
           phone: string | null
           post_sales_owner_id: string | null
@@ -555,6 +791,7 @@ export type Database = {
           preferred_language: string | null
           product_category: string | null
           product_purchased: string | null
+          reminder_at: string | null
           revenue_projected: number | null
           revenue_received: number | null
           sales_owner_id: string | null
@@ -566,8 +803,6 @@ export type Database = {
           utm_medium: string | null
           utm_source: string | null
           whatsapp: string | null
-          notes: string | null
-          reminder_at: string | null
         }
         Insert: {
           batch_month?: string | null
@@ -584,9 +819,12 @@ export type Database = {
           form_id?: string | null
           graduating_year?: number | null
           id?: string
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
           lead_source?: string | null
           lg_link_id?: string | null
           name: string
+          notes?: string | null
           payment_link?: string | null
           phone?: string | null
           post_sales_owner_id?: string | null
@@ -594,6 +832,7 @@ export type Database = {
           preferred_language?: string | null
           product_category?: string | null
           product_purchased?: string | null
+          reminder_at?: string | null
           revenue_projected?: number | null
           revenue_received?: number | null
           sales_owner_id?: string | null
@@ -605,8 +844,6 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           whatsapp?: string | null
-          notes?: string | null
-          reminder_at?: string | null
         }
         Update: {
           batch_month?: string | null
@@ -623,9 +860,12 @@ export type Database = {
           form_id?: string | null
           graduating_year?: number | null
           id?: string
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
           lead_source?: string | null
           lg_link_id?: string | null
           name?: string
+          notes?: string | null
           payment_link?: string | null
           phone?: string | null
           post_sales_owner_id?: string | null
@@ -633,6 +873,7 @@ export type Database = {
           preferred_language?: string | null
           product_category?: string | null
           product_purchased?: string | null
+          reminder_at?: string | null
           revenue_projected?: number | null
           revenue_received?: number | null
           sales_owner_id?: string | null
@@ -644,8 +885,6 @@ export type Database = {
           utm_medium?: string | null
           utm_source?: string | null
           whatsapp?: string | null
-          notes?: string | null
-          reminder_at?: string | null
         }
         Relationships: [
           {
@@ -713,6 +952,8 @@ export type Database = {
           email: string | null
           form_id: string | null
           id: string
+          last_notification_sent_at: string | null
+          lead_history: Json | null
           lead_profile: Json | null
           lead_source: string | null
           lg_link_id: string | null
@@ -728,6 +969,7 @@ export type Database = {
           property_size: string | null
           property_type: string | null
           purpose: string | null
+          reminder_at: string | null
           revenue_projected: number | null
           revenue_received: number | null
           sales_owner_id: string | null
@@ -754,6 +996,8 @@ export type Database = {
           email?: string | null
           form_id?: string | null
           id?: string
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
           lead_profile?: Json | null
           lead_source?: string | null
           lg_link_id?: string | null
@@ -769,6 +1013,7 @@ export type Database = {
           property_size?: string | null
           property_type?: string | null
           purpose?: string | null
+          reminder_at?: string | null
           revenue_projected?: number | null
           revenue_received?: number | null
           sales_owner_id?: string | null
@@ -795,6 +1040,8 @@ export type Database = {
           email?: string | null
           form_id?: string | null
           id?: string
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
           lead_profile?: Json | null
           lead_source?: string | null
           lg_link_id?: string | null
@@ -810,6 +1057,7 @@ export type Database = {
           property_size?: string | null
           property_type?: string | null
           purpose?: string | null
+          reminder_at?: string | null
           revenue_projected?: number | null
           revenue_received?: number | null
           sales_owner_id?: string | null
@@ -891,9 +1139,11 @@ export type Database = {
           form_id: string | null
           graduating_year: number | null
           id: string
+          last_notification_sent_at: string | null
           lead_source: string | null
           lg_link_id: string | null
           name: string
+          notes: string | null
           payment_link: string | null
           phone: string | null
           post_sales_owner_id: string | null
@@ -901,6 +1151,7 @@ export type Database = {
           preferred_language: string | null
           product_category: string | null
           product_purchased: string | null
+          reminder_at: string | null
           revenue_projected: number | null
           revenue_received: number | null
           sales_owner_id: string | null
@@ -928,9 +1179,11 @@ export type Database = {
           form_id?: string | null
           graduating_year?: number | null
           id?: string
+          last_notification_sent_at?: string | null
           lead_source?: string | null
           lg_link_id?: string | null
           name: string
+          notes?: string | null
           payment_link?: string | null
           phone?: string | null
           post_sales_owner_id?: string | null
@@ -938,6 +1191,7 @@ export type Database = {
           preferred_language?: string | null
           product_category?: string | null
           product_purchased?: string | null
+          reminder_at?: string | null
           revenue_projected?: number | null
           revenue_received?: number | null
           sales_owner_id?: string | null
@@ -965,9 +1219,11 @@ export type Database = {
           form_id?: string | null
           graduating_year?: number | null
           id?: string
+          last_notification_sent_at?: string | null
           lead_source?: string | null
           lg_link_id?: string | null
           name?: string
+          notes?: string | null
           payment_link?: string | null
           phone?: string | null
           post_sales_owner_id?: string | null
@@ -975,6 +1231,7 @@ export type Database = {
           preferred_language?: string | null
           product_category?: string | null
           product_purchased?: string | null
+          reminder_at?: string | null
           revenue_projected?: number | null
           revenue_received?: number | null
           sales_owner_id?: string | null
@@ -1087,12 +1344,46 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string | null
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          message: string
+          read?: boolean
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       performance_marketing_integrations: {
         Row: {
           access_token: string | null
           ad_account_id: string | null
           company_id: string
           created_at: string
+          credentials: Json | null
           default_lead_status: string | null
           id: string
           is_active: boolean | null
@@ -1109,6 +1400,7 @@ export type Database = {
           ad_account_id?: string | null
           company_id: string
           created_at?: string
+          credentials?: Json | null
           default_lead_status?: string | null
           id?: string
           is_active?: boolean | null
@@ -1125,6 +1417,7 @@ export type Database = {
           ad_account_id?: string | null
           company_id?: string
           created_at?: string
+          credentials?: Json | null
           default_lead_status?: string | null
           id?: string
           is_active?: boolean | null
@@ -1207,7 +1500,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          active_sessions: Json | null
           avatar_url: string | null
           company_id: string | null
           created_at: string
@@ -1219,7 +1511,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          active_sessions?: Json | null
           avatar_url?: string | null
           company_id?: string | null
           created_at?: string
@@ -1231,7 +1522,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          active_sessions?: Json | null
           avatar_url?: string | null
           company_id?: string | null
           created_at?: string
@@ -1453,6 +1743,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_automation_trigger_to_table: {
+        Args: { table_name: string }
+        Returns: undefined
+      }
       add_company_licenses: {
         Args: { _company_id: string; _quantity: number }
         Returns: boolean
@@ -1487,14 +1781,14 @@ export type Database = {
       }
       deduct_ai_credits: { Args: { amount?: number }; Returns: undefined }
       deduct_credits:
-      | {
-        Args: { amount: number; reason: string; transaction_type?: string }
-        Returns: undefined
-      }
-      | {
-        Args: { amount: number; transaction_label: string }
-        Returns: boolean
-      }
+        | {
+            Args: { amount: number; reason: string; transaction_type?: string }
+            Returns: undefined
+          }
+        | {
+            Args: { amount: number; transaction_label: string }
+            Returns: boolean
+          }
       deduplicate_leads: {
         Args: { attribute_name: string; input_table_name: string }
         Returns: undefined
@@ -1515,13 +1809,46 @@ export type Database = {
         Args: { input_user_id: string }
         Returns: string[]
       }
+      get_company_by_custom_domain: {
+        Args: { p_domain: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          logo_url: string
+          name: string
+          primary_color: string
+          slug: string
+        }[]
+      }
       get_company_by_domain: { Args: { _domain: string }; Returns: string }
+      get_company_by_subdomain: {
+        Args: { p_slug: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          logo_url: string
+          name: string
+          primary_color: string
+          slug: string
+        }[]
+      }
       get_company_lead_columns: {
         Args: { input_company_id: string }
         Returns: {
           column_name: string
           data_type: string
           is_nullable: string
+        }[]
+      }
+      get_custom_domain_company: {
+        Args: { _domain: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          logo_url: string
+          name: string
+          primary_color: string
+          slug: string
         }[]
       }
       get_lead_unique_constraints: {
@@ -1542,6 +1869,17 @@ export type Database = {
       get_role_level: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
+      }
+      get_subdomain_company: {
+        Args: { _slug: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          logo_url: string
+          name: string
+          primary_color: string
+          slug: string
+        }[]
       }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
@@ -1569,21 +1907,9 @@ export type Database = {
         Args: { _lead_company_id: string; _user_id: string }
         Returns: boolean
       }
-      register_user_session: {
-        Args: {
-          p_device_info: string
-          p_session_token: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
       remove_lead_attribute: {
         Args: { attribute_name: string; input_company_id: string }
         Returns: Json
-      }
-      remove_user_session: {
-        Args: { p_session_token: string; p_user_id: string }
-        Returns: undefined
       }
       reset_monthly_xp: { Args: never; Returns: undefined }
       toggle_lead_unique_constraint: {
@@ -1594,59 +1920,60 @@ export type Database = {
         }
         Returns: Json
       }
-      validate_user_session: {
-        Args: { p_session_token: string; p_user_id: string }
-        Returns: boolean
-      }
     }
     Enums: {
+      announcement_target_type:
+        | "all"
+        | "specific_companies"
+        | "subscription_status"
+      announcement_type: "info" | "warning" | "success" | "maintenance"
       app_role:
-      | "platform_admin"
-      | "company"
-      | "company_subadmin"
-      | "cbo"
-      | "vp"
-      | "avp"
-      | "dgm"
-      | "agm"
-      | "sm"
-      | "tl"
-      | "bde"
-      | "intern"
-      | "ca"
-      | "level_3"
-      | "level_4"
-      | "level_5"
-      | "level_6"
-      | "level_7"
-      | "level_8"
-      | "level_9"
-      | "level_10"
-      | "level_11"
-      | "level_12"
-      | "level_13"
-      | "level_14"
-      | "level_15"
-      | "level_16"
-      | "level_17"
-      | "level_18"
-      | "level_19"
-      | "level_20"
+        | "platform_admin"
+        | "company"
+        | "company_subadmin"
+        | "cbo"
+        | "vp"
+        | "avp"
+        | "dgm"
+        | "agm"
+        | "sm"
+        | "tl"
+        | "bde"
+        | "intern"
+        | "ca"
+        | "level_3"
+        | "level_4"
+        | "level_5"
+        | "level_6"
+        | "level_7"
+        | "level_8"
+        | "level_9"
+        | "level_10"
+        | "level_11"
+        | "level_12"
+        | "level_13"
+        | "level_14"
+        | "level_15"
+        | "level_16"
+        | "level_17"
+        | "level_18"
+        | "level_19"
+        | "level_20"
       lead_status:
-      | "new"
-      | "interested"
-      | "not_interested"
-      | "follow_up"
-      | "rnr"
-      | "dnd"
-      | "paid"
+        | "new"
+        | "interested"
+        | "not_interested"
+        | "follow_up"
+        | "rnr"
+        | "dnd"
+        | "paid"
       wallet_transaction_status: "pending" | "success" | "failed"
       wallet_transaction_type:
-      | "credit_recharge"
-      | "credit_gift_card"
-      | "debit_license_purchase"
-      | "debit_auto_renewal"
-      | "debit_manual_adjustment"
+        | "credit_recharge"
+        | "credit_gift_card"
+        | "debit_license_purchase"
+        | "debit_auto_renewal"
+        | "debit_manual_adjustment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1660,120 +1987,126 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
     Enums: {
+      announcement_target_type: [
+        "all",
+        "specific_companies",
+        "subscription_status",
+      ],
+      announcement_type: ["info", "warning", "success", "maintenance"],
       app_role: [
         "platform_admin",
         "company",
