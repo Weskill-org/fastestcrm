@@ -1,148 +1,137 @@
 
 
-# Insurance Industry — Full End-to-End CRM Implementation
+# Fix Meta Integration: Page Access Token Not Being Saved
 
-## Overview
+## Problem Summary
+The Meta integration flow is broken because data is not being saved to the `performance_marketing_integrations` table. After investigating, I found:
 
-Build a complete Insurance CRM with a dedicated `leads_insurance` table, specialized UI, and insurance-specific features. Key differentiators from other industries:
-- **"Insurance Plans" replace "Products"** — plans have contribution frequency (Monthly/Quarterly/Bi-Yearly/Yearly), duration, and premium details
-- **Lead fields** tailored for insurance sales: age, gender, PAN number, occupation, annual income, nominee details
-- **Lead Profiling** centered on insurance sales use cases (Life/Health/Motor → sub-categories → coverage tiers)
+- The database table is completely empty (0 Meta records)
+- The OAuth callback is failing to save the initial user access token
+- This causes `meta-select-page` to fail with "Integration not found"
+- The UI gets stuck in a loading state
 
----
+## Root Cause
+The OAuth flow breaks at the token exchange step because:
+1. Cross-origin messaging between popup and parent window may be failing
+2. Edge function errors are not being logged properly
+3. No fallback mechanism when `postMessage` fails
 
-## 1. Database: `leads_insurance` Table
+## Implementation Plan
 
-New table with insurance-specific columns, following the established pattern:
+### Phase 1: Fix OAuth Callback Communication
+**File: `src/pages/MetaOAuthCallback.tsx`**
+- Add fallback `localStorage` storage when popup communication fails
+- Log debug info to help diagnose issues
+- Auto-close popup with a slight delay to ensure message is sent
 
-| Column | Type | Notes |
-|---|---|---|
-| Standard CRM columns | — | `id`, `name`, `email`, `phone`, `whatsapp`, `company_id`, `created_by_id`, `pre/sales/post_sales_owner_id`, `revenue_projected/received`, `reminder_at`, `last_notification_sent_at`, `payment_link`, `utm_*`, `lg_link_id`, `form_id`, `notes`, `lead_source`, `lead_history`, `status_metadata`, `lead_profile`, `created_at`, `updated_at` |
-| `age` | integer | Customer age |
-| `gender` | text | male/female/other |
-| `pan_number` | text | PAN card number |
-| `date_of_birth` | date | DOB for policy calculations |
-| `occupation` | text | Customer occupation |
-| `annual_income` | numeric | For plan eligibility |
-| `insurance_type` | text | Life/Health/Motor/Home/Travel etc. |
-| `plan_name` | text | Selected insurance plan |
-| `sum_insured` | numeric | Coverage amount |
-| `premium_amount` | numeric | Premium per frequency |
-| `contribution_frequency` | text | Monthly/Quarterly/Bi-Yearly/Yearly |
-| `policy_term` | integer | Duration in years |
-| `existing_policies` | text | Existing coverage details |
-| `nominee_name` | text | Nominee |
-| `nominee_relation` | text | Relationship to nominee |
-| `agent_name` | text | Selling agent |
-| `policy_number` | text | Policy number once issued |
-| `policy_start_date` | date | Policy start |
-| `renewal_date` | date | Next renewal |
-| `loss_reason` | text | Why lead was lost |
-| `status` | text NOT NULL DEFAULT 'new' | |
+### Phase 2: Improve OAuth Callback Dialog Handling
+**File: `src/components/integrations/MetaAdsSetupDialog.tsx`**
+- Add fallback check using `localStorage` when `postMessage` doesn't work
+- Add polling mechanism to detect when popup closes
+- Improve error handling and display better messages
+- Add timeout handling for stuck states
 
-RLS: Same pattern — company isolation, hierarchy-based visibility, admin-only delete.
+### Phase 3: Fix Edge Function Error Handling
+**File: `supabase/functions/meta-oauth-callback/index.ts`**
+- Add comprehensive logging for every step
+- Ensure database operations have proper error handling
+- Return detailed error messages to the client
+- Fix potential issues with `.single()` vs `.maybeSingle()`
 
----
+### Phase 4: Fix Page Selection Flow
+**File: `supabase/functions/meta-select-page/index.ts`**
+- Add detailed logging at each step
+- Handle edge cases where integration might not exist
+- Ensure page access token is properly extracted and stored
+- Add validation before database updates
 
-## 2. Insurance Plans Page (replaces Products for insurance industry)
+### Phase 5: Add Debug Tooling (Temporary)
+Add a simple debug button on the integrations page that:
+- Shows current integration state in the database
+- Shows the last error that occurred
+- Allows manual token refresh if needed
 
-Create `src/pages/ManageInsurancePlans.tsx` — a dedicated page where insurance companies manage their plans:
+## Technical Details
 
-- **Plan fields**: Plan Name, Insurance Type (Life/Health/Motor/etc.), Sum Insured, Premium Amount, Contribution Frequency (Monthly/Quarterly/Bi-Yearly/Yearly), Policy Term (years), Description
-- Uses the existing `products` table but with insurance-specific UI labels and fields
-- OR create an `insurance_plans` table if the `products` table schema is too limited
+### Key Code Changes
 
-Since the existing `products` table has: `category`, `name`, `price`, `quantity_available` — this maps well:
-- `category` → Insurance Type (Life, Health, Motor)
-- `name` → Plan Name
-- `price` → Premium Amount
-- But we need additional fields (contribution_frequency, policy_term, sum_insured)
-
-**Decision**: We'll use the existing `products` table and store insurance-specific metadata in a new `metadata` jsonb column, OR create a simple `ManageInsurancePlans.tsx` page that wraps ManageProducts with insurance-specific labels. Given the user wants contribution frequency and duration as first-class fields, we should add a `metadata` jsonb column to the `products` table to store `{ contribution_frequency, policy_term, sum_insured, description }`.
-
----
-
-## 3. Frontend Components (`src/industries/insurance/`)
-
-| File | Purpose |
-|---|---|
-| `InsuranceAllLeads.tsx` | Main page with table/kanban toggle, insurance type filter |
-| `hooks/useInsuranceLeads.ts` | Data hook querying `leads_insurance` |
-| `components/InsuranceLeadsTable.tsx` | Table: Name, Phone, Age, Gender, Insurance Type, Plan, Premium, Contribution Freq, Policy Term, Status, Owner |
-| `components/InsuranceAddLeadDialog.tsx` | Add form: personal info + insurance details + plan selection |
-| `components/InsuranceEditLeadDialog.tsx` | Edit all fields |
-| `components/InsuranceLeadDetailsDialog.tsx` | Sections: Personal Info, Insurance Details, Policy Info, Financial, Timeline |
-| `components/InsuranceAssignLeadsDialog.tsx` | Bulk assign |
-| `components/InsuranceUploadLeadsDialog.tsx` | CSV upload with insurance column mapping |
-| `ManageInsurancePlans.tsx` | Insurance plans management (replaces Products page) |
-| `InsuranceLeadProfiling.tsx` | Lead profiling config for insurance (e.g., Life → Term/ULIP/Endowment → coverage tier) |
-
----
-
-## 4. Lead Profiling for Insurance
-
-Create `src/industries/insurance/InsuranceLeadProfiling.tsx` following the Real Estate pattern but with insurance-centric defaults:
-
-```text
-Life Insurance
-  ├── Term Insurance
-  │   ├── < 50 Lakh
-  │   ├── 50L - 1 Cr
-  │   └── 1 Cr+
-  ├── ULIP
-  │   ├── Short Term (5-10 yrs)
-  │   └── Long Term (15+ yrs)
-  └── Endowment
-Health Insurance
-  ├── Individual
-  │   ├── < 5 Lakh
-  │   ├── 5-10 Lakh
-  │   └── 10 Lakh+
-  ├── Family Floater
-  └── Senior Citizen
-Motor Insurance
-  ├── Comprehensive
-  └── Third Party
+1. **MetaOAuthCallback.tsx** - Add localStorage fallback:
+```typescript
+// Always try to save code to localStorage as backup
+if (code) {
+  localStorage.setItem('meta_oauth_code', code);
+  localStorage.setItem('meta_oauth_timestamp', Date.now().toString());
+}
 ```
 
-Uses the existing `lead_profiling_config` table with `industry: 'insurance'`.
+2. **MetaAdsSetupDialog.tsx** - Add polling for localStorage:
+```typescript
+// Poll localStorage if postMessage doesn't arrive
+const pollInterval = setInterval(() => {
+  const storedCode = localStorage.getItem('meta_oauth_code');
+  const timestamp = localStorage.getItem('meta_oauth_timestamp');
+  if (storedCode && timestamp) {
+    // Verify it's recent (within 5 minutes)
+    if (Date.now() - parseInt(timestamp) < 300000) {
+      handleOAuthCallback(storedCode);
+      localStorage.removeItem('meta_oauth_code');
+      localStorage.removeItem('meta_oauth_timestamp');
+      clearInterval(pollInterval);
+    }
+  }
+}, 1000);
+```
 
----
+3. **meta-oauth-callback Edge Function** - Better error handling:
+```typescript
+// Log every database operation result
+console.log('Database operation result:', { 
+  existing: !!existing, 
+  error: existing?.error,
+  companyId 
+});
 
-## 5. Routing & Navigation Updates
+// Ensure we actually inserted/updated
+if (!result.error) {
+  // Verify the record exists
+  const { data: verify } = await supabase
+    .from('performance_marketing_integrations')
+    .select('id, access_token')
+    .eq('company_id', companyId)
+    .single();
+  console.log('Verification check:', verify ? 'Record exists' : 'MISSING!');
+}
+```
 
-1. **`src/pages/AllLeads.tsx`** — Add `if (company?.industry === 'insurance') return <InsuranceAllLeads />;`
-2. **`src/hooks/useLeadsTable.ts`** — Add: `if (industry === 'insurance') tableName = 'leads_insurance';`
-3. **`src/components/layout/AppLayout.tsx`** — Add nav items:
-   - "Insurance Plans" (replaces Products, `industryOnly: 'insurance'`)
-   - "Lead Profiling" (extend to include `insurance` industry)
-4. **`src/components/leads/LeadsKanbanBoard.tsx`** — Add `leads_insurance` search support (by `plan_name`, `insurance_type`)
-5. **`src/pages/FormBuilder.tsx`** — Add `INSURANCE_LEAD_COLUMNS` for form building
-6. **`src/App.tsx`** — Add routes for insurance plans page and insurance lead profiling
+4. **meta-select-page Edge Function** - Validate token storage:
+```typescript
+// After update, verify it was saved correctly
+const { data: updated } = await supabase
+  .from('performance_marketing_integrations')
+  .select('id, access_token, page_id')
+  .eq('id', integration.id)
+  .single();
 
----
+console.log('Post-update verification:', {
+  hasToken: !!updated?.access_token,
+  tokenLength: updated?.access_token?.length,
+  pageId: updated?.page_id
+});
+```
 
-## 6. Config Updates (`src/industries/insurance/config.ts`)
+## Expected Outcome
+After implementation:
+1. OAuth flow will work reliably even if `postMessage` fails
+2. User tokens will be correctly saved to the database
+3. Page access tokens will be properly stored for lead retrieval
+4. The integration page will correctly show the connected status
+5. Detailed logs will help debug any remaining issues
 
-Add to existing config:
-- `CONTRIBUTION_FREQUENCIES`: Monthly, Quarterly, Bi-Yearly, Yearly
-- `LOSS_REASONS`: Too Expensive, Has Existing Coverage, Competitor Offer, Not Interested, Age Ineligible
-- `NOMINEE_RELATIONS`: Spouse, Child, Parent, Sibling, Other
-- Update `INSURANCE_LEAD_COLUMNS` to include new fields (PAN, DOB, contribution_frequency, nominee_relation)
-
----
-
-## 7. Implementation Order
-
-1. **Migration**: Create `leads_insurance` table + RLS policies + add `metadata` jsonb to `products` table
-2. **Config**: Update `insurance/config.ts` with contribution frequencies, loss reasons, nominee relations
-3. **Hook**: Create `useInsuranceLeads.ts`
-4. **Components**: Build table, add/edit/details/upload/assign dialogs
-5. **Insurance Plans page**: Create `ManageInsurancePlans.tsx`
-6. **Lead Profiling**: Create `InsuranceLeadProfiling.tsx`
-7. **Main page**: Build `InsuranceAllLeads.tsx` with table + kanban
-8. **Routing**: Update `AllLeads.tsx`, `useLeadsTable.ts`, `AppLayout.tsx`, `LeadsKanbanBoard.tsx`, `FormBuilder.tsx`, `App.tsx`
-9. **Exports**: Update `insurance/index.ts`
-
-Total: ~12 new files, ~7 edited files, 1 migration.
+## Testing Steps
+1. Remove any existing Meta integration (if any)
+2. Click "Continue with Facebook" and complete the OAuth flow
+3. Verify the popup closes and pages list appears
+4. Select a page and verify success message appears
+5. Check the database to confirm `access_token` and `page_id` are saved
+6. Submit a test lead form and verify it appears in the CRM
 

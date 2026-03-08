@@ -68,6 +68,8 @@ function useStatusLeads(
         ? '*, sales_owner:profiles!leads_saas_sales_owner_id_fkey(full_name)'
         : tableName === 'leads_healthcare'
         ? '*, sales_owner:profiles!leads_healthcare_sales_owner_id_fkey(full_name)'
+        : tableName === 'leads_insurance'
+        ? '*, sales_owner:profiles!leads_insurance_sales_owner_id_fkey(full_name)'
         : '*';
 
       let query = supabase
@@ -86,6 +88,8 @@ function useStatusLeads(
           ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`
           : tableName === 'leads_healthcare'
           ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,condition.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`
+          : tableName === 'leads_insurance'
+          ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,plan_name.ilike.%${searchQuery}%,insurance_type.ilike.%${searchQuery}%`
           : `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,college.ilike.%${searchQuery}%`;
         query = query.or(searchFields);
       }
