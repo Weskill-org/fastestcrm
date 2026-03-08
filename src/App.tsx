@@ -176,6 +176,8 @@ function AppRoutes() {
         <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
         <Route path="/dashboard/tasks" element={<Tasks />} />
         <Route path="/dashboard/calendar" element={<CalendarPage />} />
+        <Route path="/dashboard/email" element={<EmailDashboard />} />
+        <Route path="/dashboard/email-settings" element={<ManageEmailAliases />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

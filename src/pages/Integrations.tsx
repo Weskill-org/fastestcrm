@@ -151,6 +151,11 @@ export default function Integrations() {
                     isOpen={isPerformanceMarketingOpen}
                     onOpenChange={setIsPerformanceMarketingOpen}
                 />
+
+                <EmailIntegrationDialog
+                    isOpen={isEmailDialogOpen}
+                    onOpenChange={setIsEmailDialogOpen}
+                />
             </div>
         </>
     );
