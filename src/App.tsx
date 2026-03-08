@@ -56,7 +56,21 @@ import Documentation from "./pages/Documentation";
 import { isAndroidWebView } from "@/lib/platform";
 
 // ─── Query client ─────────────────────────────────────────────────────────────
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      // Prevent crashes from unhandled query errors
+      throwOnError: false,
+    },
+    mutations: {
+      retry: 1,
+      throwOnError: false,
+    },
+  },
+});
 
 // ─── Route Components ──────────────────────────────────────────────────────────
 
