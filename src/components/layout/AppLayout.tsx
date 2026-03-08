@@ -356,6 +356,34 @@ export default function AppLayout() {
                         )}
                     </button>
                 ))}
+
+                {/* Email nav items - only visible when email dashboard is enabled */}
+                {emailDashboardEnabled && (
+                    <>
+                        <button
+                            onClick={() => navigate('/dashboard/email')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === '/dashboard/email'
+                                ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                                }`}
+                        >
+                            <Mail className={`h-4 w-4 transition-colors ${location.pathname === '/dashboard/email' ? 'text-primary' : ''}`} />
+                            <span className="flex-1 text-left">Email</span>
+                        </button>
+                        {isCompanyAdmin && (
+                            <button
+                                onClick={() => navigate('/dashboard/email-settings')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === '/dashboard/email-settings'
+                                    ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                                    }`}
+                            >
+                                <Mail className={`h-4 w-4 transition-colors ${location.pathname === '/dashboard/email-settings' ? 'text-primary' : ''}`} />
+                                <span className="flex-1 text-left">Email Settings</span>
+                            </button>
+                        )}
+                    </>
+                )}
             </nav>
 
             <div className="p-4 border-t border-sidebar-border">
