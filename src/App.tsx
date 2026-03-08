@@ -46,6 +46,7 @@ import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
 import ManageProperties from "./industries/real_estate/pages/ManageProperties";
 import ManageInsurancePlans from "./industries/insurance/ManageInsurancePlans";
 import InsuranceLeadProfiling from "./industries/insurance/InsuranceLeadProfiling";
+import { useCompany } from "@/hooks/useCompany";
 import Report from "./pages/Report";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import Blog from "./pages/Blog";
