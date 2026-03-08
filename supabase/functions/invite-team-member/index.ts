@@ -233,11 +233,125 @@ serve(async (req) => {
 
     console.log(`Successfully invited ${email} as ${role} by ${requester.email}`);
 
+    // Auto-create email alias if company has active email integration
+    let aliasCreated = false;
+    try {
+      const { data: emailIntegration } = await supabaseAdmin
+        .from("email_integrations")
+        .select("id, is_active, admin_email, access_token, refresh_token, token_expires_at")
+        .eq("company_id", requesterCompanyId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (emailIntegration?.admin_email) {
+        const domain = emailIntegration.admin_email.split("@")[1];
+        if (domain) {
+          // Generate alias from email prefix or full name
+          const aliasPrefix = email.split("@")[0].replace(/[^a-zA-Z0-9._-]/g, "").toLowerCase();
+          const aliasEmail = `${aliasPrefix}@${domain}`;
+
+          // Check if alias already exists
+          const { data: existingAlias } = await supabaseAdmin
+            .from("email_aliases")
+            .select("id")
+            .eq("alias_email", aliasEmail)
+            .eq("company_id", requesterCompanyId)
+            .maybeSingle();
+
+          if (!existingAlias) {
+            // Save alias in DB
+            const { error: aliasError } = await supabaseAdmin
+              .from("email_aliases")
+              .insert({
+                company_id: requesterCompanyId,
+                user_id: newUserId,
+                alias_email: aliasEmail,
+                display_name: fullName,
+              });
+
+            if (aliasError) {
+              console.error("Auto-alias creation DB error:", aliasError);
+            } else {
+              aliasCreated = true;
+              console.log(`Auto-created email alias ${aliasEmail} for ${fullName}`);
+
+              // Try to add alias in Microsoft Graph as proxy address
+              try {
+                let accessToken = emailIntegration.access_token;
+                const expiresAt = new Date(emailIntegration.token_expires_at);
+
+                // Refresh token if expired
+                if (expiresAt <= new Date(Date.now() + 5 * 60 * 1000)) {
+                  const CLIENT_ID = Deno.env.get("MICROSOFT_CLIENT_ID");
+                  const CLIENT_SECRET = Deno.env.get("MICROSOFT_CLIENT_SECRET");
+                  if (CLIENT_ID && CLIENT_SECRET && emailIntegration.refresh_token) {
+                    const tokenRes = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                      body: new URLSearchParams({
+                        client_id: CLIENT_ID,
+                        client_secret: CLIENT_SECRET,
+                        refresh_token: emailIntegration.refresh_token,
+                        grant_type: "refresh_token",
+                        scope: "openid profile email offline_access Mail.Read Mail.Send Mail.ReadWrite User.Read User.ReadWrite.All",
+                      }),
+                    });
+                    const tokenData = await tokenRes.json();
+                    if (tokenRes.ok) {
+                      accessToken = tokenData.access_token;
+                      await supabaseAdmin
+                        .from("email_integrations")
+                        .update({
+                          access_token: tokenData.access_token,
+                          refresh_token: tokenData.refresh_token || emailIntegration.refresh_token,
+                          token_expires_at: new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString(),
+                        })
+                        .eq("id", emailIntegration.id);
+                    }
+                  }
+                }
+
+                if (accessToken) {
+                  // Find Microsoft user matching the new member's email
+                  const usersRes = await fetch(
+                    `https://graph.microsoft.com/v1.0/users?$filter=mail eq '${email}' or userPrincipalName eq '${email}'&$select=id,proxyAddresses`,
+                    { headers: { Authorization: `Bearer ${accessToken}` } }
+                  );
+                  const usersData = await usersRes.json();
+                  const msUser = usersData.value?.[0];
+
+                  if (msUser) {
+                    const currentProxies = msUser.proxyAddresses || [];
+                    const newProxy = `smtp:${aliasEmail}`;
+                    if (!currentProxies.includes(newProxy)) {
+                      await fetch(`https://graph.microsoft.com/v1.0/users/${msUser.id}`, {
+                        method: "PATCH",
+                        headers: {
+                          Authorization: `Bearer ${accessToken}`,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ proxyAddresses: [...currentProxies, newProxy] }),
+                      });
+                    }
+                  }
+                }
+              } catch (graphErr) {
+                console.error("Graph API auto-alias error (non-blocking):", graphErr);
+              }
+            }
+          }
+        }
+      }
+    } catch (aliasErr) {
+      console.error("Auto-alias creation error (non-blocking):", aliasErr);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         userId: newUserId,
-        message: `${fullName} has been added successfully.`
+        aliasCreated,
+        message: `${fullName} has been added successfully.${aliasCreated ? ' Email alias was auto-created.' : ''}`
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
