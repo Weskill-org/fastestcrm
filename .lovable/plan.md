@@ -1,80 +1,137 @@
 
 
-# Healthcare Industry — Full End-to-End CRM Implementation
+# Fix Meta Integration: Page Access Token Not Being Saved
 
-## Overview
+## Problem Summary
+The Meta integration flow is broken because data is not being saved to the `performance_marketing_integrations` table. After investigating, I found:
 
-Healthcare currently only has a `config.ts` file. We need to build the complete stack: database table, all UI components, hooks, routing, Kanban support, and Form Builder integration — mirroring the SaaS implementation.
+- The database table is completely empty (0 Meta records)
+- The OAuth callback is failing to save the initial user access token
+- This causes `meta-select-page` to fail with "Integration not found"
+- The UI gets stuck in a loading state
 
----
+## Root Cause
+The OAuth flow breaks at the token exchange step because:
+1. Cross-origin messaging between popup and parent window may be failing
+2. Edge function errors are not being logged properly
+3. No fallback mechanism when `postMessage` fails
 
-## 1. Database: `leads_healthcare` Table
+## Implementation Plan
 
-Create a new table with healthcare-specific columns, following the same pattern as `leads_saas` and `leads_real_estate`.
+### Phase 1: Fix OAuth Callback Communication
+**File: `src/pages/MetaOAuthCallback.tsx`**
+- Add fallback `localStorage` storage when popup communication fails
+- Log debug info to help diagnose issues
+- Auto-close popup with a slight delay to ensure message is sent
 
-| Column | Type | Notes |
-|---|---|---|
-| Standard CRM columns | — | `id`, `name`, `email`, `phone`, `whatsapp`, `company_id`, `created_by_id`, `pre/sales/post_sales_owner_id`, `revenue_projected/received`, `reminder_at`, `last_notification_sent_at`, `payment_link`, `utm_*`, `lg_link_id`, `form_id`, `notes`, `lead_source`, `lead_history`, `status_metadata`, `lead_profile`, `created_at`, `updated_at` |
-| `age` | integer | Patient age |
-| `gender` | text | male/female/other |
-| `condition` | text | Medical condition/concern |
-| `symptoms` | text | Symptom description |
-| `department` | text | General Medicine, Cardiology, etc. |
-| `doctor_preference` | text | Preferred doctor |
-| `appointment_date` | timestamptz | Scheduled appointment |
-| `appointment_time` | text | Time slot |
-| `referral_source` | text | Who referred |
-| `insurance_provider` | text | Insurance company |
-| `insurance_id` | text | Policy number |
-| `treatment_type` | text | Type of treatment |
-| `treatment_cost` | numeric | Treatment cost |
-| `treatment_date` | date | When treatment happened |
-| `follow_up_date` | date | Next follow-up |
-| `status` | text NOT NULL DEFAULT 'new_enquiry' | |
+### Phase 2: Improve OAuth Callback Dialog Handling
+**File: `src/components/integrations/MetaAdsSetupDialog.tsx`**
+- Add fallback check using `localStorage` when `postMessage` doesn't work
+- Add polling mechanism to detect when popup closes
+- Improve error handling and display better messages
+- Add timeout handling for stuck states
 
-RLS policies: Same pattern as `leads_saas` — company isolation, hierarchy-based visibility, admin-only delete.
+### Phase 3: Fix Edge Function Error Handling
+**File: `supabase/functions/meta-oauth-callback/index.ts`**
+- Add comprehensive logging for every step
+- Ensure database operations have proper error handling
+- Return detailed error messages to the client
+- Fix potential issues with `.single()` vs `.maybeSingle()`
 
----
+### Phase 4: Fix Page Selection Flow
+**File: `supabase/functions/meta-select-page/index.ts`**
+- Add detailed logging at each step
+- Handle edge cases where integration might not exist
+- Ensure page access token is properly extracted and stored
+- Add validation before database updates
 
-## 2. Frontend Components (`src/industries/healthcare/`)
+### Phase 5: Add Debug Tooling (Temporary)
+Add a simple debug button on the integrations page that:
+- Shows current integration state in the database
+- Shows the last error that occurred
+- Allows manual token refresh if needed
 
-Create 8 files mirroring the SaaS structure:
+## Technical Details
 
-| File | Purpose |
-|---|---|
-| `HealthcareAllLeads.tsx` | Main page with table/kanban toggle, department/gender filters |
-| `hooks/useHealthcareLeads.ts` | Data hook querying `leads_healthcare` with healthcare filters |
-| `components/HealthcareLeadsTable.tsx` | Table: Patient Name, Phone, Department, Condition, Doctor, Appointment Date, Treatment Cost, Status, Owner |
-| `components/HealthcareAddLeadDialog.tsx` | Add form with patient details, department, condition, insurance |
-| `components/HealthcareEditLeadDialog.tsx` | Edit form with all healthcare fields |
-| `components/HealthcareLeadDetailsDialog.tsx` | Detail view: Patient Info, Medical Info, Appointment, Insurance, Treatment, Timeline |
-| `components/HealthcareAssignLeadsDialog.tsx` | Bulk assign |
-| `components/HealthcareUploadLeadsDialog.tsx` | CSV upload with healthcare column mapping |
+### Key Code Changes
 
----
+1. **MetaOAuthCallback.tsx** - Add localStorage fallback:
+```typescript
+// Always try to save code to localStorage as backup
+if (code) {
+  localStorage.setItem('meta_oauth_code', code);
+  localStorage.setItem('meta_oauth_timestamp', Date.now().toString());
+}
+```
 
-## 3. Integration Updates (4 existing files)
+2. **MetaAdsSetupDialog.tsx** - Add polling for localStorage:
+```typescript
+// Poll localStorage if postMessage doesn't arrive
+const pollInterval = setInterval(() => {
+  const storedCode = localStorage.getItem('meta_oauth_code');
+  const timestamp = localStorage.getItem('meta_oauth_timestamp');
+  if (storedCode && timestamp) {
+    // Verify it's recent (within 5 minutes)
+    if (Date.now() - parseInt(timestamp) < 300000) {
+      handleOAuthCallback(storedCode);
+      localStorage.removeItem('meta_oauth_code');
+      localStorage.removeItem('meta_oauth_timestamp');
+      clearInterval(pollInterval);
+    }
+  }
+}, 1000);
+```
 
-1. **`src/pages/AllLeads.tsx`** — Add `if (company?.industry === 'healthcare') return <HealthcareAllLeads />;`
+3. **meta-oauth-callback Edge Function** - Better error handling:
+```typescript
+// Log every database operation result
+console.log('Database operation result:', { 
+  existing: !!existing, 
+  error: existing?.error,
+  companyId 
+});
 
-2. **`src/hooks/useLeadsTable.ts`** — Add healthcare mapping: `if (industry === 'healthcare') tableName = 'leads_healthcare';`
+// Ensure we actually inserted/updated
+if (!result.error) {
+  // Verify the record exists
+  const { data: verify } = await supabase
+    .from('performance_marketing_integrations')
+    .select('id, access_token')
+    .eq('company_id', companyId)
+    .single();
+  console.log('Verification check:', verify ? 'Record exists' : 'MISSING!');
+}
+```
 
-3. **`src/components/leads/LeadsKanbanBoard.tsx`** — Add `leads_healthcare` to the select query FK mapping and search fields (search by `condition`, `department`)
+4. **meta-select-page Edge Function** - Validate token storage:
+```typescript
+// After update, verify it was saved correctly
+const { data: updated } = await supabase
+  .from('performance_marketing_integrations')
+  .select('id, access_token, page_id')
+  .eq('id', integration.id)
+  .single();
 
-4. **`src/pages/FormBuilder.tsx`** — Import `HEALTHCARE_LEAD_COLUMNS` and add the healthcare branch for form field mapping
+console.log('Post-update verification:', {
+  hasToken: !!updated?.access_token,
+  tokenLength: updated?.access_token?.length,
+  pageId: updated?.page_id
+});
+```
 
-5. **`src/industries/healthcare/index.ts`** — Export all new components and hooks
+## Expected Outcome
+After implementation:
+1. OAuth flow will work reliably even if `postMessage` fails
+2. User tokens will be correctly saved to the database
+3. Page access tokens will be properly stored for lead retrieval
+4. The integration page will correctly show the connected status
+5. Detailed logs will help debug any remaining issues
 
----
-
-## 4. Implementation Order
-
-1. Migration: Create `leads_healthcare` table + RLS
-2. Hook: `useHealthcareLeads.ts`
-3. Components: Table, Add/Edit/Details/Upload/Assign dialogs
-4. Page: `HealthcareAllLeads.tsx`
-5. Routing: Update `AllLeads.tsx`, `useLeadsTable.ts`, `LeadsKanbanBoard.tsx`, `FormBuilder.tsx`
-6. Exports: Update `healthcare/index.ts`
-
-Total: ~8 new files, ~5 edited files, 1 migration.
+## Testing Steps
+1. Remove any existing Meta integration (if any)
+2. Click "Continue with Facebook" and complete the OAuth flow
+3. Verify the popup closes and pages list appears
+4. Select a page and verify success message appears
+5. Check the database to confirm `access_token` and `page_id` are saved
+6. Submit a test lead form and verify it appears in the CRM
 

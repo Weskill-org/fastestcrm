@@ -1122,6 +1122,194 @@ export type Database = {
           },
         ]
       }
+      leads_healthcare: {
+        Row: {
+          age: number | null
+          appointment_date: string | null
+          appointment_time: string | null
+          company_id: string | null
+          condition: string | null
+          created_at: string
+          created_by_id: string
+          department: string | null
+          doctor_preference: string | null
+          email: string | null
+          follow_up_date: string | null
+          form_id: string | null
+          gender: string | null
+          id: string
+          insurance_id: string | null
+          insurance_provider: string | null
+          last_notification_sent_at: string | null
+          lead_history: Json | null
+          lead_profile: Json | null
+          lead_source: string | null
+          lg_link_id: string | null
+          name: string
+          notes: string | null
+          payment_link: string | null
+          phone: string | null
+          post_sales_owner_id: string | null
+          pre_sales_owner_id: string | null
+          referral_source: string | null
+          reminder_at: string | null
+          revenue_projected: number | null
+          revenue_received: number | null
+          sales_owner_id: string | null
+          status: string
+          status_metadata: Json | null
+          symptoms: string | null
+          treatment_cost: number | null
+          treatment_date: string | null
+          treatment_type: string | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          age?: number | null
+          appointment_date?: string | null
+          appointment_time?: string | null
+          company_id?: string | null
+          condition?: string | null
+          created_at?: string
+          created_by_id: string
+          department?: string | null
+          doctor_preference?: string | null
+          email?: string | null
+          follow_up_date?: string | null
+          form_id?: string | null
+          gender?: string | null
+          id?: string
+          insurance_id?: string | null
+          insurance_provider?: string | null
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          name: string
+          notes?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          referral_source?: string | null
+          reminder_at?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          status?: string
+          status_metadata?: Json | null
+          symptoms?: string | null
+          treatment_cost?: number | null
+          treatment_date?: string | null
+          treatment_type?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          age?: number | null
+          appointment_date?: string | null
+          appointment_time?: string | null
+          company_id?: string | null
+          condition?: string | null
+          created_at?: string
+          created_by_id?: string
+          department?: string | null
+          doctor_preference?: string | null
+          email?: string | null
+          follow_up_date?: string | null
+          form_id?: string | null
+          gender?: string | null
+          id?: string
+          insurance_id?: string | null
+          insurance_provider?: string | null
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          name?: string
+          notes?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          referral_source?: string | null
+          reminder_at?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          status?: string
+          status_metadata?: Json | null
+          symptoms?: string | null
+          treatment_cost?: number | null
+          treatment_date?: string | null
+          treatment_type?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_healthcare_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_healthcare_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_healthcare_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_healthcare_lg_link_id_fkey"
+            columns: ["lg_link_id"]
+            isOneToOne: false
+            referencedRelation: "lg_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_healthcare_post_sales_owner_id_fkey"
+            columns: ["post_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_healthcare_pre_sales_owner_id_fkey"
+            columns: ["pre_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_healthcare_sales_owner_id_fkey"
+            columns: ["sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads_real_estate: {
         Row: {
           broker_name: string | null
