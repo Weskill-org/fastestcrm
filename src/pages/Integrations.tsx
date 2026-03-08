@@ -30,6 +30,7 @@ export default function Integrations() {
     const [selectedIntegration, setSelectedIntegration] = useState<{ id: string, name: string } | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isPerformanceMarketingOpen, setIsPerformanceMarketingOpen] = useState(false);
+    const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
 
     const { data: connectedKeys, isLoading } = useQuery({
         queryKey: ['integration-keys', user?.id],
