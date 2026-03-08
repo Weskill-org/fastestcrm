@@ -154,6 +154,21 @@
   75%, 100% { transform: scale(1.8); opacity: 0; }
 }
 
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-row-fade-in {
+  animation: fadeSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @layer utilities {
   /* ── Gradients ── */
   .gradient-primary {

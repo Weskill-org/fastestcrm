@@ -86,7 +86,8 @@ export function useHealthcareLeads({
     enabled: !companyLoading && !!company?.id,
     placeholderData: (prev) => prev,
     retry: 2,
-    staleTime: 30000,
+    staleTime: 60000,
+    gcTime: 5 * 60 * 1000,
   });
 
   return {

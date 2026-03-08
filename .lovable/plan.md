@@ -1,46 +1,137 @@
 
 
-# Performance Optimization: Super Fast Lead Loading
+# Fix Meta Integration: Page Access Token Not Being Saved
 
-## Problem
-Currently, leads are fetched as a single batch (25 per page). The entire table renders only after all data arrives, creating a perceived delay. There's no progressive rendering or caching optimization.
+## Problem Summary
+The Meta integration flow is broken because data is not being saved to the `performance_marketing_integrations` table. After investigating, I found:
 
-## Strategy: Three-Layer Speed Boost
+- The database table is completely empty (0 Meta records)
+- The OAuth callback is failing to save the initial user access token
+- This causes `meta-select-page` to fail with "Integration not found"
+- The UI gets stuck in a loading state
 
-### 1. Staggered Row Animation (Perceived Speed)
-Add a CSS animation where each table row fades/slides in with a slight stagger delay (e.g., 30ms per row). This makes leads appear to load "one-by-one" even though they arrive together. This is the biggest perceived performance win.
+## Root Cause
+The OAuth flow breaks at the token exchange step because:
+1. Cross-origin messaging between popup and parent window may be failing
+2. Edge function errors are not being logged properly
+3. No fallback mechanism when `postMessage` fails
 
-**Changes:**
-- `LeadsTable.tsx`: Add staggered `animation-delay` per row using inline styles + a fade-in CSS class
-- `SaaSLeadsTable.tsx`, `TravelLeadsTable.tsx`, `InsuranceLeadsTable.tsx`, `HealthcareLeadsTable.tsx`, `RealEstateLeadsTable.tsx`: Same staggered animation
-- `src/index.css`: Add `@keyframes fadeSlideIn` animation class
+## Implementation Plan
 
-### 2. Aggressive React Query Caching & Prefetching
-Optimize data fetching so navigating between pages and filters feels instant.
+### Phase 1: Fix OAuth Callback Communication
+**File: `src/pages/MetaOAuthCallback.tsx`**
+- Add fallback `localStorage` storage when popup communication fails
+- Log debug info to help diagnose issues
+- Auto-close popup with a slight delay to ensure message is sent
 
-**Changes in all lead hooks (`useLeads.ts`, `useSaaSLeads.ts`, etc.):**
-- Increase `staleTime` from 30s to 60s (data stays cached longer)
-- Add `gcTime: 5 * 60 * 1000` (keep unused cache for 5 minutes)
-- Prefetch next page on hover of pagination button
+### Phase 2: Improve OAuth Callback Dialog Handling
+**File: `src/components/integrations/MetaAdsSetupDialog.tsx`**
+- Add fallback check using `localStorage` when `postMessage` doesn't work
+- Add polling mechanism to detect when popup closes
+- Improve error handling and display better messages
+- Add timeout handling for stuck states
 
-**Changes in page components (`GenericAllLeads.tsx`, `SaaSAllLeads.tsx`, etc.):**
-- Add `queryClient.prefetchQuery` for next page when current page loads
-- This means clicking "Next" shows data instantly from cache
+### Phase 3: Fix Edge Function Error Handling
+**File: `supabase/functions/meta-oauth-callback/index.ts`**
+- Add comprehensive logging for every step
+- Ensure database operations have proper error handling
+- Return detailed error messages to the client
+- Fix potential issues with `.single()` vs `.maybeSingle()`
 
-### 3. Optimistic Skeleton → Real Data Transition
-Instead of showing a loading skeleton that blocks the whole table, show the table structure immediately with skeleton rows that individually resolve to real data as it arrives.
+### Phase 4: Fix Page Selection Flow
+**File: `supabase/functions/meta-select-page/index.ts`**
+- Add detailed logging at each step
+- Handle edge cases where integration might not exist
+- Ensure page access token is properly extracted and stored
+- Add validation before database updates
 
-**Changes:**
-- `LeadsTable.tsx` and industry variants: When `loading` is true, render skeleton rows with the same staggered animation, then crossfade to real rows
+### Phase 5: Add Debug Tooling (Temporary)
+Add a simple debug button on the integrations page that:
+- Shows current integration state in the database
+- Shows the last error that occurred
+- Allows manual token refresh if needed
 
-## Implementation Order
-1. Add `fadeSlideIn` keyframes to `index.css`
-2. Update all 6 LeadsTable components with staggered row animation
-3. Update all lead hooks with improved cache settings
-4. Add next-page prefetching to all AllLeads page components
+## Technical Details
 
-## Impact
-- Leads appear to load one-by-one (stagger animation) -- instant perceived speed
-- Page navigation feels instant (prefetched cache)
-- No backend changes needed -- all frontend optimizations
+### Key Code Changes
+
+1. **MetaOAuthCallback.tsx** - Add localStorage fallback:
+```typescript
+// Always try to save code to localStorage as backup
+if (code) {
+  localStorage.setItem('meta_oauth_code', code);
+  localStorage.setItem('meta_oauth_timestamp', Date.now().toString());
+}
+```
+
+2. **MetaAdsSetupDialog.tsx** - Add polling for localStorage:
+```typescript
+// Poll localStorage if postMessage doesn't arrive
+const pollInterval = setInterval(() => {
+  const storedCode = localStorage.getItem('meta_oauth_code');
+  const timestamp = localStorage.getItem('meta_oauth_timestamp');
+  if (storedCode && timestamp) {
+    // Verify it's recent (within 5 minutes)
+    if (Date.now() - parseInt(timestamp) < 300000) {
+      handleOAuthCallback(storedCode);
+      localStorage.removeItem('meta_oauth_code');
+      localStorage.removeItem('meta_oauth_timestamp');
+      clearInterval(pollInterval);
+    }
+  }
+}, 1000);
+```
+
+3. **meta-oauth-callback Edge Function** - Better error handling:
+```typescript
+// Log every database operation result
+console.log('Database operation result:', { 
+  existing: !!existing, 
+  error: existing?.error,
+  companyId 
+});
+
+// Ensure we actually inserted/updated
+if (!result.error) {
+  // Verify the record exists
+  const { data: verify } = await supabase
+    .from('performance_marketing_integrations')
+    .select('id, access_token')
+    .eq('company_id', companyId)
+    .single();
+  console.log('Verification check:', verify ? 'Record exists' : 'MISSING!');
+}
+```
+
+4. **meta-select-page Edge Function** - Validate token storage:
+```typescript
+// After update, verify it was saved correctly
+const { data: updated } = await supabase
+  .from('performance_marketing_integrations')
+  .select('id, access_token, page_id')
+  .eq('id', integration.id)
+  .single();
+
+console.log('Post-update verification:', {
+  hasToken: !!updated?.access_token,
+  tokenLength: updated?.access_token?.length,
+  pageId: updated?.page_id
+});
+```
+
+## Expected Outcome
+After implementation:
+1. OAuth flow will work reliably even if `postMessage` fails
+2. User tokens will be correctly saved to the database
+3. Page access tokens will be properly stored for lead retrieval
+4. The integration page will correctly show the connected status
+5. Detailed logs will help debug any remaining issues
+
+## Testing Steps
+1. Remove any existing Meta integration (if any)
+2. Click "Continue with Facebook" and complete the OAuth flow
+3. Verify the popup closes and pages list appears
+4. Select a page and verify success message appears
+5. Check the database to confirm `access_token` and `page_id` are saved
+6. Submit a test lead form and verify it appears in the CRM
 
