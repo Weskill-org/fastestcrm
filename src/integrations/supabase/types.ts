@@ -1310,6 +1310,209 @@ export type Database = {
           },
         ]
       }
+      leads_insurance: {
+        Row: {
+          age: number | null
+          agent_name: string | null
+          annual_income: number | null
+          company_id: string | null
+          contribution_frequency: string | null
+          created_at: string
+          created_by_id: string
+          date_of_birth: string | null
+          email: string | null
+          existing_policies: string | null
+          form_id: string | null
+          gender: string | null
+          id: string
+          insurance_type: string | null
+          last_notification_sent_at: string | null
+          lead_history: Json | null
+          lead_profile: Json | null
+          lead_source: string | null
+          lg_link_id: string | null
+          loss_reason: string | null
+          name: string
+          nominee_name: string | null
+          nominee_relation: string | null
+          notes: string | null
+          occupation: string | null
+          pan_number: string | null
+          payment_link: string | null
+          phone: string | null
+          plan_name: string | null
+          policy_number: string | null
+          policy_start_date: string | null
+          policy_term: number | null
+          post_sales_owner_id: string | null
+          pre_sales_owner_id: string | null
+          premium_amount: number | null
+          reminder_at: string | null
+          renewal_date: string | null
+          revenue_projected: number | null
+          revenue_received: number | null
+          sales_owner_id: string | null
+          status: string
+          status_metadata: Json | null
+          sum_insured: number | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          age?: number | null
+          agent_name?: string | null
+          annual_income?: number | null
+          company_id?: string | null
+          contribution_frequency?: string | null
+          created_at?: string
+          created_by_id: string
+          date_of_birth?: string | null
+          email?: string | null
+          existing_policies?: string | null
+          form_id?: string | null
+          gender?: string | null
+          id?: string
+          insurance_type?: string | null
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          loss_reason?: string | null
+          name: string
+          nominee_name?: string | null
+          nominee_relation?: string | null
+          notes?: string | null
+          occupation?: string | null
+          pan_number?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          plan_name?: string | null
+          policy_number?: string | null
+          policy_start_date?: string | null
+          policy_term?: number | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          premium_amount?: number | null
+          reminder_at?: string | null
+          renewal_date?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          status?: string
+          status_metadata?: Json | null
+          sum_insured?: number | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          age?: number | null
+          agent_name?: string | null
+          annual_income?: number | null
+          company_id?: string | null
+          contribution_frequency?: string | null
+          created_at?: string
+          created_by_id?: string
+          date_of_birth?: string | null
+          email?: string | null
+          existing_policies?: string | null
+          form_id?: string | null
+          gender?: string | null
+          id?: string
+          insurance_type?: string | null
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          loss_reason?: string | null
+          name?: string
+          nominee_name?: string | null
+          nominee_relation?: string | null
+          notes?: string | null
+          occupation?: string | null
+          pan_number?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          plan_name?: string | null
+          policy_number?: string | null
+          policy_start_date?: string | null
+          policy_term?: number | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          premium_amount?: number | null
+          reminder_at?: string | null
+          renewal_date?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          status?: string
+          status_metadata?: Json | null
+          sum_insured?: number | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_insurance_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_insurance_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_insurance_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_insurance_lg_link_id_fkey"
+            columns: ["lg_link_id"]
+            isOneToOne: false
+            referencedRelation: "lg_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_insurance_post_sales_owner_id_fkey"
+            columns: ["post_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_insurance_pre_sales_owner_id_fkey"
+            columns: ["pre_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_insurance_sales_owner_id_fkey"
+            columns: ["sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads_real_estate: {
         Row: {
           broker_name: string | null
@@ -2038,6 +2241,7 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          metadata: Json | null
           name: string
           price: number
           quantity_available: number | null
@@ -2048,6 +2252,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          metadata?: Json | null
           name: string
           price?: number
           quantity_available?: number | null
@@ -2058,6 +2263,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          metadata?: Json | null
           name?: string
           price?: number
           quantity_available?: number | null
