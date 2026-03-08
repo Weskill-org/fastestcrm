@@ -196,6 +196,190 @@ export type Database = {
           },
         ]
       }
+      booking_pages: {
+        Row: {
+          availability: Json
+          buffer_minutes: number | null
+          company_id: string
+          created_at: string
+          description: string | null
+          durations: number[]
+          id: string
+          is_active: boolean | null
+          slug: string
+          timezone: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          availability?: Json
+          buffer_minutes?: number | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          durations?: number[]
+          id?: string
+          is_active?: boolean | null
+          slug: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          availability?: Json
+          buffer_minutes?: number | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          durations?: number[]
+          id?: string
+          is_active?: boolean | null
+          slug?: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_pages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_connections: {
+        Row: {
+          access_token: string | null
+          calendar_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          provider: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          calendar_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          calendar_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_connections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_events: {
+        Row: {
+          attendee_email: string | null
+          attendee_name: string | null
+          attendee_phone: string | null
+          booking_page_id: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          end_time: string
+          event_type: string
+          google_event_id: string | null
+          id: string
+          lead_id: string | null
+          location: string | null
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendee_email?: string | null
+          attendee_name?: string | null
+          attendee_phone?: string | null
+          booking_page_id?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          end_time: string
+          event_type?: string
+          google_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          location?: string | null
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendee_email?: string | null
+          attendee_name?: string | null
+          attendee_phone?: string | null
+          booking_page_id?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          event_type?: string
+          google_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          location?: string | null
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_booking_page_id_fkey"
+            columns: ["booking_page_id"]
+            isOneToOne: false
+            referencedRelation: "booking_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           admin_id: string

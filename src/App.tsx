@@ -52,6 +52,8 @@ import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
 import RedirectToApp from "./pages/RedirectToApp";
 import Documentation from "./pages/Documentation";
+import CalendarPage from "./pages/CalendarPage";
+import PublicBooking from "./pages/PublicBooking";
 
 import { isAndroidWebView } from "@/lib/platform";
 
@@ -128,6 +130,7 @@ function AppRoutes() {
       <Route path="/blog/:slug" element={<BlogPost />} />
       <Route path="/app" element={<RedirectToApp />} />
       <Route path="/documentation" element={<Documentation />} />
+      <Route path="/book/:slug" element={<PublicBooking />} />
 
       {/* Platform Admin */}
       <Route path="/platform" element={<Protected><PlatformAdmin /></Protected>} />
@@ -159,6 +162,7 @@ function AppRoutes() {
         <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
         <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
         <Route path="/dashboard/tasks" element={<Tasks />} />
+        <Route path="/dashboard/calendar" element={<CalendarPage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
