@@ -74,6 +74,10 @@ export default function Integrations() {
             setIsPerformanceMarketingOpen(true);
             return;
         }
+        if (integration.id === 'gmail') {
+            setIsEmailDialogOpen(true);
+            return;
+        }
         setSelectedIntegration(integration);
         setIsDialogOpen(true);
     };
