@@ -260,6 +260,8 @@ export default function FormBuilder() {
             columns = HEALTHCARE_LEAD_COLUMNS;
         } else if (company?.industry === 'insurance') {
             columns = INSURANCE_LEAD_COLUMNS;
+        } else if (company?.industry === 'travel') {
+            columns = TRAVEL_LEAD_COLUMNS;
         } else {
             // Default to Education / Generic if no industry or education
             columns = EDUCATION_LEAD_COLUMNS;
