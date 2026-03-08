@@ -359,6 +359,7 @@ export default function RealEstateAllLeads() {
             </Button>
           </div>
         </div>
+        )}
       </div>
 
       <RealEstateAssignLeadsDialog
