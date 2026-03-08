@@ -112,6 +112,7 @@ function AppRoutes() {
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:slug" element={<BlogPost />} />
       <Route path="/app" element={<RedirectToApp />} />
+      <Route path="/documentation" element={<Documentation />} />
 
       {/* Platform Admin */}
       <Route path="/platform" element={<Protected><PlatformAdmin /></Protected>} />
