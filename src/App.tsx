@@ -162,6 +162,8 @@ function AppRoutes() {
         <Route path="/dashboard/real-estate-leads" element={<RealEstateAllLeads />} />
         <Route path="/dashboard/properties" element={<ManageProperties />} />
         <Route path="/dashboard/lead-profiling" element={<ManageLeadProfiling />} />
+        <Route path="/dashboard/insurance-plans" element={<ManageInsurancePlans />} />
+        <Route path="/dashboard/insurance-lead-profiling" element={<InsuranceLeadProfiling />} />
         <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
         <Route path="/dashboard/tasks" element={<Tasks />} />
         <Route path="/dashboard/calendar" element={<CalendarPage />} />
