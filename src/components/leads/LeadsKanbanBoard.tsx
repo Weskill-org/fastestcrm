@@ -30,7 +30,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeadsTable } from '@/hooks/useLeadsTable';
 
-const PER_STATUS_LIMIT = 25;
+const PER_STATUS_LIMIT = 10;
 
 interface LeadsKanbanBoardProps {
   statuses: CompanyLeadStatus[];
