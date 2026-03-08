@@ -100,58 +100,58 @@ export function useNotifications() {
     };
 
     useEffect(() => {
-        if (session?.user?.id) {
-            fetchNotifications();
+        if (!session?.user?.id) return;
 
-            // Check permission status on mount
-            const currentStatus = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
-            if (currentStatus === 'default') {
-                // Show a gentle reminder toast after a short delay
-                const timer = setTimeout(() => {
-                    toast('Enable Notifications', {
-                        description: 'Stay updated with new leads and payments even when you are not looking.',
-                        action: {
-                            label: 'Enable',
-                            onClick: () => requestPermission()
-                        },
-                    });
-                }, 3000);
-                return () => clearTimeout(timer);
-            }
+        fetchNotifications();
 
-            // Subscribe to real-time changes
-            const channel = supabase
-                .channel(`public:notifications:${session.user.id}`)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'notifications' as any,
-                        filter: `user_id=eq.${session.user.id}`,
+        // Check permission status on mount
+        const currentStatus = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+        let permissionTimer: ReturnType<typeof setTimeout> | null = null;
+        if (currentStatus === 'default') {
+            permissionTimer = setTimeout(() => {
+                toast('Enable Notifications', {
+                    description: 'Stay updated with new leads and payments even when you are not looking.',
+                    action: {
+                        label: 'Enable',
+                        onClick: () => requestPermission()
                     },
-                    (payload) => {
-                        const newNotification = payload.new as Notification;
-                        setNotifications(prev => [newNotification, ...prev]);
-                        setUnreadCount(prev => prev + 1);
-
-                        // In-app toast
-                        toast.info(newNotification.title, {
-                            description: newNotification.message,
-                        });
-
-                        // Native OS browser popup
-                        sendWebNotification(newNotification.title, newNotification.message, {
-                            tag: newNotification.id,
-                        });
-                    }
-                )
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(channel);
-            };
+                });
+            }, 3000);
         }
+
+        // Subscribe to real-time changes (ALWAYS, regardless of permission status)
+        const channel = supabase
+            .channel(`public:notifications:${session.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications' as any,
+                    filter: `user_id=eq.${session.user.id}`,
+                },
+                (payload) => {
+                    const newNotification = payload.new as Notification;
+                    setNotifications(prev => [newNotification, ...prev]);
+                    setUnreadCount(prev => prev + 1);
+
+                    // In-app toast
+                    toast.info(newNotification.title, {
+                        description: newNotification.message,
+                    });
+
+                    // Native OS browser popup
+                    sendWebNotification(newNotification.title, newNotification.message, {
+                        tag: newNotification.id,
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            if (permissionTimer) clearTimeout(permissionTimer);
+            supabase.removeChannel(channel);
+        };
     }, [session?.user?.id]);
 
     return {

@@ -11,6 +11,7 @@ import { SubdomainAccessGuard } from "@/components/SubdomainAccessGuard";
 import AppLayout from "@/components/layout/AppLayout";
 import { usePlatformAdmin } from "@/hooks/usePlatformAdmin";
 import { Loader2 } from "lucide-react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // ─── Page imports ─────────────────────────────────────────────────────────────
 import Landing from "./pages/Landing";
@@ -55,7 +56,21 @@ import Documentation from "./pages/Documentation";
 import { isAndroidWebView } from "@/lib/platform";
 
 // ─── Query client ─────────────────────────────────────────────────────────────
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      // Prevent crashes from unhandled query errors
+      throwOnError: false,
+    },
+    mutations: {
+      retry: 1,
+      throwOnError: false,
+    },
+  },
+});
 
 // ─── Route Components ──────────────────────────────────────────────────────────
 
@@ -154,24 +169,26 @@ function AppRoutes() {
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <AuthProvider>
-        <SubdomainProvider>
-          <CompanyBrandingProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              {/* Gate only handles showing a spinner while resolving non-main domains */}
-              <SubdomainGate mainDomainContent={<AppRoutes />}>
-                <AppRoutes />
-              </SubdomainGate>
-            </TooltipProvider>
-          </CompanyBrandingProvider>
-        </SubdomainProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <SubdomainProvider>
+            <CompanyBrandingProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                {/* Gate only handles showing a spinner while resolving non-main domains */}
+                <SubdomainGate mainDomainContent={<AppRoutes />}>
+                  <AppRoutes />
+                </SubdomainGate>
+              </TooltipProvider>
+            </CompanyBrandingProvider>
+          </SubdomainProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
