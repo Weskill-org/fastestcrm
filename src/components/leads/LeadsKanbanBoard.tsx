@@ -111,7 +111,9 @@ function useStatusLeads(
       return { leads: (data as unknown as Lead[]) || [], totalCount: count || 0 };
     },
     enabled: !!companyId,
-    staleTime: 30000,
+    staleTime: 60000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 }
 
