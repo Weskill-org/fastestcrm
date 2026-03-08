@@ -106,6 +106,13 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Routes lead profiling to correct industry component */
+function LeadProfilingRouter() {
+  const { company } = useCompany();
+  if (company?.industry === 'insurance') return <InsuranceLeadProfiling />;
+  return <ManageLeadProfiling />;
+}
+
 /** The main route structure, unified for both main domain and subdomains */
 function AppRoutes() {
   const { isMainDomain } = useSubdomainContext();
