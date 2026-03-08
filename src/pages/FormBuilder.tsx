@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { EDUCATION_LEAD_COLUMNS } from '@/industries/education/config';
 import { REAL_ESTATE_LEAD_COLUMNS } from '@/industries/real_estate/config';
 import { SAAS_LEAD_COLUMNS } from '@/industries/saas/config';
+import { HEALTHCARE_LEAD_COLUMNS } from '@/industries/healthcare/config';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
