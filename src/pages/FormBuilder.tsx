@@ -15,6 +15,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EDUCATION_LEAD_COLUMNS } from '@/industries/education/config';
 import { REAL_ESTATE_LEAD_COLUMNS } from '@/industries/real_estate/config';
+import { SAAS_LEAD_COLUMNS } from '@/industries/saas/config';
 import { useLeadStatuses } from '@/hooks/useLeadStatuses';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -250,6 +251,8 @@ export default function FormBuilder() {
 
         if (company?.industry === 'real_estate') {
             columns = REAL_ESTATE_LEAD_COLUMNS;
+        } else if (company?.industry === 'saas') {
+            columns = SAAS_LEAD_COLUMNS;
         } else {
             // Default to Education / Generic if no industry or education
             columns = EDUCATION_LEAD_COLUMNS;
