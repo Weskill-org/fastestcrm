@@ -50,6 +50,7 @@ import BlogPost from "./pages/BlogPost";
 import BigdataSQL from "./pages/BigdataSQL";
 import Tasks from "./pages/Tasks";
 import RedirectToApp from "./pages/RedirectToApp";
+import Documentation from "./pages/Documentation";
 
 import { isAndroidWebView } from "@/lib/platform";
 
