@@ -16,6 +16,7 @@ interface Company {
   admin_id: string;
   industry: string | null;
   mask_leads?: boolean;
+  features?: Record<string, any> | null;
 }
 
 async function fetchCompanyData(userId: string): Promise<Company | null> {

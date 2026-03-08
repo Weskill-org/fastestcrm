@@ -31,7 +31,7 @@ interface SwipeableLeadCardProps {
   onCreatePaymentLink?: () => void;
   owners?: { label: string; value: string }[];
   variant?: 'education' | 'real_estate' | 'default';
-  visibleAttributes?: { id: string; visible: boolean; label?: string }[];
+  visibleAttributes?: { id: string; visible?: boolean; label?: string; defaultHidden?: boolean }[];
   maskLeads?: boolean;
 }
 

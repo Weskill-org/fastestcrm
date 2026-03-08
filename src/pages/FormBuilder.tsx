@@ -238,7 +238,7 @@ export default function FormBuilder() {
                 .from('profiles')
                 .select('id, full_name, email')
                 .eq('company_id', company.id)
-                .eq('is_active', true);
+                .not('full_name', 'is', null);
             return data || [];
         },
         enabled: !!company?.id
