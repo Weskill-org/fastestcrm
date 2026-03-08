@@ -1,120 +1,137 @@
 
 
-# SaaS B2B Industry — Full CRM Configuration Plan
+# Fix Meta Integration: Page Access Token Not Being Saved
 
-## Overview
+## Problem Summary
+The Meta integration flow is broken because data is not being saved to the `performance_marketing_integrations` table. After investigating, I found:
 
-Build a fully personalized CRM experience for SaaS B2B companies, mirroring the depth of the Real Estate implementation. This includes a dedicated database table (`leads_saas`), specialized UI components, and SaaS-specific features like deal pipeline tracking, license/seat-based pricing, demo management, and subscription lifecycle tracking.
+- The database table is completely empty (0 Meta records)
+- The OAuth callback is failing to save the initial user access token
+- This causes `meta-select-page` to fail with "Integration not found"
+- The UI gets stuck in a loading state
 
----
+## Root Cause
+The OAuth flow breaks at the token exchange step because:
+1. Cross-origin messaging between popup and parent window may be failing
+2. Edge function errors are not being logged properly
+3. No fallback mechanism when `postMessage` fails
 
-## 1. Database: `leads_saas` Table
+## Implementation Plan
 
-A new table with SaaS B2B-specific columns:
+### Phase 1: Fix OAuth Callback Communication
+**File: `src/pages/MetaOAuthCallback.tsx`**
+- Add fallback `localStorage` storage when popup communication fails
+- Log debug info to help diagnose issues
+- Auto-close popup with a slight delay to ensure message is sent
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | uuid PK | |
-| `name` | text NOT NULL | Contact person name |
-| `email` | text | Work email |
-| `phone` | text | |
-| `whatsapp` | text | |
-| `company_name` | text | Prospect company |
-| `company_size` | text | 1-10, 11-50, etc. |
-| `company_website` | text | |
-| `job_title` | text | Decision maker title |
-| `product_interest` | text | Which product they're interested in |
-| `use_case` | text | Description of need |
-| `current_solution` | text | Competitor they use |
-| `demo_date` | timestamptz | Scheduled demo |
-| `trial_start_date` | date | |
-| `trial_end_date` | date | |
-| `plan_type` | text | Free/Starter/Pro/Enterprise |
-| `seats` | integer | Number of licenses |
-| `monthly_value` | numeric DEFAULT 0 | MRR |
-| `annual_value` | numeric DEFAULT 0 | ARR |
-| `contract_length` | integer | Months |
-| `deal_stage` | text | Discovery/Evaluation/POC/Negotiation/Closed |
-| `decision_maker` | text | Name of decision maker |
-| `champion` | text | Internal champion |
-| `competitors` | text | Competing vendors |
-| `loss_reason` | text | Why deal was lost |
-| `status` | text NOT NULL DEFAULT 'new' | |
-| `notes` | text | |
-| `lead_source` | text | |
-| `lead_history` | jsonb DEFAULT '[]' | |
-| `status_metadata` | jsonb DEFAULT '{}' | |
-| `lead_profile` | jsonb DEFAULT '{}' | |
-| Standard CRM columns | — | `company_id`, `created_by_id`, `pre_sales_owner_id`, `sales_owner_id`, `post_sales_owner_id`, `revenue_projected`, `revenue_received`, `reminder_at`, `last_notification_sent_at`, `payment_link`, `utm_source/medium/campaign`, `lg_link_id`, `form_id`, `created_at`, `updated_at` |
+### Phase 2: Improve OAuth Callback Dialog Handling
+**File: `src/components/integrations/MetaAdsSetupDialog.tsx`**
+- Add fallback check using `localStorage` when `postMessage` doesn't work
+- Add polling mechanism to detect when popup closes
+- Improve error handling and display better messages
+- Add timeout handling for stuck states
 
-**RLS Policies**: Same pattern as `leads_real_estate` — company isolation via `is_same_company()`, visibility via owner IDs + `is_in_hierarchy()`, delete restricted to company admins.
+### Phase 3: Fix Edge Function Error Handling
+**File: `supabase/functions/meta-oauth-callback/index.ts`**
+- Add comprehensive logging for every step
+- Ensure database operations have proper error handling
+- Return detailed error messages to the client
+- Fix potential issues with `.single()` vs `.maybeSingle()`
 
----
+### Phase 4: Fix Page Selection Flow
+**File: `supabase/functions/meta-select-page/index.ts`**
+- Add detailed logging at each step
+- Handle edge cases where integration might not exist
+- Ensure page access token is properly extracted and stored
+- Add validation before database updates
 
-## 2. Frontend Components (following Real Estate pattern)
+### Phase 5: Add Debug Tooling (Temporary)
+Add a simple debug button on the integrations page that:
+- Shows current integration state in the database
+- Shows the last error that occurred
+- Allows manual token refresh if needed
 
-### Files to create under `src/industries/saas/`:
+## Technical Details
 
-| File | Purpose |
-|---|---|
-| `SaaSAllLeads.tsx` | Main leads page with table/kanban toggle, filters for company size, plan type, deal stage |
-| `hooks/useSaaSLeads.ts` | Data hook querying `leads_saas` with SaaS-specific filters |
-| `components/SaaSLeadsTable.tsx` | Table with columns: Contact, Company, Product Interest, Plan, Seats, MRR, ARR, Demo Date, Status, Owners |
-| `components/SaaSAddLeadDialog.tsx` | Add form with company details, product interest, plan type, seats |
-| `components/SaaSEditLeadDialog.tsx` | Edit form with all SaaS fields |
-| `components/SaaSLeadDetailsDialog.tsx` | Detail view organized in sections: Contact Info, Company Info, Deal Info, Subscription Info, Timeline |
-| `components/SaaSAssignLeadsDialog.tsx` | Bulk assign (mirrors real estate pattern) |
-| `components/SaaSUploadLeadsDialog.tsx` | CSV upload with SaaS column mapping |
+### Key Code Changes
 
-### Update `src/industries/saas/config.ts`:
-- Add `DEAL_STAGES` array (Discovery, Qualification, Demo, POC, Proposal, Negotiation, Closed Won, Closed Lost)
-- Add `LOSS_REASONS` array
-
-### Update `src/industries/saas/index.ts`:
-- Export all new components and hooks
-
----
-
-## 3. Routing & Navigation Updates
-
-**`src/pages/AllLeads.tsx`**: Add SaaS industry check:
-```text
-if (company?.industry === 'saas') return <SaaSAllLeads />;
-if (company?.industry === 'real_estate') return <RealEstateAllLeads />;
-return <GenericAllLeads />;
-```
-
-**`src/hooks/useLeadsTable.ts`**: Add SaaS mapping:
-```text
-if (!company?.custom_leads_table && company?.industry === 'saas') {
-    tableName = 'leads_saas';
+1. **MetaOAuthCallback.tsx** - Add localStorage fallback:
+```typescript
+// Always try to save code to localStorage as backup
+if (code) {
+  localStorage.setItem('meta_oauth_code', code);
+  localStorage.setItem('meta_oauth_timestamp', Date.now().toString());
 }
 ```
 
-**`src/components/layout/AppLayout.tsx`**: Add SaaS-specific nav items (e.g., "Deal Pipeline" or "Products" with `industryOnly: 'saas'` if needed).
+2. **MetaAdsSetupDialog.tsx** - Add polling for localStorage:
+```typescript
+// Poll localStorage if postMessage doesn't arrive
+const pollInterval = setInterval(() => {
+  const storedCode = localStorage.getItem('meta_oauth_code');
+  const timestamp = localStorage.getItem('meta_oauth_timestamp');
+  if (storedCode && timestamp) {
+    // Verify it's recent (within 5 minutes)
+    if (Date.now() - parseInt(timestamp) < 300000) {
+      handleOAuthCallback(storedCode);
+      localStorage.removeItem('meta_oauth_code');
+      localStorage.removeItem('meta_oauth_timestamp');
+      clearInterval(pollInterval);
+    }
+  }
+}, 1000);
+```
 
-**`src/components/leads/LeadsKanbanBoard.tsx`**: Add `leads_saas` table handling for search fields (use `company_name` instead of `college`/`property_name`).
+3. **meta-oauth-callback Edge Function** - Better error handling:
+```typescript
+// Log every database operation result
+console.log('Database operation result:', { 
+  existing: !!existing, 
+  error: existing?.error,
+  companyId 
+});
 
----
+// Ensure we actually inserted/updated
+if (!result.error) {
+  // Verify the record exists
+  const { data: verify } = await supabase
+    .from('performance_marketing_integrations')
+    .select('id, access_token')
+    .eq('company_id', companyId)
+    .single();
+  console.log('Verification check:', verify ? 'Record exists' : 'MISSING!');
+}
+```
 
-## 4. SaaS-Specific UX Decisions
+4. **meta-select-page Edge Function** - Validate token storage:
+```typescript
+// After update, verify it was saved correctly
+const { data: updated } = await supabase
+  .from('performance_marketing_integrations')
+  .select('id, access_token, page_id')
+  .eq('id', integration.id)
+  .single();
 
-- **Kanban columns** use company's custom statuses (same as other industries), but default SaaS statuses include: New → MQL → SQL → Demo Scheduled → Demo Done → Trial Active → Proposal Sent → Negotiation → Closed Won/Lost
-- **Filters**: Company Size, Plan Type, Deal Stage (in addition to standard owner/status filters)
-- **Table default columns**: Contact Name, Company, Product Interest, Plan Type, Seats, MRR, Status, Sales Owner, Demo Date
-- **Lead Details**: Organized sections — Contact & Company, Deal Intelligence (current solution, competitors, champion), Subscription (plan, seats, MRR/ARR, contract), Timeline
+console.log('Post-update verification:', {
+  hasToken: !!updated?.access_token,
+  tokenLength: updated?.access_token?.length,
+  pageId: updated?.page_id
+});
+```
 
----
+## Expected Outcome
+After implementation:
+1. OAuth flow will work reliably even if `postMessage` fails
+2. User tokens will be correctly saved to the database
+3. Page access tokens will be properly stored for lead retrieval
+4. The integration page will correctly show the connected status
+5. Detailed logs will help debug any remaining issues
 
-## 5. Implementation Order
-
-1. **Migration**: Create `leads_saas` table + RLS policies
-2. **Config**: Update `saas/config.ts` with deal stages, loss reasons
-3. **Hook**: Create `useSaaSLeads.ts`
-4. **Components**: Build table, add/edit/details/upload/assign dialogs
-5. **Page**: Build `SaaSAllLeads.tsx` with table + kanban
-6. **Routing**: Update `AllLeads.tsx`, `useLeadsTable.ts`, `AppLayout.tsx`, `LeadsKanbanBoard.tsx`
-7. **Index**: Update `saas/index.ts` exports
-
-This creates ~8 new files and edits ~5 existing files.
+## Testing Steps
+1. Remove any existing Meta integration (if any)
+2. Click "Continue with Facebook" and complete the OAuth flow
+3. Verify the popup closes and pages list appears
+4. Select a page and verify success message appears
+5. Check the database to confirm `access_token` and `page_id` are saved
+6. Submit a test lead form and verify it appears in the CRM
 

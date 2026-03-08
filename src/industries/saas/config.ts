@@ -10,6 +10,7 @@ export interface SaaSLeadFields {
   // SaaS-specific fields
   company_name: string | null;
   company_size: string | null;
+  company_website: string | null;
   job_title: string | null;
   product_interest: string | null;
   use_case: string | null;
@@ -25,6 +26,13 @@ export interface SaaSLeadFields {
   annual_value: number | null;
   contract_length: number | null;
   
+  // Deal intelligence
+  deal_stage: string | null;
+  decision_maker: string | null;
+  champion: string | null;
+  competitors: string | null;
+  loss_reason: string | null;
+  
   revenue_projected: number | null;
   revenue_received: number | null;
 }
@@ -35,6 +43,7 @@ export const SAAS_LEAD_COLUMNS = [
   { key: 'phone', label: 'Phone', type: 'phone', required: false },
   { key: 'company_name', label: 'Company', type: 'text', required: false },
   { key: 'company_size', label: 'Company Size', type: 'select', required: false },
+  { key: 'company_website', label: 'Website', type: 'text', required: false },
   { key: 'job_title', label: 'Job Title', type: 'text', required: false },
   { key: 'product_interest', label: 'Product Interest', type: 'text', required: false },
   { key: 'use_case', label: 'Use Case', type: 'textarea', required: false },
@@ -46,6 +55,7 @@ export const SAAS_LEAD_COLUMNS = [
   { key: 'seats', label: 'Seats', type: 'number', required: false },
   { key: 'monthly_value', label: 'MRR', type: 'currency', required: false },
   { key: 'annual_value', label: 'ARR', type: 'currency', required: false },
+  { key: 'deal_stage', label: 'Deal Stage', type: 'select', required: false },
   { key: 'status', label: 'Status', type: 'status', required: true },
 ];
 
@@ -81,4 +91,28 @@ export const PLAN_TYPES = [
   'Business',
   'Enterprise',
   'Custom',
+];
+
+export const DEAL_STAGES = [
+  { value: 'discovery', label: 'Discovery' },
+  { value: 'qualification', label: 'Qualification' },
+  { value: 'demo', label: 'Demo' },
+  { value: 'poc', label: 'POC / Trial' },
+  { value: 'proposal', label: 'Proposal' },
+  { value: 'negotiation', label: 'Negotiation' },
+  { value: 'closed_won', label: 'Closed Won' },
+  { value: 'closed_lost', label: 'Closed Lost' },
+];
+
+export const LOSS_REASONS = [
+  'Price too high',
+  'Chose competitor',
+  'No budget',
+  'Bad timing',
+  'No decision made',
+  'Feature gap',
+  'Poor fit',
+  'Internal champion left',
+  'Contract terms',
+  'Other',
 ];

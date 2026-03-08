@@ -6,9 +6,12 @@ export function useLeadsTable() {
     // Default to 'leads' if no custom table is set or if loading
     let tableName = company?.custom_leads_table || 'leads';
 
-    // Special case for Real Estate industry if no custom table is explicitly set
+    // Special case for industry-specific tables
     if (!company?.custom_leads_table && (company as any)?.industry === 'real_estate') {
         tableName = 'leads_real_estate';
+    }
+    if (!company?.custom_leads_table && (company as any)?.industry === 'saas') {
+        tableName = 'leads_saas';
     }
 
 

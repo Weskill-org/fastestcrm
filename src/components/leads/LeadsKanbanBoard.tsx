@@ -64,6 +64,8 @@ function useStatusLeads(
         ? '*, sales_owner:profiles!leads_sales_owner_id_fkey(full_name)'
         : tableName === 'leads_real_estate'
         ? '*, sales_owner:profiles!leads_real_estate_sales_owner_id_fkey(full_name)'
+        : tableName === 'leads_saas'
+        ? '*, sales_owner:profiles!leads_saas_sales_owner_id_fkey(full_name)'
         : '*';
 
       let query = supabase
@@ -78,6 +80,8 @@ function useStatusLeads(
       if (searchQuery) {
         const searchFields = tableName === 'leads_real_estate'
           ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,property_name.ilike.%${searchQuery}%`
+          : tableName === 'leads_saas'
+          ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`
           : `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,college.ilike.%${searchQuery}%`;
         query = query.or(searchFields);
       }

@@ -1307,6 +1307,209 @@ export type Database = {
           },
         ]
       }
+      leads_saas: {
+        Row: {
+          annual_value: number | null
+          champion: string | null
+          company_id: string | null
+          company_name: string | null
+          company_size: string | null
+          company_website: string | null
+          competitors: string | null
+          contract_length: number | null
+          created_at: string
+          created_by_id: string
+          current_solution: string | null
+          deal_stage: string | null
+          decision_maker: string | null
+          demo_date: string | null
+          email: string | null
+          form_id: string | null
+          id: string
+          job_title: string | null
+          last_notification_sent_at: string | null
+          lead_history: Json | null
+          lead_profile: Json | null
+          lead_source: string | null
+          lg_link_id: string | null
+          loss_reason: string | null
+          monthly_value: number | null
+          name: string
+          notes: string | null
+          payment_link: string | null
+          phone: string | null
+          plan_type: string | null
+          post_sales_owner_id: string | null
+          pre_sales_owner_id: string | null
+          product_interest: string | null
+          reminder_at: string | null
+          revenue_projected: number | null
+          revenue_received: number | null
+          sales_owner_id: string | null
+          seats: number | null
+          status: string
+          status_metadata: Json | null
+          trial_end_date: string | null
+          trial_start_date: string | null
+          updated_at: string
+          use_case: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          annual_value?: number | null
+          champion?: string | null
+          company_id?: string | null
+          company_name?: string | null
+          company_size?: string | null
+          company_website?: string | null
+          competitors?: string | null
+          contract_length?: number | null
+          created_at?: string
+          created_by_id: string
+          current_solution?: string | null
+          deal_stage?: string | null
+          decision_maker?: string | null
+          demo_date?: string | null
+          email?: string | null
+          form_id?: string | null
+          id?: string
+          job_title?: string | null
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          loss_reason?: string | null
+          monthly_value?: number | null
+          name: string
+          notes?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          plan_type?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          product_interest?: string | null
+          reminder_at?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          seats?: number | null
+          status?: string
+          status_metadata?: Json | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          updated_at?: string
+          use_case?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          annual_value?: number | null
+          champion?: string | null
+          company_id?: string | null
+          company_name?: string | null
+          company_size?: string | null
+          company_website?: string | null
+          competitors?: string | null
+          contract_length?: number | null
+          created_at?: string
+          created_by_id?: string
+          current_solution?: string | null
+          deal_stage?: string | null
+          decision_maker?: string | null
+          demo_date?: string | null
+          email?: string | null
+          form_id?: string | null
+          id?: string
+          job_title?: string | null
+          last_notification_sent_at?: string | null
+          lead_history?: Json | null
+          lead_profile?: Json | null
+          lead_source?: string | null
+          lg_link_id?: string | null
+          loss_reason?: string | null
+          monthly_value?: number | null
+          name?: string
+          notes?: string | null
+          payment_link?: string | null
+          phone?: string | null
+          plan_type?: string | null
+          post_sales_owner_id?: string | null
+          pre_sales_owner_id?: string | null
+          product_interest?: string | null
+          reminder_at?: string | null
+          revenue_projected?: number | null
+          revenue_received?: number | null
+          sales_owner_id?: string | null
+          seats?: number | null
+          status?: string
+          status_metadata?: Json | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          updated_at?: string
+          use_case?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_saas_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_saas_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_saas_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_saas_lg_link_id_fkey"
+            columns: ["lg_link_id"]
+            isOneToOne: false
+            referencedRelation: "lg_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_saas_post_sales_owner_id_fkey"
+            columns: ["post_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_saas_pre_sales_owner_id_fkey"
+            columns: ["pre_sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_saas_sales_owner_id_fkey"
+            columns: ["sales_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads_weskill: {
         Row: {
           batch_month: string | null
