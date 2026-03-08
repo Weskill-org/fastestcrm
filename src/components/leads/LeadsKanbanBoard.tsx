@@ -84,6 +84,8 @@ function useStatusLeads(
           ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,property_name.ilike.%${searchQuery}%`
           : tableName === 'leads_saas'
           ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`
+          : tableName === 'leads_healthcare'
+          ? `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,condition.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`
           : `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,college.ilike.%${searchQuery}%`;
         query = query.or(searchFields);
       }

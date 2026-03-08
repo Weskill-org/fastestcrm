@@ -13,6 +13,9 @@ export function useLeadsTable() {
     if (!company?.custom_leads_table && (company as any)?.industry === 'saas') {
         tableName = 'leads_saas';
     }
+    if (!company?.custom_leads_table && (company as any)?.industry === 'healthcare') {
+        tableName = 'leads_healthcare';
+    }
 
 
 
