@@ -44,6 +44,8 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RealEstateAllLeads from "./industries/real_estate/RealEstateAllLeads";
 import ManageLeadProfiling from "./industries/real_estate/ManageLeadProfiling";
 import ManageProperties from "./industries/real_estate/pages/ManageProperties";
+import ManageInsurancePlans from "./industries/insurance/ManageInsurancePlans";
+import InsuranceLeadProfiling from "./industries/insurance/InsuranceLeadProfiling";
 import Report from "./pages/Report";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import Blog from "./pages/Blog";
