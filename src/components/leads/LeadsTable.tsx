@@ -48,7 +48,7 @@ type Lead = Tables<'leads'> & {
     full_name: string | null;
   } | null;
   reminder_at?: string | null;
-  lead_history?: any[] | null;
+  lead_history?: any;
 };
 
 interface ColumnConfigItem {

@@ -8,7 +8,7 @@ export * from './components/RealEstateAddLeadDialog';
 export * from './components/RealEstateEditLeadDialog';
 export * from './components/RealEstateLeadDetailsDialog';
 export * from './components/RealEstateAssignLeadsDialog';
-export * from './components/SiteVisitDateTimeDialog';
+// SiteVisitDateTimeDialog removed - functionality moved elsewhere
 export * from './components/SiteVisitCameraDialog';
 export * from './components/RealEstateUploadLeadsDialog';
 
