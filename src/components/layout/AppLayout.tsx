@@ -6,7 +6,9 @@ import { useCompany } from '@/hooks/useCompany';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, Database, CheckSquare, AlertTriangle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, Database, CheckSquare, AlertTriangle, Clock, ChevronDown, ChevronUp, Mail } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 import { useTaskLeads } from '@/hooks/useTaskLeads';
 import { useEffect } from 'react';
@@ -131,6 +133,23 @@ export default function AppLayout() {
     const { urgent: urgentLeads, today: todayLeads, upcoming: upcomingLeads, isLoading: tasksLoading } = useTaskLeads();
     const taskCounts = { urgent: urgentLeads.length, today: todayLeads.length, upcoming: upcomingLeads.length };
     const totalTaskCount = taskCounts.urgent + taskCounts.today + taskCounts.upcoming;
+
+    // Check if email dashboard is enabled for this company
+    const { data: emailIntegration } = useQuery({
+        queryKey: ['email-integration-nav', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return null;
+            const { data } = await supabase
+                .from('email_integrations' as any)
+                .select('email_dashboard_enabled, is_active')
+                .eq('company_id', company.id)
+                .single();
+            return data as any;
+        },
+        enabled: !!company?.id,
+        staleTime: 1000 * 60 * 5,
+    });
+    const emailDashboardEnabled = emailIntegration?.email_dashboard_enabled && emailIntegration?.is_active;
 
     const isTasksActive = location.pathname.startsWith('/dashboard/tasks');
     const activeTaskTab = searchParams.get('tab') || 'today';
@@ -337,6 +356,34 @@ export default function AppLayout() {
                         )}
                     </button>
                 ))}
+
+                {/* Email nav items - only visible when email dashboard is enabled */}
+                {emailDashboardEnabled && (
+                    <>
+                        <button
+                            onClick={() => navigate('/dashboard/email')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === '/dashboard/email'
+                                ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                                : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                                }`}
+                        >
+                            <Mail className={`h-4 w-4 transition-colors ${location.pathname === '/dashboard/email' ? 'text-primary' : ''}`} />
+                            <span className="flex-1 text-left">Email</span>
+                        </button>
+                        {isCompanyAdmin && (
+                            <button
+                                onClick={() => navigate('/dashboard/email-settings')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === '/dashboard/email-settings'
+                                    ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]'
+                                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent pl-[10px]'
+                                    }`}
+                            >
+                                <Mail className={`h-4 w-4 transition-colors ${location.pathname === '/dashboard/email-settings' ? 'text-primary' : ''}`} />
+                                <span className="flex-1 text-left">Email Settings</span>
+                            </button>
+                        )}
+                    </>
+                )}
             </nav>
 
             <div className="p-4 border-t border-sidebar-border">

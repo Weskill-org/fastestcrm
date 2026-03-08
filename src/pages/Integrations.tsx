@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AddIntegrationDialog } from '@/components/integrations/AddIntegrationDialog';
 import { PerformanceMarketingDialog } from '@/components/integrations/PerformanceMarketingDialog';
+import { EmailIntegrationDialog } from '@/components/integrations/EmailIntegrationDialog';
 import { useCompany } from '@/hooks/useCompany';
 
 const integrationTypes = [
@@ -29,6 +30,7 @@ export default function Integrations() {
     const [selectedIntegration, setSelectedIntegration] = useState<{ id: string, name: string } | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isPerformanceMarketingOpen, setIsPerformanceMarketingOpen] = useState(false);
+    const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
 
     const { data: connectedKeys, isLoading } = useQuery({
         queryKey: ['integration-keys', user?.id],
@@ -60,9 +62,27 @@ export default function Integrations() {
         enabled: !!company?.id
     });
 
+    // Query for email integration
+    const { data: emailIntegration } = useQuery({
+        queryKey: ['email-integration', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return null;
+            const { data } = await supabase
+                .from('email_integrations' as any)
+                .select('is_active')
+                .eq('company_id', company.id)
+                .single();
+            return data as any;
+        },
+        enabled: !!company?.id
+    });
+
     const isConnected = (serviceId: string) => {
         if (serviceId === 'performance_marketing') {
             return (pmIntegrations?.length || 0) > 0;
+        }
+        if (serviceId === 'gmail') {
+            return emailIntegration?.is_active || false;
         }
         return connectedKeys?.some(key => key.service_name === serviceId && key.is_active);
     };
@@ -70,6 +90,10 @@ export default function Integrations() {
     const handleConnect = (integration: { id: string, name: string, isSpecial?: boolean }) => {
         if (integration.id === 'performance_marketing') {
             setIsPerformanceMarketingOpen(true);
+            return;
+        }
+        if (integration.id === 'gmail') {
+            setIsEmailDialogOpen(true);
             return;
         }
         setSelectedIntegration(integration);
@@ -144,6 +168,11 @@ export default function Integrations() {
                 <PerformanceMarketingDialog
                     isOpen={isPerformanceMarketingOpen}
                     onOpenChange={setIsPerformanceMarketingOpen}
+                />
+
+                <EmailIntegrationDialog
+                    isOpen={isEmailDialogOpen}
+                    onOpenChange={setIsEmailDialogOpen}
                 />
             </div>
         </>

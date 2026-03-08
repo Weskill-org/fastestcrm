@@ -57,6 +57,8 @@ import RedirectToApp from "./pages/RedirectToApp";
 import Documentation from "./pages/Documentation";
 import CalendarPage from "./pages/CalendarPage";
 import PublicBooking from "./pages/PublicBooking";
+import EmailDashboard from "./pages/EmailDashboard";
+import ManageEmailAliases from "./pages/ManageEmailAliases";
 
 import { isAndroidWebView } from "@/lib/platform";
 
@@ -174,6 +176,8 @@ function AppRoutes() {
         <Route path="/dashboard/bigdata-sql" element={<BigdataSQL />} />
         <Route path="/dashboard/tasks" element={<Tasks />} />
         <Route path="/dashboard/calendar" element={<CalendarPage />} />
+        <Route path="/dashboard/email" element={<EmailDashboard />} />
+        <Route path="/dashboard/email-settings" element={<ManageEmailAliases />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

@@ -84,3 +84,12 @@ verify_jwt = false
 
 [functions.create-booking]
 verify_jwt = false
+
+[functions.outlook-oauth]
+verify_jwt = false
+
+[functions.manage-email-aliases]
+verify_jwt = false
+
+[functions.email-proxy]
+verify_jwt = false
