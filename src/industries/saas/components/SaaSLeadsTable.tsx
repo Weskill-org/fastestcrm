@@ -226,8 +226,8 @@ export function SaaSLeadsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leads.map((lead) => (
-              <TableRow key={lead.id} data-state={selectedLeads.has(lead.id) ? 'selected' : undefined}>
+            {leads.map((lead, index) => (
+              <TableRow key={lead.id} className="animate-row-fade-in" style={{ animationDelay: `${index * 30}ms` }} data-state={selectedLeads.has(lead.id) ? 'selected' : undefined}>
                 <TableCell>
                   <Checkbox
                     checked={selectedLeads.has(lead.id)}

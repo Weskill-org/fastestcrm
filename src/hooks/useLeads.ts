@@ -217,7 +217,8 @@ export function useLeads({ search, statusFilter, ownerFilter, activeOwnerIds, pr
     placeholderData: (previousData) => previousData,
     enabled: !tableLoading && !!companyId,
     retry: 2,
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    staleTime: 60000,
+    gcTime: 5 * 60 * 1000,
   });
 
   return {

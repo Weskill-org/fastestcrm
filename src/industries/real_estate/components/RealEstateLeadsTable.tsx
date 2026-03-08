@@ -718,8 +718,8 @@ export function RealEstateLeadsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leads.map((lead) => (
-              <TableRow key={lead.id} className="group">
+            {leads.map((lead, index) => (
+              <TableRow key={lead.id} className="group animate-row-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
                 <TableCell>
                   <input
                     type="checkbox"
