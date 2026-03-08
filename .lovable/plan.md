@@ -1,117 +1,137 @@
 
 
-# Email Integration — Outlook OAuth + Alias Management + Email Dashboard
+# Fix Meta Integration: Page Access Token Not Being Saved
 
-## Overview
+## Problem Summary
+The Meta integration flow is broken because data is not being saved to the `performance_marketing_integrations` table. After investigating, I found:
 
-Build a full organizational email system: Admin connects Outlook via Microsoft Graph API OAuth, activates email for the org, team members get real Microsoft 365 aliases, and everyone accesses their email through an in-app Email Dashboard.
+- The database table is completely empty (0 Meta records)
+- The OAuth callback is failing to save the initial user access token
+- This causes `meta-select-page` to fail with "Integration not found"
+- The UI gets stuck in a loading state
 
----
+## Root Cause
+The OAuth flow breaks at the token exchange step because:
+1. Cross-origin messaging between popup and parent window may be failing
+2. Edge function errors are not being logged properly
+3. No fallback mechanism when `postMessage` fails
 
-## 1. Database Schema (1 migration)
+## Implementation Plan
 
-### `email_integrations` table (company-level Outlook connection)
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid PK | |
-| company_id | uuid FK companies | unique |
-| provider | text | 'outlook' |
-| access_token | text | Encrypted OAuth token |
-| refresh_token | text | For token refresh |
-| token_expires_at | timestamptz | Expiry |
-| admin_email | text | Connected admin email |
-| is_active | boolean DEFAULT false | Admin toggle for org |
-| email_dashboard_enabled | boolean DEFAULT false | Activates Email Dashboard nav item |
-| created_at / updated_at | timestamptz | |
+### Phase 1: Fix OAuth Callback Communication
+**File: `src/pages/MetaOAuthCallback.tsx`**
+- Add fallback `localStorage` storage when popup communication fails
+- Log debug info to help diagnose issues
+- Auto-close popup with a slight delay to ensure message is sent
 
-### `email_aliases` table (per-user aliases)
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid PK | |
-| company_id | uuid FK companies | |
-| user_id | uuid FK profiles | |
-| alias_email | text | The alias address |
-| display_name | text | From name |
-| is_active | boolean DEFAULT true | |
-| created_at | timestamptz | |
+### Phase 2: Improve OAuth Callback Dialog Handling
+**File: `src/components/integrations/MetaAdsSetupDialog.tsx`**
+- Add fallback check using `localStorage` when `postMessage` doesn't work
+- Add polling mechanism to detect when popup closes
+- Improve error handling and display better messages
+- Add timeout handling for stuck states
 
-RLS: Company isolation, users can read own alias, admins can manage all.
+### Phase 3: Fix Edge Function Error Handling
+**File: `supabase/functions/meta-oauth-callback/index.ts`**
+- Add comprehensive logging for every step
+- Ensure database operations have proper error handling
+- Return detailed error messages to the client
+- Fix potential issues with `.single()` vs `.maybeSingle()`
 
----
+### Phase 4: Fix Page Selection Flow
+**File: `supabase/functions/meta-select-page/index.ts`**
+- Add detailed logging at each step
+- Handle edge cases where integration might not exist
+- Ensure page access token is properly extracted and stored
+- Add validation before database updates
 
-## 2. Edge Functions (3 new)
+### Phase 5: Add Debug Tooling (Temporary)
+Add a simple debug button on the integrations page that:
+- Shows current integration state in the database
+- Shows the last error that occurred
+- Allows manual token refresh if needed
 
-### `outlook-oauth` — Handles OAuth flow
-- **GET** with `?action=authorize`: Returns Microsoft OAuth URL (redirect to Microsoft login)
-- **GET** with `?action=callback&code=...`: Exchanges auth code for tokens, stores in `email_integrations`
-- Uses `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` secrets
-- Scopes: `Mail.Read Mail.Send Mail.ReadWrite User.Read User.ReadWrite.All offline_access`
+## Technical Details
 
-### `manage-email-aliases` — CRUD for aliases
-- **POST**: Admin creates alias for a user via Microsoft Graph API (`POST /users/{userId}/mailboxSettings` or distribution approach)
-- **DELETE**: Remove alias
-- **GET**: List aliases for company
-- Validates admin role server-side
+### Key Code Changes
 
-### `email-proxy` — Read/send emails through aliases
-- **GET**: Fetch inbox for a user's alias (Graph API `messages` endpoint filtered by alias)
-- **POST**: Send email from alias (Graph API `sendMail` with `from` set to alias)
-- Refreshes tokens automatically when expired
+1. **MetaOAuthCallback.tsx** - Add localStorage fallback:
+```typescript
+// Always try to save code to localStorage as backup
+if (code) {
+  localStorage.setItem('meta_oauth_code', code);
+  localStorage.setItem('meta_oauth_timestamp', Date.now().toString());
+}
+```
 
----
+2. **MetaAdsSetupDialog.tsx** - Add polling for localStorage:
+```typescript
+// Poll localStorage if postMessage doesn't arrive
+const pollInterval = setInterval(() => {
+  const storedCode = localStorage.getItem('meta_oauth_code');
+  const timestamp = localStorage.getItem('meta_oauth_timestamp');
+  if (storedCode && timestamp) {
+    // Verify it's recent (within 5 minutes)
+    if (Date.now() - parseInt(timestamp) < 300000) {
+      handleOAuthCallback(storedCode);
+      localStorage.removeItem('meta_oauth_code');
+      localStorage.removeItem('meta_oauth_timestamp');
+      clearInterval(pollInterval);
+    }
+  }
+}, 1000);
+```
 
-## 3. Frontend Components
+3. **meta-oauth-callback Edge Function** - Better error handling:
+```typescript
+// Log every database operation result
+console.log('Database operation result:', { 
+  existing: !!existing, 
+  error: existing?.error,
+  companyId 
+});
 
-### `EmailIntegrationDialog.tsx` (replaces current Gmail card behavior)
-- Shows 2 options: Gmail (coming soon) and Outlook (Connect button)
-- Outlook: Initiates OAuth by calling `outlook-oauth?action=authorize`
-- After connection: Shows connected status, toggle to enable Email Dashboard for org
+// Ensure we actually inserted/updated
+if (!result.error) {
+  // Verify the record exists
+  const { data: verify } = await supabase
+    .from('performance_marketing_integrations')
+    .select('id, access_token')
+    .eq('company_id', companyId)
+    .single();
+  console.log('Verification check:', verify ? 'Record exists' : 'MISSING!');
+}
+```
 
-### `EmailDashboard.tsx` — New page at `/dashboard/email`
-- Inbox view showing emails for the logged-in user's alias
-- Compose/Reply functionality
-- Simple email list with sender, subject, date, preview
-- Read/unread status
+4. **meta-select-page Edge Function** - Validate token storage:
+```typescript
+// After update, verify it was saved correctly
+const { data: updated } = await supabase
+  .from('performance_marketing_integrations')
+  .select('id, access_token, page_id')
+  .eq('id', integration.id)
+  .single();
 
-### `ManageEmailAliases.tsx` — Admin page at `/dashboard/email-settings`
-- List all team members
-- Create alias for each member (input: desired alias prefix + domain from connected account)
-- Toggle aliases on/off
-- Only visible to company admins
+console.log('Post-update verification:', {
+  hasToken: !!updated?.access_token,
+  tokenLength: updated?.access_token?.length,
+  pageId: updated?.page_id
+});
+```
 
----
+## Expected Outcome
+After implementation:
+1. OAuth flow will work reliably even if `postMessage` fails
+2. User tokens will be correctly saved to the database
+3. Page access tokens will be properly stored for lead retrieval
+4. The integration page will correctly show the connected status
+5. Detailed logs will help debug any remaining issues
 
-## 4. Routing & Navigation Updates
-
-- **`App.tsx`**: Add routes `/dashboard/email` and `/dashboard/email-settings`
-- **`AppLayout.tsx`**: Add "Email" nav item (visible only when `email_dashboard_enabled` is true for the company), "Email Settings" (admin only, visible when Outlook connected)
-- **`Integrations.tsx`**: Make Gmail/Outlook card open `EmailIntegrationDialog` instead of the generic API key dialog
-
----
-
-## 5. Secrets Required
-
-Two secrets must be added to Supabase before the OAuth flow works:
-- `MICROSOFT_CLIENT_ID` — From Azure AD app registration
-- `MICROSOFT_CLIENT_SECRET` — From Azure AD app registration
-
-The user needs to create an Azure AD app at https://portal.azure.com with:
-- Redirect URI: `https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/outlook-oauth?action=callback`
-- API permissions: `Mail.Read`, `Mail.Send`, `Mail.ReadWrite`, `User.Read`, `User.ReadWrite.All`, `offline_access`
-
----
-
-## 6. Implementation Order
-
-1. Migration: Create `email_integrations` + `email_aliases` tables with RLS
-2. Secrets: Request `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET`
-3. Edge function: `outlook-oauth` (OAuth authorize + callback)
-4. Edge function: `manage-email-aliases` (CRUD)
-5. Edge function: `email-proxy` (read/send)
-6. UI: `EmailIntegrationDialog` (Gmail/Outlook chooser + OAuth trigger)
-7. UI: `EmailDashboard` (inbox + compose)
-8. UI: `ManageEmailAliases` (admin alias management)
-9. Routing: Update `App.tsx`, `AppLayout.tsx`, `Integrations.tsx`
-
-Total: ~3 edge functions, ~3 new pages/components, 1 migration, ~3 edited files.
+## Testing Steps
+1. Remove any existing Meta integration (if any)
+2. Click "Continue with Facebook" and complete the OAuth flow
+3. Verify the popup closes and pages list appears
+4. Select a page and verify success message appears
+5. Check the database to confirm `access_token` and `page_id` are saved
+6. Submit a test lead form and verify it appears in the CRM
 
