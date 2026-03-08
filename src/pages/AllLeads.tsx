@@ -2,6 +2,7 @@ import { useCompany } from '@/hooks/useCompany';
 import RealEstateAllLeads from '@/industries/real_estate/RealEstateAllLeads';
 import SaaSAllLeads from '@/industries/saas/SaaSAllLeads';
 import HealthcareAllLeads from '@/industries/healthcare/HealthcareAllLeads';
+import InsuranceAllLeads from '@/industries/insurance/InsuranceAllLeads';
 import GenericAllLeads from './GenericAllLeads';
 
 export default function AllLeads() {
@@ -17,6 +18,10 @@ export default function AllLeads() {
 
   if ((company as any)?.industry === 'healthcare') {
     return <HealthcareAllLeads />;
+  }
+
+  if ((company as any)?.industry === 'insurance') {
+    return <InsuranceAllLeads />;
   }
 
   return <GenericAllLeads />;

@@ -16,6 +16,9 @@ export function useLeadsTable() {
     if (!company?.custom_leads_table && (company as any)?.industry === 'healthcare') {
         tableName = 'leads_healthcare';
     }
+    if (!company?.custom_leads_table && (company as any)?.industry === 'insurance') {
+        tableName = 'leads_insurance';
+    }
 
 
 
