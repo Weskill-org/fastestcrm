@@ -1,0 +1,335 @@
+import { useState, useMemo } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useDroppable } from '@dnd-kit/core';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Phone, Mail, User, Clock, GripVertical } from 'lucide-react';
+import { format } from 'date-fns';
+import { CompanyLeadStatus } from '@/hooks/useLeadStatuses';
+import { Lead } from '@/hooks/useLeads';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
+interface LeadsKanbanBoardProps {
+  leads: Lead[];
+  statuses: CompanyLeadStatus[];
+  loading: boolean;
+  onStatusChange: (leadId: string, newStatus: string) => void;
+  onLeadClick?: (lead: Lead) => void;
+  owners?: { label: string; value: string }[];
+}
+
+// Droppable column wrapper
+function KanbanColumn({
+  status,
+  children,
+  count,
+}: {
+  status: CompanyLeadStatus;
+  children: React.ReactNode;
+  count: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${status.value}`,
+    data: { status: status.value },
+  });
+
+  return (
+    <div className="flex flex-col min-w-[280px] w-[280px] shrink-0">
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 rounded-t-lg border border-b-0 border-border"
+        style={{ backgroundColor: `${status.color}15` }}
+      >
+        <div
+          className="w-3 h-3 rounded-full shrink-0"
+          style={{ backgroundColor: status.color }}
+        />
+        <span className="font-semibold text-sm truncate">{status.label}</span>
+        <Badge variant="secondary" className="ml-auto text-xs shrink-0">
+          {count}
+        </Badge>
+      </div>
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "flex-1 border border-border rounded-b-lg p-2 space-y-2 min-h-[200px] max-h-[calc(100vh-260px)] overflow-y-auto transition-colors",
+          isOver && "bg-primary/5 border-primary/30"
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Draggable lead card
+function KanbanLeadCard({
+  lead,
+  onClick,
+  owners,
+  isDragging,
+}: {
+  lead: Lead;
+  onClick?: () => void;
+  owners?: { label: string; value: string }[];
+  isDragging?: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
+    id: lead.id,
+    data: { lead, status: lead.status },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isSortableDragging ? 0.4 : 1,
+  };
+
+  const ownerName = lead.sales_owner?.full_name ||
+    owners?.find(o => o.value === lead.sales_owner_id)?.label;
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "p-3 cursor-pointer hover:shadow-md transition-shadow border border-border bg-card",
+        isDragging && "shadow-lg ring-2 ring-primary/20"
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-start gap-2">
+        <button
+          className="mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground shrink-0"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <p className="font-medium text-sm truncate">{lead.name}</p>
+
+          {(lead.email || lead.phone) && (
+            <div className="flex flex-col gap-0.5">
+              {lead.email && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{lead.email}</span>
+                </span>
+              )}
+              {lead.phone && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Phone className="h-3 w-3 shrink-0" />
+                  {lead.phone}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 pt-1">
+            {ownerName && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+                <User className="h-3 w-3 shrink-0" />
+                <span className="truncate">{ownerName}</span>
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <Clock className="h-3 w-3" />
+              {format(new Date(lead.created_at), 'dd MMM')}
+            </span>
+          </div>
+
+          {lead.product_purchased && (
+            <Badge variant="outline" className="text-xs mt-1">
+              {lead.product_purchased}
+            </Badge>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Overlay card shown while dragging
+function DragOverlayCard({ lead, owners }: { lead: Lead; owners?: { label: string; value: string }[] }) {
+  const ownerName = lead.sales_owner?.full_name ||
+    owners?.find(o => o.value === lead.sales_owner_id)?.label;
+
+  return (
+    <Card className="p-3 shadow-xl ring-2 ring-primary/30 w-[260px] bg-card border border-primary/20">
+      <div className="space-y-1.5">
+        <p className="font-medium text-sm truncate">{lead.name}</p>
+        {lead.phone && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Phone className="h-3 w-3" /> {lead.phone}
+          </span>
+        )}
+        {ownerName && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <User className="h-3 w-3" /> {ownerName}
+          </span>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+export function LeadsKanbanBoard({
+  leads,
+  statuses,
+  loading,
+  onStatusChange,
+  onLeadClick,
+  owners,
+}: LeadsKanbanBoardProps) {
+  const [activeLead, setActiveLead] = useState<Lead | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
+
+  // Group leads by status
+  const leadsByStatus = useMemo(() => {
+    const grouped: Record<string, Lead[]> = {};
+    statuses.forEach(s => {
+      grouped[s.value] = [];
+    });
+    leads.forEach(lead => {
+      if (grouped[lead.status]) {
+        grouped[lead.status].push(lead);
+      } else {
+        // Lead has a status not in our list — put in first column
+        if (statuses.length > 0) {
+          grouped[statuses[0].value]?.push(lead);
+        }
+      }
+    });
+    return grouped;
+  }, [leads, statuses]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const lead = leads.find(l => l.id === event.active.id);
+    setActiveLead(lead || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveLead(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const leadId = active.id as string;
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    // Determine target status from drop target
+    let targetStatus: string | null = null;
+
+    if (over.id.toString().startsWith('column-')) {
+      targetStatus = over.id.toString().replace('column-', '');
+    } else {
+      // Dropped on another lead card — find which column it belongs to
+      const targetLead = leads.find(l => l.id === over.id);
+      if (targetLead) {
+        targetStatus = targetLead.status;
+      }
+    }
+
+    if (targetStatus && targetStatus !== lead.status) {
+      onStatusChange(leadId, targetStatus);
+    }
+  };
+
+  const handleDragOver = (_event: DragOverEvent) => {
+    // Could be used for live reordering within columns
+  };
+
+  if (loading) {
+    return (
+      <div className="flex gap-4 overflow-x-auto pb-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="min-w-[280px] space-y-3">
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+    >
+      <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2">
+        {statuses.map(status => {
+          const columnLeads = leadsByStatus[status.value] || [];
+          return (
+            <KanbanColumn
+              key={status.value}
+              status={status}
+              count={columnLeads.length}
+            >
+              <SortableContext
+                items={columnLeads.map(l => l.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {columnLeads.length === 0 ? (
+                  <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
+                    Drop leads here
+                  </div>
+                ) : (
+                  columnLeads.map(lead => (
+                    <KanbanLeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onClick={() => onLeadClick?.(lead)}
+                      owners={owners}
+                    />
+                  ))
+                )}
+              </SortableContext>
+            </KanbanColumn>
+          );
+        })}
+      </div>
+
+      <DragOverlay>
+        {activeLead ? (
+          <DragOverlayCard lead={activeLead} owners={owners} />
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
