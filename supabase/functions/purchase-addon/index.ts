@@ -2,13 +2,53 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { corsHeaders } from "../_shared/cors.ts";
 
+serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
 
+    try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) throw new Error('Missing authorization');
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !user) throw new Error('Unauthorized');
+
+        const { feature, cost } = await req.json();
+        if (!feature || !cost || cost <= 0) throw new Error('Invalid feature or cost');
+
+        // Get user's company
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile?.company_id) throw new Error('No company found');
+        const companyId = profile.company_id;
+
+        // Verify admin
+        const { data: company } = await supabaseAdmin
+            .from('companies')
+            .select('id, admin_id, features')
+            .eq('id', companyId)
+            .single();
+
+        if (!company) throw new Error('Company not found');
+        if (company.admin_id !== user.id) throw new Error('Only admin can purchase addons');
+
+        const currentFeatures = (company.features as Record<string, boolean>) || {};
 
         if (currentFeatures[feature]) {
             throw new Error('Feature already unlocked');
         }
 
-        // 2. Check Wallet
+        // Check Wallet
         const { data: wallet } = await supabaseAdmin
             .from('wallets')
             .select('balance')
@@ -20,8 +60,7 @@ import { corsHeaders } from "../_shared/cors.ts";
             throw new Error(`Insufficient wallet balance. Required: ₹${cost}, Available: ₹${currentBalance}. Please recharge.`);
         }
 
-        // 3. Process Transaction
-        // Deduct
+        // Process Transaction - Deduct
         const { error: walletError } = await supabaseAdmin
             .from('wallets')
             .update({ balance: currentBalance - cost, updated_at: new Date().toISOString() })
@@ -29,13 +68,11 @@ import { corsHeaders } from "../_shared/cors.ts";
 
         if (walletError) throw new Error('Wallet deduction failed');
 
-        // Log
+        // Log transaction
         await supabaseAdmin.from('wallet_transactions').insert({
             wallet_id: companyId,
             amount: cost,
-            type: 'debit_manual_adjustment', // Or we add a new enum? Let's use manual/adjustment for now or 'debit_feature_purchase' if strictly needed. 
-            // Wait, enum is strict: 'credit_recharge', 'credit_gift_card', 'debit_license_purchase', 'debit_auto_renewal', 'debit_manual_adjustment'.
-            // 'debit_license_purchase' is closest, but it's not a license. 'debit_manual_adjustment' fits best for one-offs.
+            type: 'debit_manual_adjustment',
             description: `Unlocked Feature: ${feature.replace('custom_', 'Custom ')}`,
             status: 'success'
         });
