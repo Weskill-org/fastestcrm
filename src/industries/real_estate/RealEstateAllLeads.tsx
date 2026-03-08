@@ -251,6 +251,30 @@ export default function RealEstateAllLeads() {
           onEditLayout={userRole === 'company' || userRole === 'company_subadmin' ? () => setConfigOpen(true) : undefined}
         />
 
+        {/* View Mode Toggle (Desktop only) */}
+        {!isMobile && (
+          <div className="flex items-center gap-1 border border-border rounded-lg p-0.5 w-fit">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 px-3 gap-1.5"
+              onClick={() => setViewMode('table')}
+            >
+              <Table2 className="h-4 w-4" />
+              Table
+            </Button>
+            <Button
+              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 px-3 gap-1.5"
+              onClick={() => setViewMode('kanban')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </Button>
+          </div>
+        )}
+
         {/* Mobile Card View */}
         {isMobile ? (
           <div className="space-y-3">
@@ -276,6 +300,17 @@ export default function RealEstateAllLeads() {
               ))
             )}
           </div>
+        ) : viewMode === 'kanban' ? (
+          /* Kanban Board View */
+          <LeadsKanbanBoard
+            statuses={statuses}
+            loading={isLoading}
+            onStatusChange={(leadId, newStatus) => handleStatusChange(leadId, newStatus)}
+            onLeadClick={(lead) => setViewingLead(lead)}
+            owners={filterOptions?.owners}
+            searchQuery={debouncedSearchQuery}
+            ownerFilter={Array.from(selectedOwners)}
+          />
         ) : (
           /* Desktop Table View */
           <Card>
@@ -294,7 +329,8 @@ export default function RealEstateAllLeads() {
           </Card>
         )}
 
-        {/* Pagination */}
+        {/* Pagination (hide in kanban mode) */}
+        {viewMode === 'table' && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
           <div className="text-sm text-muted-foreground">
             Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount}
