@@ -27,6 +27,7 @@ import { LeadDetailsDialog } from '@/components/leads/LeadDetailsDialog';
 import { ColumnConfigDialog } from '@/components/leads/ColumnConfigDialog';
 import { StatusReminderDialog } from '@/components/leads/StatusReminderDialog';
 import { useLeadStatuses, CompanyLeadStatus } from '@/hooks/useLeadStatuses';
+import { LeadsKanbanBoard } from '@/components/leads/LeadsKanbanBoard';
 
 import { useSearchParams } from 'react-router-dom';
 
