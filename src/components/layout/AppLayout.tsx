@@ -160,7 +160,7 @@ export default function AppLayout() {
         if (item.label === 'Integrations') {
             return role === 'company' || role === 'company_subadmin';
         }
-        if (item.label === 'Products' || item.label === 'Properties') {
+        if (item.label === 'Products' || item.label === 'Properties' || item.label === 'Insurance Plans') {
             return role === 'company' || role === 'company_subadmin' || isCompanyAdmin;
         }
         if (item.label === 'Lead Profiling') {
