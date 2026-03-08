@@ -74,7 +74,12 @@ const navItems = [{
     icon: Package,
     label: 'Products',
     path: '/dashboard/products',
-    industryExclude: 'real_estate'
+    industryExclude: ['real_estate', 'insurance']
+}, {
+    icon: Shield,
+    label: 'Insurance Plans',
+    path: '/dashboard/insurance-plans',
+    industryOnly: 'insurance'
 }, {
     icon: Building2,
     label: 'Properties',
@@ -84,7 +89,7 @@ const navItems = [{
     icon: Users,
     label: 'Lead Profiling',
     path: '/dashboard/lead-profiling',
-    industryOnly: 'real_estate'
+    industryOnly: ['real_estate', 'insurance']
 }, {
     icon: Building2,
     label: 'Manage Company',
