@@ -138,11 +138,17 @@ export default function AppLayout() {
     const companyIndustry = (company as any)?.industry;
     const filteredNavItems = navItems.filter(item => {
         // Industry-specific filtering
-        if ((item as any).industryOnly && (item as any).industryOnly !== companyIndustry) {
-            return false;
+        const industryOnly = (item as any).industryOnly;
+        if (industryOnly) {
+            if (Array.isArray(industryOnly)) {
+                if (!industryOnly.includes(companyIndustry)) return false;
+            } else if (industryOnly !== companyIndustry) return false;
         }
-        if ((item as any).industryExclude && (item as any).industryExclude === companyIndustry) {
-            return false;
+        const industryExclude = (item as any).industryExclude;
+        if (industryExclude) {
+            if (Array.isArray(industryExclude)) {
+                if (industryExclude.includes(companyIndustry)) return false;
+            } else if (industryExclude === companyIndustry) return false;
         }
 
         if (item.label === 'Integrations') {
