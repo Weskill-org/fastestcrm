@@ -57,6 +57,8 @@ import RedirectToApp from "./pages/RedirectToApp";
 import Documentation from "./pages/Documentation";
 import CalendarPage from "./pages/CalendarPage";
 import PublicBooking from "./pages/PublicBooking";
+import EmailDashboard from "./pages/EmailDashboard";
+import ManageEmailAliases from "./pages/ManageEmailAliases";
 
 import { isAndroidWebView } from "@/lib/platform";
 
