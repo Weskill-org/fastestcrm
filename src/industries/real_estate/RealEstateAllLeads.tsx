@@ -44,6 +44,8 @@ export default function RealEstateAllLeads() {
   const { data: userRole } = useUserRole();
   const isMobile = useIsMobile();
   const [configOpen, setConfigOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const { statuses } = useLeadStatuses();
 
   const defaultColumns = [
     { id: 'name', label: 'Name' },
