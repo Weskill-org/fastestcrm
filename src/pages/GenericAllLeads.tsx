@@ -425,6 +425,7 @@ export default function GenericAllLeads() {
 
                 {/* Pagination (hide in kanban mode) */}
                 {viewMode === 'table' && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
                     <div className="text-sm text-muted-foreground">
                         Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount}
                     </div>
@@ -452,6 +453,7 @@ export default function GenericAllLeads() {
                         </Button>
                     </div>
                 </div>
+                )}
             </div>
 
             <AssignLeadsDialog
