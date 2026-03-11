@@ -261,12 +261,8 @@ export default function GenericAllLeads() {
             const updates: any = { status: newStatusValue };
             if (metadata && metadata.reminder_at) {
                 updates.reminder_at = metadata.reminder_at;
-                updates.last_notification_sent_at = null; // Reset so process-reminders picks it up
             } else if (newStatus && newStatus.status_type === 'simple') {
                 updates.reminder_at = null;
-            }
-            if (metadata && metadata.send_web_push === true) {
-                updates.send_web_push = true;
             }
 
             const { error } = await supabase
@@ -278,6 +274,7 @@ export default function GenericAllLeads() {
             toast.success('Status updated successfully');
             await refetch();
         } catch (error) {
+            console.error('Status update error:', error);
             toast.error('Failed to update status');
         }
     };

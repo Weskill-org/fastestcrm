@@ -152,7 +152,6 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 product_purchased: values.product_purchased || null, // This stores the Product Name
                 notes: values.notes || null,
                 reminder_at: reminderAt ? reminderAt.toISOString() : null,
-                ...(reminderAt && sendWebPush ? { send_web_push: true, last_notification_sent_at: null } : {}),
             });
             toast.success('Lead updated successfully');
             onOpenChange(false);

@@ -172,7 +172,6 @@ export function RealEstateEditLeadDialog({
           status: values.status,
           lead_source: values.lead_source || null,
           reminder_at: reminderAt ? reminderAt.toISOString() : null,
-          ...(reminderAt && sendWebPush ? { send_web_push: true, last_notification_sent_at: null } : {}),
         })
         .eq('id', lead.id);
 
