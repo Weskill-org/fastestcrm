@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, UserCheck, CreditCard, Settings,
-  Phone, Brain, FileText, Menu, X, BarChart3, Workflow, Link2, Calendar
+  Phone, Brain, FileText, Menu, X, BarChart3, Workflow, Link2, Calendar, CheckSquare
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -10,7 +10,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { NotificationsBell } from './NotificationsBell';
 
 const primaryNavItems = [
-  { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
+  { icon: CheckSquare, label: 'Tasks', path: '/dashboard/tasks' },
   { icon: Users, label: 'Leads', path: '/dashboard/leads' },
   { icon: UserCheck, label: 'Interested', path: '/dashboard/interested' },
   { icon: Phone, label: 'Auto Dialer', path: '/dashboard/dialer' },
@@ -60,6 +60,7 @@ export default function MobileBottomNav() {
 
   const isActive = (path: string) => {
     if (path === 'menu') return isMenuOpen;
+    if (path === '/dashboard/tasks' && location.pathname.startsWith('/dashboard/tasks')) return true;
     return location.pathname === path;
   };
 

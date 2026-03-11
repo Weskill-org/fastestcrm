@@ -61,7 +61,7 @@ export default function ManageEmailAliases() {
         .from('email_integrations' as any)
         .select('*')
         .eq('company_id', company.id)
-        .single();
+        .maybeSingle();
       return data as any;
     },
     enabled: !!company?.id,

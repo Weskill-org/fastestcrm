@@ -29,7 +29,7 @@ export function EmailIntegrationDialog({ isOpen, onOpenChange }: EmailIntegratio
         .from('email_integrations' as any)
         .select('*')
         .eq('company_id', company.id)
-        .single();
+        .maybeSingle();
       return data as any;
     },
     enabled: !!company?.id && isOpen,

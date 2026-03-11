@@ -143,7 +143,7 @@ export default function AppLayout() {
                 .from('email_integrations' as any)
                 .select('email_dashboard_enabled, is_active')
                 .eq('company_id', company.id)
-                .single();
+                .maybeSingle();
             return data as any;
         },
         enabled: !!company?.id,

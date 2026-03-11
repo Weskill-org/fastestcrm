@@ -71,7 +71,7 @@ export default function Integrations() {
                 .from('email_integrations' as any)
                 .select('is_active')
                 .eq('company_id', company.id)
-                .single();
+                .maybeSingle();
             return data as any;
         },
         enabled: !!company?.id
