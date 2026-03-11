@@ -25,8 +25,8 @@ export function InsuranceUploadLeadsDialog() {
   const abortRef = useRef(false);
 
   const handleDownloadFormat = () => {
-    const csv = 'Name,Email,Phone,WhatsApp,Age,Gender,PAN Number,Occupation,Annual Income,Insurance Type,Plan Name,Sum Insured,Premium Amount,Contribution Frequency,Policy Term,Nominee Name,Nominee Relation,Status,Lead Source\n' +
-      'John Doe,john@email.com,9876543210,9876543210,35,Male,ABCDE1234F,Engineer,1200000,Life Insurance,Term Plan 1Cr,10000000,15000,Yearly,20,Jane Doe,Spouse,new,Referral\n';
+    const csv = 'Name,Email,Phone,WhatsApp,Age,Gender,PAN Number,Occupation,Annual Income,Insurance Type,Plan Name,Sum Insured,Premium Amount,Contribution Frequency,Policy Term,Nominee Name,Nominee Relation,Status,Lead Source,Lead Owner\n' +
+      'John Doe,john@email.com,9876543210,9876543210,35,Male,ABCDE1234F,Engineer,1200000,Life Insurance,Term Plan 1Cr,10000000,15000,Yearly,20,Jane Doe,Spouse,new,Referral,Jane Smith\n';
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -71,18 +71,57 @@ export function InsuranceUploadLeadsDialog() {
               nominee_relation: row['Nominee Relation'] || row.nominee_relation || null,
               lead_source: row['Lead Source'] || row.lead_source || null,
               status: validStatuses.includes(status.toLowerCase()) ? status.toLowerCase() : 'new',
-              created_by_id: user.id, sales_owner_id: user.id, company_id: company.id,
+              created_by_id: user.id, 
+              pre_sales_owner_id: user.id, // Will be overridden if mapping exists
+              sales_owner_id: user.id, // Will be overridden if mapping exists
+              company_id: company.id,
+              _lead_owner_name: row['Lead Owner'] || row.lead_owner || null,
             };
           }).filter((l: any) => l.phone || l.email);
 
           if (leads.length === 0) { toast.error('No valid leads found.'); setUploading(false); return; }
 
-          let cp = { total: leads.length, processed: 0, success: 0, duplicates: 0, errors: 0 };
+          // Fetch user profiles to map Lead Owner names to IDs
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('company_id', company.id);
+
+          const profileMap = new Map<string, string>();
+          if (profilesData) {
+            profilesData.forEach(p => {
+              if (p.full_name) {
+                profileMap.set(p.full_name.toLowerCase().trim(), p.id);
+              }
+            });
+          }
+
+          const enrichedLeads = leads.map((lead: any) => {
+            const { _lead_owner_name, ...rest } = lead;
+            let ownerId = user.id;
+
+            if (_lead_owner_name) {
+              const foundId = profileMap.get(_lead_owner_name.toLowerCase().trim());
+              if (foundId) {
+                ownerId = foundId;
+              } else {
+                console.warn(`Could not find user with name "${_lead_owner_name}". Defaulting to current user.`);
+              }
+            }
+
+            return {
+              ...rest,
+              pre_sales_owner_id: ownerId,
+              sales_owner_id: ownerId,
+            };
+          });
+
+          let cp = { total: enrichedLeads.length, processed: 0, success: 0, duplicates: 0, errors: 0 };
           setProgress(cp);
 
-          for (let i = 0; i < leads.length; i += BATCH_SIZE) {
+          for (let i = 0; i < enrichedLeads.length; i += BATCH_SIZE) {
             if (abortRef.current) break;
-            const batch = leads.slice(i, i + BATCH_SIZE);
+            const batch = enrichedLeads.slice(i, i + BATCH_SIZE);
             const results = await Promise.all(batch.map(async (lead: any) => {
               try {
                 const { error } = await supabase.from('leads_insurance' as any).insert(lead);

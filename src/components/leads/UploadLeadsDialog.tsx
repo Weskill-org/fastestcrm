@@ -51,9 +51,9 @@ export function UploadLeadsDialog() {
 
     const handleDownloadFormat = () => {
         const csvContent =
-            'Name,Email,Phone,College,Status,Lead Source\n' +
-            'John Doe,john@example.com,9876543210,Example University,new,Website\n' +
-            'Jane Smith,jane@test.com,9123456780,Tech Institute,interested,Referral';
+            'Name,Email,Phone,College,Status,Lead Source,Lead Owner\n' +
+            'John Doe,john@example.com,9876543210,Example University,new,Website,Jane Smith\n' +
+            'Jane Smith,jane@test.com,9123456780,Tech Institute,interested,Referral,John Doe';
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -132,6 +132,7 @@ export function UploadLeadsDialog() {
                             created_by_id: user.id,
                             sales_owner_id: user.id,
                             company_id: company.id,
+                            _lead_owner_name: row['Lead Owner'] || row.lead_owner || null,
                         };
                     }).filter((lead: any) => lead.phone);
 
@@ -141,8 +142,44 @@ export function UploadLeadsDialog() {
                         return;
                     }
 
+                    // Fetch user profiles to map Lead Owner names to IDs
+                    const { data: profilesData } = await supabase
+                        .from('profiles')
+                        .select('id, full_name')
+                        .eq('company_id', company.id);
+
+                    const profileMap = new Map<string, string>();
+                    if (profilesData) {
+                        profilesData.forEach(p => {
+                            if (p.full_name) {
+                                profileMap.set(p.full_name.toLowerCase().trim(), p.id);
+                            }
+                        });
+                    }
+
+                    const enrichedLeads = leads.map((lead: any) => {
+                        const { _lead_owner_name, ...rest } = lead;
+                        let ownerId = user.id;
+
+                        if (_lead_owner_name) {
+                            const foundId = profileMap.get(_lead_owner_name.toLowerCase().trim());
+                            if (foundId) {
+                                ownerId = foundId;
+                            } else {
+                                console.warn(`Could not find user with name "${_lead_owner_name}". Defaulting to current user.`);
+                            }
+                        }
+
+                        // NOTE: If this schema also has pre_sales_owner_id / post_sales_owner_id, we would map them here. 
+                        // Right now generic leads mostly rely on sales_owner_id. Let's map it safely.
+                        return {
+                            ...rest,
+                            sales_owner_id: ownerId,
+                        };
+                    });
+
                     let currentProgress: UploadProgress = {
-                        total: leads.length,
+                        total: enrichedLeads.length,
                         processed: 0,
                         success: 0,
                         duplicates: 0,
@@ -151,13 +188,13 @@ export function UploadLeadsDialog() {
                     setProgress(currentProgress);
 
                     // Process in batches
-                    for (let i = 0; i < leads.length; i += BATCH_SIZE) {
+                    for (let i = 0; i < enrichedLeads.length; i += BATCH_SIZE) {
                         if (abortRef.current) {
                             toast.info('Upload cancelled');
                             break;
                         }
 
-                        const batch = leads.slice(i, i + BATCH_SIZE);
+                        const batch = enrichedLeads.slice(i, i + BATCH_SIZE);
                         currentProgress = await processBatch(batch, currentProgress);
                         setProgress({ ...currentProgress });
                     }

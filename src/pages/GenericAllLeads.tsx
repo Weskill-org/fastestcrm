@@ -265,8 +265,8 @@ export default function GenericAllLeads() {
             } else if (newStatus && newStatus.status_type === 'simple') {
                 updates.reminder_at = null;
             }
-            if (metadata && typeof metadata.send_web_push === 'boolean') {
-                updates.send_web_push = metadata.send_web_push;
+            if (metadata && metadata.send_web_push === true) {
+                updates.send_web_push = true;
             }
 
             const { error } = await supabase

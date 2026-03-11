@@ -36,9 +36,9 @@ export function SaaSUploadLeadsDialog() {
 
   const handleDownloadFormat = () => {
     const csvContent =
-      'Name,Email,Phone,WhatsApp,Company Name,Company Size,Company Website,Job Title,Product Interest,Plan Type,Seats,MRR,Deal Stage,Current Solution,Status,Lead Source\n' +
-      'John Doe,john@acme.com,9876543210,9876543210,Acme Corp,51-200,https://acme.com,CTO,Enterprise Plan,Professional,25,50000,demo,Competitor X,new,Website\n' +
-      'Jane Smith,jane@startup.io,9123456780,,StartupIO,11-50,https://startup.io,VP Engineering,Starter,Starter,5,15000,discovery,,mql,LinkedIn';
+      'Name,Email,Phone,WhatsApp,Company Name,Company Size,Company Website,Job Title,Product Interest,Plan Type,Seats,MRR,Deal Stage,Current Solution,Status,Lead Source,Lead Owner\n' +
+      'John Doe,john@acme.com,9876543210,9876543210,Acme Corp,51-200,https://acme.com,CTO,Enterprise Plan,Professional,25,50000,demo,Competitor X,new,Website,Jane Smith\n' +
+      'Jane Smith,jane@startup.io,9123456780,,StartupIO,11-50,https://startup.io,VP Engineering,Starter,Starter,5,15000,discovery,,mql,LinkedIn,John Doe';
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -96,8 +96,10 @@ export function SaaSUploadLeadsDialog() {
               lead_source: row['Lead Source'] || row.lead_source || null,
               status: validStatus,
               created_by_id: user.id,
-              sales_owner_id: user.id,
+              pre_sales_owner_id: user.id, // Will be overridden if mapping exists
+              sales_owner_id: user.id, // Will be overridden if mapping exists
               company_id: company.id,
+              _lead_owner_name: row['Lead Owner'] || row.lead_owner || null,
             };
           }).filter((lead: any) => lead.phone || lead.email);
 
@@ -107,12 +109,47 @@ export function SaaSUploadLeadsDialog() {
             return;
           }
 
-          let currentProgress: UploadProgress = { total: leads.length, processed: 0, success: 0, duplicates: 0, errors: 0 };
+          // Fetch user profiles to map Lead Owner names to IDs
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('company_id', company.id);
+
+          const profileMap = new Map<string, string>();
+          if (profilesData) {
+            profilesData.forEach(p => {
+              if (p.full_name) {
+                profileMap.set(p.full_name.toLowerCase().trim(), p.id);
+              }
+            });
+          }
+
+          const enrichedLeads = leads.map((lead: any) => {
+            const { _lead_owner_name, ...rest } = lead;
+            let ownerId = user.id;
+
+            if (_lead_owner_name) {
+              const foundId = profileMap.get(_lead_owner_name.toLowerCase().trim());
+              if (foundId) {
+                ownerId = foundId;
+              } else {
+                console.warn(`Could not find user with name "${_lead_owner_name}". Defaulting to current user.`);
+              }
+            }
+
+            return {
+              ...rest,
+              pre_sales_owner_id: ownerId,
+              sales_owner_id: ownerId,
+            };
+          });
+
+          let currentProgress: UploadProgress = { total: enrichedLeads.length, processed: 0, success: 0, duplicates: 0, errors: 0 };
           setProgress(currentProgress);
 
-          for (let i = 0; i < leads.length; i += BATCH_SIZE) {
+          for (let i = 0; i < enrichedLeads.length; i += BATCH_SIZE) {
             if (abortRef.current) break;
-            const batch = leads.slice(i, i + BATCH_SIZE);
+            const batch = enrichedLeads.slice(i, i + BATCH_SIZE);
             const results = await Promise.all(batch.map(async (lead: any) => {
               try {
                 const { error } = await supabase.from('leads_saas' as any).insert(lead);

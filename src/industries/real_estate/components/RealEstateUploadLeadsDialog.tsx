@@ -48,9 +48,9 @@ export function RealEstateUploadLeadsDialog() {
 
     const handleDownloadFormat = () => {
         const csvContent =
-            'Name,Email,Phone,WhatsApp,Property Type,Budget Min,Budget Max,Preferred Location,Property Size,Purpose,Possession Timeline,Broker Name,Property Name,Unit Number,Status,Lead Source\n' +
-            'John Doe,john@example.com,9876543210,9876543210,Apartment/Flat,5000000,8000000,Mumbai,1200 sq ft,buy,3-6 months,Agent Name,Green Valley,A-101,new,Website\n' +
-            'Jane Smith,jane@test.com,9123456780,9123456780,Villa,10000000,15000000,Pune,2500 sq ft,invest,Ready to move,,Sunrise Heights,,contacted,Referral';
+            'Name,Email,Phone,WhatsApp,Property Type,Budget Min,Budget Max,Preferred Location,Property Size,Purpose,Possession Timeline,Broker Name,Property Name,Unit Number,Status,Lead Source,Lead Owner\n' +
+            'John Doe,john@example.com,9876543210,9876543210,Apartment/Flat,5000000,8000000,Mumbai,1200 sq ft,buy,3-6 months,Agent Name,Green Valley,A-101,new,Website,Jane Smith\n' +
+            'Jane Smith,jane@test.com,9123456780,9123456780,Villa,10000000,15000000,Pune,2500 sq ft,invest,Ready to move,,Sunrise Heights,,contacted,Referral,John Doe';
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -157,8 +157,10 @@ export function RealEstateUploadLeadsDialog() {
                             lead_source: row['Lead Source'] || row.lead_source || null,
                             status: validStatus,
                             created_by_id: user.id,
-                            pre_sales_owner_id: user.id,
+                            pre_sales_owner_id: user.id, // Will be overridden if mapping exists
+                            sales_owner_id: user.id, // Will be overridden if mapping exists
                             company_id: company.id,
+                            _lead_owner_name: row['Lead Owner'] || row.lead_owner || null,
                         };
                     }).filter((lead: any) => lead.phone || lead.email);
 
@@ -168,8 +170,43 @@ export function RealEstateUploadLeadsDialog() {
                         return;
                     }
 
+                    // Fetch user profiles to map Lead Owner names to IDs
+                    const { data: profilesData } = await supabase
+                        .from('profiles')
+                        .select('id, full_name')
+                        .eq('company_id', company.id);
+
+                    const profileMap = new Map<string, string>();
+                    if (profilesData) {
+                        profilesData.forEach(p => {
+                            if (p.full_name) {
+                                profileMap.set(p.full_name.toLowerCase().trim(), p.id);
+                            }
+                        });
+                    }
+
+                    const enrichedLeads = leads.map((lead: any) => {
+                        const { _lead_owner_name, ...rest } = lead;
+                        let ownerId = user.id;
+
+                        if (_lead_owner_name) {
+                            const foundId = profileMap.get(_lead_owner_name.toLowerCase().trim());
+                            if (foundId) {
+                                ownerId = foundId;
+                            } else {
+                                console.warn(`Could not find user with name "${_lead_owner_name}". Defaulting to current user.`);
+                            }
+                        }
+
+                        return {
+                            ...rest,
+                            pre_sales_owner_id: ownerId,
+                            sales_owner_id: ownerId,
+                        };
+                    });
+
                     let currentProgress: UploadProgress = {
-                        total: leads.length,
+                        total: enrichedLeads.length,
                         processed: 0,
                         success: 0,
                         duplicates: 0,
@@ -177,13 +214,13 @@ export function RealEstateUploadLeadsDialog() {
                     };
                     setProgress(currentProgress);
 
-                    for (let i = 0; i < leads.length; i += BATCH_SIZE) {
+                    for (let i = 0; i < enrichedLeads.length; i += BATCH_SIZE) {
                         if (abortRef.current) {
                             toast.info('Upload cancelled');
                             break;
                         }
 
-                        const batch = leads.slice(i, i + BATCH_SIZE);
+                        const batch = enrichedLeads.slice(i, i + BATCH_SIZE);
                         currentProgress = await processBatch(batch, currentProgress);
                         setProgress({ ...currentProgress });
                     }
