@@ -63,6 +63,7 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
     const [statusReminderOpen, setStatusReminderOpen] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
     const [reminderAt, setReminderAt] = useState<Date | null>(null);
+    const [sendWebPush, setSendWebPush] = useState(false);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -92,6 +93,7 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
         if (pendingStatus) {
             form.setValue('status', pendingStatus.value);
             setReminderAt(date);
+            setSendWebPush(sendNotification);
         }
         setStatusReminderOpen(false);
         setPendingStatus(null);
@@ -120,6 +122,7 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
                 sales_owner_id: user.id,
                 company_id: company.id,
                 reminder_at: reminderAt ? reminderAt.toISOString() : null,
+                send_web_push: reminderAt ? sendWebPush : false,
             });
             toast.success('Lead added successfully');
             setOpen(false);

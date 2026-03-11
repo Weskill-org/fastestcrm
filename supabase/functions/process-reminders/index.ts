@@ -1,8 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from "../_shared/cors.ts";
 
-
-
 console.log('Hello from process-reminders!')
 
 Deno.serve(async (req) => {
@@ -16,28 +14,29 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+
     const now = new Date().toISOString()
 
     // 1. Process Standard Leads
     const { data: standardLeads, error: leadsError } = await supabaseClient
       .from('leads')
-      .select('id, name, sales_owner_id, reminder_at, last_notification_sent_at')
+      .select('id, name, sales_owner_id, reminder_at, last_notification_sent_at, send_web_push')
       .lte('reminder_at', now)
-      .is('last_notification_sent_at', null) // Only where we haven't sent a notification yet (or logic to retry?)
-    // Actually, we want to send if reminder_at > last_notification_sent_at OR last_notification_sent_at is null
-    // But simple logic: if reminder_at is past, and we haven't sent it yet (or reset it).
-    // When user updates reminder_at, we should probably RESET last_notification_sent_at to null? 
-    // YES. That should be a trigger or manual update. For now assuming last_notification_sent_at is null if new reminder.
+      .is('last_notification_sent_at', null)
 
     if (leadsError) throw leadsError
 
     const notifications: any[] = []
     const processedLeadIds: string[] = []
+    // Track users who should receive a push notification
+    const pushTargets: Map<string, { title: string; body: string }> = new Map()
 
     if (standardLeads && standardLeads.length > 0) {
       console.log(`Found ${standardLeads.length} standard leads to remind`)
       for (const lead of standardLeads) {
-        if (!lead.sales_owner_id) continue // No one to notify
+        if (!lead.sales_owner_id) continue
 
         notifications.push({
           user_id: lead.sales_owner_id,
@@ -48,13 +47,21 @@ Deno.serve(async (req) => {
           created_at: now
         })
         processedLeadIds.push(lead.id)
+
+        // Only queue push if the user opted in
+        if (lead.send_web_push) {
+          pushTargets.set(lead.sales_owner_id, {
+            title: 'Lead Reminder',
+            body: `Reminder for lead: ${lead.name}`,
+          })
+        }
       }
     }
 
     // 2. Process Real Estate Leads
     const { data: realEstateLeads, error: reError } = await supabaseClient
       .from('leads_real_estate')
-      .select('id, name, sales_owner_id, pre_sales_owner_id, post_sales_owner_id, reminder_at, last_notification_sent_at')
+      .select('id, name, sales_owner_id, pre_sales_owner_id, post_sales_owner_id, reminder_at, last_notification_sent_at, send_web_push')
       .lte('reminder_at', now)
       .is('last_notification_sent_at', null)
 
@@ -65,11 +72,6 @@ Deno.serve(async (req) => {
     if (realEstateLeads && realEstateLeads.length > 0) {
       console.log(`Found ${realEstateLeads.length} RE leads to remind`)
       for (const lead of realEstateLeads) {
-        // Determine who to notify. For RE, maybe multiple? Let's just notify sales_owner for now, or pre_sales if sales is null.
-        // Requirement says "Assignee". Let's notify all attached owners?
-        // "We shall get option to set a date & time... in the leads table" - usually the user setting it is the one viewing it.
-        // But we can only notify the assigned owners.
-
         const ownersToNotify = new Set([lead.sales_owner_id, lead.pre_sales_owner_id, lead.post_sales_owner_id].filter(Boolean))
 
         ownersToNotify.forEach(ownerId => {
@@ -81,6 +83,14 @@ Deno.serve(async (req) => {
             type: 'reminder',
             created_at: now
           })
+
+          // Only queue push if user opted in
+          if (lead.send_web_push) {
+            pushTargets.set(ownerId!, {
+              title: 'Lead Reminder',
+              body: `Reminder for lead: ${lead.name}`,
+            })
+          }
         })
         if (ownersToNotify.size > 0) {
           processedReLeadIds.push(lead.id)
@@ -112,7 +122,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, processed: notifications.length }), {
+    // 5. Send Web Push notifications for opted-in users
+    let pushSent = 0
+    for (const [userId, payload] of pushTargets) {
+      try {
+        const pushResponse = await fetch(`${supabaseUrl}/functions/v1/send-web-push`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            title: payload.title,
+            body: payload.body,
+          }),
+        })
+
+        if (pushResponse.ok) {
+          pushSent++
+        } else {
+          console.error(`Push failed for user ${userId}: ${pushResponse.status}`)
+        }
+      } catch (pushError) {
+        console.error(`Error sending push to user ${userId}:`, pushError)
+      }
+    }
+
+    console.log(`Push notifications sent: ${pushSent}/${pushTargets.size}`)
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      notifications_created: notifications.length,
+      pushes_sent: pushSent,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

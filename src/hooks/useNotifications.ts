@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { requestWebNotificationPermission, sendWebNotification } from '@/lib/webNotificationHelper';
+import { subscribeToPush } from '@/lib/pushSubscription';
 
 export interface Notification {
     id: string;
@@ -88,6 +89,10 @@ export function useNotifications() {
             toast.success('Notifications enabled!', {
                 description: 'You will now receive real-time updates.'
             });
+            // Register push subscription so notifications work even when tab is closed
+            if (session?.user?.id) {
+                subscribeToPush(session.user.id).catch(console.error);
+            }
         } else if (status === 'denied') {
             toast.error('Permission Denied', {
                 description: 'Please enable notifications in your browser address bar settings to receive alerts.'
@@ -117,6 +122,9 @@ export function useNotifications() {
                     },
                 });
             }, 3000);
+        } else if (currentStatus === 'granted' && session?.user?.id) {
+            // Auto-register push subscription if permission is already granted
+            subscribeToPush(session.user.id).catch(console.error);
         }
 
         // Subscribe to real-time changes (ALWAYS, regardless of permission status)

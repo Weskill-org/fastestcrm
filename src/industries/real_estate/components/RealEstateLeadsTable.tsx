@@ -217,7 +217,12 @@ export function RealEstateLeadsTable({
       if (metadata) {
         if (metadata.reminder_at) {
           updateData.reminder_at = metadata.reminder_at;
+          updateData.last_notification_sent_at = null;
           delete metadata.reminder_at;
+        }
+        if (typeof metadata.send_web_push === 'boolean') {
+          updateData.send_web_push = metadata.send_web_push;
+          delete metadata.send_web_push;
         }
         if (Object.keys(metadata).length > 0) {
           updateData.status_metadata = metadata;
@@ -251,6 +256,7 @@ export function RealEstateLeadsTable({
     if (dateTime) {
       metadata.reminder_at = dateTime.toISOString();
     }
+    metadata.send_web_push = sendNotification;
 
     await handleStatusChange(pendingStatus.leadId, pendingStatus.status.value, metadata);
     setReminderDialogOpen(false);

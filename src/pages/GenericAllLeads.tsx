@@ -261,8 +261,12 @@ export default function GenericAllLeads() {
             const updates: any = { status: newStatusValue };
             if (metadata && metadata.reminder_at) {
                 updates.reminder_at = metadata.reminder_at;
+                updates.last_notification_sent_at = null; // Reset so process-reminders picks it up
             } else if (newStatus && newStatus.status_type === 'simple') {
                 updates.reminder_at = null;
+            }
+            if (metadata && typeof metadata.send_web_push === 'boolean') {
+                updates.send_web_push = metadata.send_web_push;
             }
 
             const { error } = await supabase
@@ -285,6 +289,7 @@ export default function GenericAllLeads() {
         if (dateTime) {
             metadata.reminder_at = dateTime.toISOString();
         }
+        metadata.send_web_push = sendNotification;
 
         await handleStatusChange(pendingStatus.leadId, pendingStatus.status.value, metadata);
         setReminderDialogOpen(false);

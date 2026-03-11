@@ -95,8 +95,12 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
 
       if (metadata && metadata.reminder_at) {
         updates.reminder_at = metadata.reminder_at;
+        updates.last_notification_sent_at = null;
       } else if (newStatus && newStatus.status_type === 'simple') {
         updates.reminder_at = null;
+      }
+      if (metadata && typeof metadata.send_web_push === 'boolean') {
+        updates.send_web_push = metadata.send_web_push;
       }
 
       await updateLead.mutateAsync(updates);
@@ -113,6 +117,7 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
     if (dateTime) {
       metadata.reminder_at = dateTime.toISOString();
     }
+    metadata.send_web_push = sendNotification;
 
     await handleStatusChange(pendingStatus.leadId, pendingStatus.status.value, metadata);
     setReminderDialogOpen(false);

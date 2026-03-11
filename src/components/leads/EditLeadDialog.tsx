@@ -64,6 +64,7 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
     const [statusReminderOpen, setStatusReminderOpen] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
     const [reminderAt, setReminderAt] = useState<Date | null>(null);
+    const [sendWebPush, setSendWebPush] = useState(false);
 
     // Get unique categories
     const categories = Array.from(new Set(products?.map(p => p.category) || [])).sort();
@@ -123,8 +124,7 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
         if (pendingStatus) {
             form.setValue('status', pendingStatus.value);
             setReminderAt(date);
-            // You might want to save 'sendNotification' somewhere too if backend supports it. 
-            // For now we just use the date.
+            setSendWebPush(sendNotification);
         }
         setStatusReminderOpen(false);
         setPendingStatus(null);
@@ -151,7 +151,9 @@ export function EditLeadDialog({ open, onOpenChange, lead }: EditLeadDialogProps
                 product_category: values.product_category || null,
                 product_purchased: values.product_purchased || null, // This stores the Product Name
                 notes: values.notes || null,
-                reminder_at: reminderAt ? reminderAt.toISOString() : null, // Add reminder_at
+                reminder_at: reminderAt ? reminderAt.toISOString() : null,
+                send_web_push: reminderAt ? sendWebPush : false,
+                last_notification_sent_at: reminderAt ? null : undefined,
             });
             toast.success('Lead updated successfully');
             onOpenChange(false);

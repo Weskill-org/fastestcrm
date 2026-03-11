@@ -72,6 +72,7 @@ export function RealEstateEditLeadDialog({
   const [statusReminderOpen, setStatusReminderOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
   const [reminderAt, setReminderAt] = useState<Date | null>(null);
+  const [sendWebPush, setSendWebPush] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -135,6 +136,7 @@ export function RealEstateEditLeadDialog({
     if (pendingStatus) {
       form.setValue('status', pendingStatus.value);
       setReminderAt(date);
+      setSendWebPush(sendNotification);
     }
     setStatusReminderOpen(false);
     setPendingStatus(null);
@@ -170,6 +172,8 @@ export function RealEstateEditLeadDialog({
           status: values.status,
           lead_source: values.lead_source || null,
           reminder_at: reminderAt ? reminderAt.toISOString() : null,
+          send_web_push: reminderAt ? sendWebPush : false,
+          last_notification_sent_at: reminderAt ? null : undefined,
         })
         .eq('id', lead.id);
 

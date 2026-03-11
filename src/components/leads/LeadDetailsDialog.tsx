@@ -51,6 +51,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
     const [statusReminderOpen, setStatusReminderOpen] = useState(false);
     const [pendingStatus, setPendingStatus] = useState<CompanyLeadStatus | null>(null);
     const [reminderAt, setReminderAt] = useState<Date | null>(null);
+    const [sendWebPush, setSendWebPush] = useState(false);
 
     useEffect(() => {
         if (lead) {
@@ -77,6 +78,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
         if (pendingStatus) {
             setQuickStatus(pendingStatus.value);
             setReminderAt(date);
+            setSendWebPush(sendNotification);
         }
         setStatusReminderOpen(false);
         setPendingStatus(null);
@@ -95,6 +97,8 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
                 status: quickStatus as any,
                 notes: quickNotes,
                 reminder_at: reminderAt ? reminderAt.toISOString() : (lead.status === quickStatus ? lead.reminder_at : null),
+                send_web_push: reminderAt ? sendWebPush : false,
+                last_notification_sent_at: reminderAt ? null : undefined,
             });
             toast.success('Lead updated successfully');
             if (onUpdate) onUpdate();
