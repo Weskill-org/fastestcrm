@@ -98,6 +98,10 @@ export function LeadsTable({ leads, loading, selectedLeads, onSelectionChange, o
       } else if (newStatus && newStatus.status_type === 'simple') {
         updates.reminder_at = null;
       }
+      if (metadata && metadata.send_web_push === true) {
+        updates.send_web_push = true;
+        updates.last_notification_sent_at = null;
+      }
 
       await updateLead.mutateAsync(updates);
       toast.success('Status updated successfully');

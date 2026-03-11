@@ -264,6 +264,11 @@ export default function GenericAllLeads() {
             } else if (newStatus && newStatus.status_type === 'simple') {
                 updates.reminder_at = null;
             }
+            // Re-enabled: only send if true to ensure pick-up by cron
+            if (metadata && metadata.send_web_push === true) {
+                updates.send_web_push = true;
+                updates.last_notification_sent_at = null;
+            }
 
             const { error } = await supabase
                 .from(tableName as any)

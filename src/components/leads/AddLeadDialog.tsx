@@ -122,6 +122,7 @@ export function AddLeadDialog({ open: controlledOpen, onOpenChange, trigger }: A
                 sales_owner_id: user.id,
                 company_id: company.id,
                 reminder_at: reminderAt ? reminderAt.toISOString() : null,
+                ...(reminderAt && sendWebPush ? { send_web_push: true } : {}),
             });
             toast.success('Lead added successfully');
             setOpen(false);

@@ -97,6 +97,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead, owners, maskLeads 
                 status: quickStatus as any,
                 notes: quickNotes,
                 reminder_at: reminderAt ? reminderAt.toISOString() : (lead.status === quickStatus ? lead.reminder_at : null),
+                ...(reminderAt && sendWebPush ? { send_web_push: true, last_notification_sent_at: null } : {}),
             });
             toast.success('Lead updated successfully');
             if (onUpdate) onUpdate();

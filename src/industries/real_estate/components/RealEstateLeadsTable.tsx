@@ -219,6 +219,10 @@ export function RealEstateLeadsTable({
           updateData.reminder_at = metadata.reminder_at;
           delete metadata.reminder_at;
         }
+        if (metadata.send_web_push === true) {
+          updateData.send_web_push = true;
+          updateData.last_notification_sent_at = null;
+        }
         delete metadata.send_web_push;
         if (Object.keys(metadata).length > 0) {
           updateData.status_metadata = metadata;
