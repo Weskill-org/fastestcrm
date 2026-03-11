@@ -111,6 +111,7 @@ export function RealEstateAddLeadDialog({ open: controlledOpen, onOpenChange, tr
           status: values.status,
           lead_source: values.lead_source || null,
           created_by_id: user.id,
+          pre_sales_owner_id: user.id,
           sales_owner_id: user.id,
           company_id: company.id,
         });
