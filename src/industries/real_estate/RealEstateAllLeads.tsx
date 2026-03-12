@@ -135,7 +135,10 @@ export default function RealEstateAllLeads() {
         : [];
 
       return {
-        owners: activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id })),
+        owners: [
+          { label: 'Unassigned', value: 'unassigned' },
+          ...activeOwners.map(o => ({ label: o.full_name || 'Unknown', value: o.id }))
+        ],
         statuses,
         propertyTypes: REAL_ESTATE_PROPERTY_TYPES.map(t => ({ label: t, value: t })),
       };
@@ -143,6 +146,10 @@ export default function RealEstateAllLeads() {
     enabled: !!company?.id,
     staleTime: 1000 * 60 * 5, // Cache filter options for 5 minutes
   });
+
+  const activeOwnerIds = (filterOptions?.owners ?? [])
+    .filter(o => o.value !== 'unassigned')
+    .map(o => o.value);
 
   const { data: leadsData, isLoading, refetch } = useRealEstateLeads({
     search: debouncedSearchQuery,
@@ -152,7 +159,8 @@ export default function RealEstateAllLeads() {
     page,
     pageSize,
     accessibleUserIds,
-    canViewAll
+    canViewAll,
+    activeOwnerIds
   });
 
   const leads = leadsData?.leads || [];

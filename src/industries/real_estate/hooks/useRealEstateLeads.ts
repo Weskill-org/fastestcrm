@@ -12,6 +12,7 @@ interface UseRealEstateLeadsOptions {
   pageSize?: number;
   accessibleUserIds?: string[];
   canViewAll?: boolean;
+  activeOwnerIds?: string[];
 }
 
 export function useRealEstateLeads({
@@ -23,6 +24,7 @@ export function useRealEstateLeads({
   pageSize = 25,
   accessibleUserIds = [],
   canViewAll = true,
+  activeOwnerIds = [],
 }: UseRealEstateLeadsOptions = {}) {
   const { company, loading: companyLoading } = useCompany();
 
@@ -37,7 +39,8 @@ export function useRealEstateLeads({
       pageSize,
       company?.id,
       accessibleUserIds,
-      canViewAll
+      canViewAll,
+      activeOwnerIds
     ],
     queryFn: async (): Promise<{ leads: RealEstateLead[]; count: number }> => {
       if (!company?.id) {
@@ -63,7 +66,26 @@ export function useRealEstateLeads({
       }
 
       if (ownerFilter && ownerFilter.length > 0) {
-        query = query.in('sales_owner_id', ownerFilter);
+        const hasUnassigned = ownerFilter.includes('unassigned');
+        const realOwnerIds = ownerFilter.filter(id => id !== 'unassigned');
+        if (hasUnassigned) {
+          if (activeOwnerIds && activeOwnerIds.length > 0) {
+            const activeIdList = activeOwnerIds.join(',');
+            if (realOwnerIds.length > 0) {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList}),sales_owner_id.in.(${realOwnerIds.join(',')})`);
+            } else {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.not.in.(${activeIdList})`);
+            }
+          } else {
+            if (realOwnerIds.length > 0) {
+              query = query.or(`sales_owner_id.is.null,sales_owner_id.in.(${realOwnerIds.join(',')})`);
+            } else {
+              query = query.is('sales_owner_id', null);
+            }
+          }
+        } else {
+          query = query.in('sales_owner_id', realOwnerIds);
+        }
       }
 
       if (propertyTypeFilter && propertyTypeFilter.length > 0) {
