@@ -88,77 +88,150 @@ serve(async (req) => {
 
     // Determine the fallback ID for mandatory fields (like created_by_id) when reassignToId is null
     const mandatoryReassignId = reassignToId || requester.id;
+    const errors: string[] = [];
 
-    // 1. Handle reassignment of forms created by the user
-    const { error: formsError } = await supabaseAdmin
+    // ========================================================
+    // GROUP 1: Reassign leads across ALL industry tables
+    // Leads are NEVER deleted — only reassigned.
+    // created_by_id is NOT NULL so uses mandatoryReassignId;
+    // owner columns are nullable so use reassignToId (may be null).
+    // ========================================================
+    const leadTables = [
+      "leads",
+      "leads_healthcare",
+      "leads_insurance",
+      "leads_real_estate",
+      "leads_saas",
+      "leads_travel",
+    ];
+
+    for (const table of leadTables) {
+      // created_by_id (NOT NULL — must have a value)
+      const { error: e1 } = await supabaseAdmin
+        .from(table)
+        .update({ created_by_id: mandatoryReassignId })
+        .eq("created_by_id", targetUserId);
+      if (e1) { console.error(`[${table}] created_by_id:`, e1.message); errors.push(`${table}.created_by_id`); }
+
+      // sales_owner_id (nullable)
+      const { error: e2 } = await supabaseAdmin
+        .from(table)
+        .update({ sales_owner_id: reassignToId })
+        .eq("sales_owner_id", targetUserId);
+      if (e2) { console.error(`[${table}] sales_owner_id:`, e2.message); errors.push(`${table}.sales_owner_id`); }
+
+      // pre_sales_owner_id (nullable)
+      const { error: e3 } = await supabaseAdmin
+        .from(table)
+        .update({ pre_sales_owner_id: reassignToId })
+        .eq("pre_sales_owner_id", targetUserId);
+      if (e3) { console.error(`[${table}] pre_sales_owner_id:`, e3.message); errors.push(`${table}.pre_sales_owner_id`); }
+
+      // post_sales_owner_id (nullable)
+      const { error: e4 } = await supabaseAdmin
+        .from(table)
+        .update({ post_sales_owner_id: reassignToId })
+        .eq("post_sales_owner_id", targetUserId);
+      if (e4) { console.error(`[${table}] post_sales_owner_id:`, e4.message); errors.push(`${table}.post_sales_owner_id`); }
+    }
+
+    // ========================================================
+    // GROUP 2: Reassign forms and lg_links ownership
+    // ========================================================
+    const { error: formsErr } = await supabaseAdmin
       .from("forms")
       .update({ created_by_id: mandatoryReassignId })
       .eq("created_by_id", targetUserId);
+    if (formsErr) { console.error("[forms]:", formsErr.message); errors.push("forms.created_by_id"); }
 
-    if (formsError) {
-      console.error("Error reassigning user forms:", formsError);
-      throw new Error("Failed to reassign user forms: " + formsError.message);
-    }
-
-    // 2. Handle reassignment of leads (sales_owner_id, pre_sales_owner_id, post_sales_owner_id, created_by_id)
-    const { error: leadCreatedByError } = await supabaseAdmin
-      .from("leads")
+    const { error: lgLinksErr } = await supabaseAdmin
+      .from("lg_links")
       .update({ created_by_id: mandatoryReassignId })
       .eq("created_by_id", targetUserId);
-    
-    if (leadCreatedByError) {
-      console.error("Error reassigning lead created_by_id:", leadCreatedByError);
-    }
+    if (lgLinksErr) { console.error("[lg_links]:", lgLinksErr.message); errors.push("lg_links.created_by_id"); }
 
-    const { error: leadSalesAssignError } = await supabaseAdmin
-      .from("leads")
-      .update({ sales_owner_id: reassignToId })
-      .eq("sales_owner_id", targetUserId);
-
-    if (leadSalesAssignError) {
-      console.error("Error reassigning sales_owner_id:", leadSalesAssignError);
-    }
-
-    const { error: leadPreSalesAssignError } = await supabaseAdmin
-      .from("leads")
-      .update({ pre_sales_owner_id: reassignToId })
-      .eq("pre_sales_owner_id", targetUserId);
-
-    if (leadPreSalesAssignError) {
-      console.error("Error reassigning pre_sales_owner_id:", leadPreSalesAssignError);
-    }
-
-    const { error: leadPostSalesAssignError } = await supabaseAdmin
-      .from("leads")
-      .update({ post_sales_owner_id: reassignToId })
-      .eq("post_sales_owner_id", targetUserId);
-
-    if (leadPostSalesAssignError) {
-      console.error("Error reassigning post_sales_owner_id:", leadPostSalesAssignError);
-    }
-
-    // 3. Handle reassignment of users reporting to the deleted manager
-    const { error: profilesManagerError } = await supabaseAdmin
+    // ========================================================
+    // GROUP 3: Reassign direct reports (manager_id)
+    // ========================================================
+    const { error: mgrErr } = await supabaseAdmin
       .from("profiles")
       .update({ manager_id: reassignToId })
       .eq("manager_id", targetUserId);
+    if (mgrErr) { console.error("[profiles.manager_id]:", mgrErr.message); errors.push("profiles.manager_id"); }
 
-    if (profilesManagerError) {
-      console.error("Error reassigning direct reports:", profilesManagerError);
+    // ========================================================
+    // GROUP 4: Delete user-owned auxiliary data
+    // These are non-critical records that belong solely to the user.
+    // ========================================================
+    const deleteTables = [
+      "automations",
+      "booking_pages",
+      "calendar_connections",
+      "calendar_events",
+      "email_aliases",
+      "notifications",
+      "announcement_reads",
+      "user_stats",
+      "integration_api_keys",
+    ];
+
+    for (const table of deleteTables) {
+      const { error } = await supabaseAdmin
+        .from(table)
+        .delete()
+        .eq("user_id", targetUserId);
+      if (error) { console.error(`[${table}] delete:`, error.message); errors.push(`${table} delete`); }
     }
 
-    // 4. Delete user from auth (this will cascade to profiles due to FK)
+    // features_unlocked: set unlocked_by to null (preserve purchase record)
+    const { error: featErr } = await supabaseAdmin
+      .from("features_unlocked")
+      .update({ unlocked_by: null })
+      .eq("unlocked_by", targetUserId);
+    if (featErr) { console.error("[features_unlocked]:", featErr.message); errors.push("features_unlocked"); }
+
+    // ========================================================
+    // GROUP 5: Final cleanup — delete user_roles, profile, auth user
+    // Order matters: user_roles → profiles → auth.users
+    // We delete profiles explicitly so the auth cascade doesn't
+    // trip over remaining FK references.
+    // ========================================================
+    const { error: rolesErr } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", targetUserId);
+    if (rolesErr) { console.error("[user_roles]:", rolesErr.message); errors.push("user_roles"); }
+
+    // Explicitly delete the profile row before auth deletion
+    const { error: profileDeleteErr } = await supabaseAdmin
+      .from("profiles")
+      .delete()
+      .eq("id", targetUserId);
+    if (profileDeleteErr) {
+      console.error("[profiles] delete:", profileDeleteErr.message);
+      // This is critical — if profile can't be deleted, auth delete will also fail
+      throw new Error("Failed to delete user profile: " + profileDeleteErr.message);
+    }
+
+    // Delete from Supabase Auth
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
-
     if (deleteError) {
-      console.error("Delete error:", deleteError);
-      throw new Error("Failed to delete user: " + deleteError.message);
+      console.error("Auth delete error:", deleteError);
+      throw new Error("Failed to delete user from auth: " + deleteError.message);
     }
 
-    // Also clean up user_roles (might not cascade automatically)
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", targetUserId);
+    // Decrement used_licenses count for the company
+    if (targetProfile.company_id) {
+      const { error: licErr } = await supabaseAdmin.rpc("decrement_used_licenses", {
+        _company_id: targetProfile.company_id,
+      });
+      if (licErr) {
+        console.error("[decrement_used_licenses]:", licErr.message);
+        // Non-critical: user is already deleted, just log it
+      }
+    }
 
-    console.log(`User ${targetUserId} deleted by ${requester.id}`);
+    console.log(`User ${targetUserId} deleted by ${requester.id}. Non-critical issues: [${errors.join(", ")}]`);
 
     return new Response(
       JSON.stringify({ success: true }),
