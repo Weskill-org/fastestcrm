@@ -32,7 +32,7 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { targetUserId } = await req.json();
+    const { targetUserId, reassignToId = null } = await req.json();
     if (!targetUserId) {
       throw new Error("Missing targetUserId");
     }
@@ -40,6 +40,11 @@ serve(async (req) => {
     // Prevent self-deletion
     if (targetUserId === requester.id) {
       throw new Error("You cannot delete yourself");
+    }
+
+    // Prevent circular reassignment
+    if (targetUserId === reassignToId) {
+      throw new Error("You cannot reassign leads/forms to the user being deleted");
     }
 
     // Fetch requester info and target info in parallel
@@ -81,20 +86,62 @@ serve(async (req) => {
       throw new Error("You can only delete team members below your level");
     }
 
-    // 1. Delete all forms created by this user
-    const { error: formsError } = await supabaseAdmin
-      .from("forms")
-      .delete()
-      .eq("created_by_id", targetUserId);
+    // 1. Handle reassignment of forms created by the user
+    if (reassignToId) {
+      const { error: formsError } = await supabaseAdmin
+        .from("forms")
+        .update({ created_by_id: reassignToId })
+        .eq("created_by_id", targetUserId);
 
-    if (formsError) {
-      console.error("Error deleting user forms:", formsError);
-      // We continue even if this fails? Or fail? 
-      // Safest is to fail so we don't leave partial state or fail at the next step anyway.
-      throw new Error("Failed to delete user forms: " + formsError.message);
+      if (formsError) {
+        console.error("Error reassigning user forms:", formsError);
+        throw new Error("Failed to reassign user forms: " + formsError.message);
+      }
+    } else {
+      // If "Unassigned", the column must be nullable. Assuming it's nullable or we just leave it alone?
+      // "forms" may have created_by_id as nullable or not. Let's make it explicitly null if requested unassigned.
+      const { error: formsError } = await supabaseAdmin
+        .from("forms")
+        .update({ created_by_id: null })
+        .eq("created_by_id", targetUserId);
+
+      if (formsError) {
+          // Fallback if not nullable, we can't do much, leave as is or throw
+          console.error("Error setting forms to unassigned:", formsError);
+      }
     }
 
-    // Delete user from auth (this will cascade to profiles due to FK)
+    // 2. Handle reassignment of leads
+    // Leads can have `assigned_to` and potentially `post_sales_owner_id` (used by realtime leads)
+    const { error: leadAssignError } = await supabaseAdmin
+        .from("leads")
+        .update({ assigned_to: reassignToId })
+        .eq("assigned_to", targetUserId);
+    
+    if (leadAssignError) {
+        console.error("Error reassigning leads:", leadAssignError);
+    }
+    
+    const { error: leadPostSalesAssignError } = await supabaseAdmin
+        .from("leads")
+        .update({ post_sales_owner_id: reassignToId })
+        .eq("post_sales_owner_id", targetUserId);
+    
+    if (leadPostSalesAssignError) {
+        console.error("Error reassigning post-sales leads:", leadPostSalesAssignError);
+    }
+
+    // 3. Handle reassignment of users reporting to the deleted manager
+    const { error: profilesManagerError } = await supabaseAdmin
+        .from("profiles")
+        .update({ manager_id: reassignToId })
+        .eq("manager_id", targetUserId);
+        
+    if (profilesManagerError) {
+        console.error("Error reassigning direct reports:", profilesManagerError);
+    }
+
+    // 4. Delete user from auth (this will cascade to profiles due to FK)
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
 
     if (deleteError) {

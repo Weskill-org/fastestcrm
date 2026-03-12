@@ -348,7 +348,7 @@ export function useTeam() {
     fetchTeam();
   }, [fetchTeam]);
 
-  const deleteMember = async (targetUserId: string) => {
+  const deleteMember = async (targetUserId: string, reassignToId: string | null = null) => {
     if (!user) return { error: new Error('Not authenticated') };
 
     // Optimistic update - remove immediately from UI
@@ -356,7 +356,7 @@ export function useTeam() {
     setMembers(prev => prev.filter(m => m.id !== targetUserId));
 
     const { data, error: funcError } = await supabase.functions.invoke('delete-team-member', {
-      body: { targetUserId }
+      body: { targetUserId, reassignToId }
     });
 
     if (funcError || data?.error) {

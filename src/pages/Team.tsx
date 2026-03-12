@@ -80,6 +80,7 @@ export default function Team() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [reassignToId, setReassignToId] = useState<string>('');
 
     // Invite member state
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -312,7 +313,8 @@ export default function Team() {
     const handleDeleteMember = async () => {
         if (!memberToDelete) return;
         setIsDeleting(true);
-        const { error } = await deleteMember(memberToDelete);
+        const finalReassignId = reassignToId === 'unassigned' ? null : (reassignToId || null);
+        const { error } = await deleteMember(memberToDelete, finalReassignId);
         setIsDeleting(false);
 
         if (error) {
@@ -324,11 +326,12 @@ export default function Team() {
         } else {
             toast({
                 title: "Success",
-                description: "Team member removed successfully.",
+                description: "Team member removed, and data reassigned successfully.",
             });
             setDeleteDialogOpen(false);
             setMemberToDelete(null);
             setSelectedMember(null); // Close the manage dialog too if needed, though state is separate
+            setReassignToId('');
         }
     };
 
@@ -663,19 +666,47 @@ export default function Team() {
                             </div>
 
                             <div className="pt-4 border-t">
-                                <Button
-                                    variant="destructive"
-                                    className="w-full"
-                                    onClick={() => {
-                                        if (selectedMember) {
-                                            setMemberToDelete(selectedMember);
-                                            setDeleteDialogOpen(true);
-                                        }
-                                    }}
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Remove Member
-                                </Button>
+                                <label className="text-sm font-medium mb-2 block text-destructive">
+                                    Danger Zone
+                                </label>
+                                <div className="space-y-3">
+                                    <p className="text-xs text-muted-foreground">
+                                        When removing a member, you must choose what to do with their assigned leads and forms.
+                                    </p>
+                                    <Select
+                                        value={reassignToId}
+                                        onValueChange={(v) => setReassignToId(v)}
+                                    >
+                                        <SelectTrigger className="border-destructive/30 focus:ring-destructive">
+                                            <SelectValue placeholder="Reassign data to..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned">Leave Unassigned</SelectItem>
+                                            {members
+                                                .filter(m => m.id !== selectedMember)
+                                                .map(m => (
+                                                    <SelectItem key={m.id} value={m.id}>
+                                                        {m.full_name || m.email} ({getRoleLabel(m.role)})
+                                                    </SelectItem>
+                                                ))
+                                            }
+                                        </SelectContent>
+                                    </Select>
+                                    <Button
+                                        variant="destructive"
+                                        className="w-full"
+                                        disabled={!reassignToId}
+                                        onClick={() => {
+                                            if (selectedMember) {
+                                                setMemberToDelete(selectedMember);
+                                                setDeleteDialogOpen(true);
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Remove Member
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </DialogContent>
@@ -688,7 +719,7 @@ export default function Team() {
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the team member
-                            and remove their access to the platform.
+                            and transfer any assigned leads and forms to {reassignToId === 'unassigned' ? 'nobody (Unassigned)' : 'the selected member'}.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -700,7 +731,7 @@ export default function Team() {
                             }}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete user & transfer data"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
