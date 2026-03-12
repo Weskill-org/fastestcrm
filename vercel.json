@@ -17,8 +17,8 @@
             "destination": "/api/submit-external-lead"
         },
         {
-            "source": "/functions/:path*",
-            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/:path*"
+            "source": "/functions/v1/:path*",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/:path*"
         },
         {
             "source": "/((?!api/).*)",

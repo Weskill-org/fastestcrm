@@ -86,65 +86,59 @@ serve(async (req) => {
       throw new Error("You can only delete team members below your level");
     }
 
-    // Determine the fallback ID for mandatory fields (like created_by_id) when reassignToId is null
-    const mandatoryReassignId = reassignToId || requester.id;
-
     // 1. Handle reassignment of forms created by the user
-    const { error: formsError } = await supabaseAdmin
-      .from("forms")
-      .update({ created_by_id: mandatoryReassignId })
-      .eq("created_by_id", targetUserId);
+    if (reassignToId) {
+      const { error: formsError } = await supabaseAdmin
+        .from("forms")
+        .update({ created_by_id: reassignToId })
+        .eq("created_by_id", targetUserId);
 
-    if (formsError) {
-      console.error("Error reassigning user forms:", formsError);
-      throw new Error("Failed to reassign user forms: " + formsError.message);
+      if (formsError) {
+        console.error("Error reassigning user forms:", formsError);
+        throw new Error("Failed to reassign user forms: " + formsError.message);
+      }
+    } else {
+      // If "Unassigned", the column must be nullable. Assuming it's nullable or we just leave it alone?
+      // "forms" may have created_by_id as nullable or not. Let's make it explicitly null if requested unassigned.
+      const { error: formsError } = await supabaseAdmin
+        .from("forms")
+        .update({ created_by_id: null })
+        .eq("created_by_id", targetUserId);
+
+      if (formsError) {
+          // Fallback if not nullable, we can't do much, leave as is or throw
+          console.error("Error setting forms to unassigned:", formsError);
+      }
     }
 
-    // 2. Handle reassignment of leads (sales_owner_id, pre_sales_owner_id, post_sales_owner_id, created_by_id)
-    const { error: leadCreatedByError } = await supabaseAdmin
-      .from("leads")
-      .update({ created_by_id: mandatoryReassignId })
-      .eq("created_by_id", targetUserId);
+    // 2. Handle reassignment of leads
+    // Leads can have `assigned_to` and potentially `post_sales_owner_id` (used by realtime leads)
+    const { error: leadAssignError } = await supabaseAdmin
+        .from("leads")
+        .update({ assigned_to: reassignToId })
+        .eq("assigned_to", targetUserId);
     
-    if (leadCreatedByError) {
-      console.error("Error reassigning lead created_by_id:", leadCreatedByError);
+    if (leadAssignError) {
+        console.error("Error reassigning leads:", leadAssignError);
     }
-
-    const { error: leadSalesAssignError } = await supabaseAdmin
-      .from("leads")
-      .update({ sales_owner_id: reassignToId })
-      .eq("sales_owner_id", targetUserId);
-
-    if (leadSalesAssignError) {
-      console.error("Error reassigning sales_owner_id:", leadSalesAssignError);
-    }
-
-    const { error: leadPreSalesAssignError } = await supabaseAdmin
-      .from("leads")
-      .update({ pre_sales_owner_id: reassignToId })
-      .eq("pre_sales_owner_id", targetUserId);
-
-    if (leadPreSalesAssignError) {
-      console.error("Error reassigning pre_sales_owner_id:", leadPreSalesAssignError);
-    }
-
+    
     const { error: leadPostSalesAssignError } = await supabaseAdmin
-      .from("leads")
-      .update({ post_sales_owner_id: reassignToId })
-      .eq("post_sales_owner_id", targetUserId);
-
+        .from("leads")
+        .update({ post_sales_owner_id: reassignToId })
+        .eq("post_sales_owner_id", targetUserId);
+    
     if (leadPostSalesAssignError) {
-      console.error("Error reassigning post_sales_owner_id:", leadPostSalesAssignError);
+        console.error("Error reassigning post-sales leads:", leadPostSalesAssignError);
     }
 
     // 3. Handle reassignment of users reporting to the deleted manager
     const { error: profilesManagerError } = await supabaseAdmin
-      .from("profiles")
-      .update({ manager_id: reassignToId })
-      .eq("manager_id", targetUserId);
-
+        .from("profiles")
+        .update({ manager_id: reassignToId })
+        .eq("manager_id", targetUserId);
+        
     if (profilesManagerError) {
-      console.error("Error reassigning direct reports:", profilesManagerError);
+        console.error("Error reassigning direct reports:", profilesManagerError);
     }
 
     // 4. Delete user from auth (this will cascade to profiles due to FK)

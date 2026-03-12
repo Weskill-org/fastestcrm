@@ -1,0 +1,579 @@
+commit 40e029a3a01a5a332c436ed271165d744bc80553
+Author: Prashant Prakash Dubey™ <ppdubey98@gmail.com>
+Date:   Thu Mar 12 12:22:27 2026 +0530
+
+    v1232026 updating deletion of user
+
+diff --git a/supabase/functions/delete-team-member/index.ts b/supabase/functions/delete-team-member/index.ts
+index c6fc015..d03397a 100644
+--- a/supabase/functions/delete-team-member/index.ts
++++ b/supabase/functions/delete-team-member/index.ts
+@@ -32,7 +32,7 @@ serve(async (req) => {
+       throw new Error("Unauthorized");
+     }
+ 
+-    const { targetUserId } = await req.json();
++    const { targetUserId, reassignToId = null } = await req.json();
+     if (!targetUserId) {
+       throw new Error("Missing targetUserId");
+     }
+@@ -42,6 +42,11 @@ serve(async (req) => {
+       throw new Error("You cannot delete yourself");
+     }
+ 
++    // Prevent circular reassignment
++    if (targetUserId === reassignToId) {
++      throw new Error("You cannot reassign leads/forms to the user being deleted");
++    }
++
+     // Fetch requester info and target info in parallel
+     const [requesterRoleResult, targetProfileResult] = await Promise.all([
+       supabaseAdmin.from("user_roles").select("role").eq("user_id", requester.id).maybeSingle(),
+@@ -81,20 +86,62 @@ serve(async (req) => {
+       throw new Error("You can only delete team members below your level");
+     }
+ 
+-    // 1. Delete all forms created by this user
+-    const { error: formsError } = await supabaseAdmin
+-      .from("forms")
+-      .delete()
+-      .eq("created_by_id", targetUserId);
+-
+-    if (formsError) {
+-      console.error("Error deleting user forms:", formsError);
+-      // We continue even if this fails? Or fail? 
+-      // Safest is to fail so we don't leave partial state or fail at the next step anyway.
+-      throw new Error("Failed to delete user forms: " + formsError.message);
++    // 1. Handle reassignment of forms created by the user
++    if (reassignToId) {
++      const { error: formsError } = await supabaseAdmin
++        .from("forms")
++        .update({ created_by_id: reassignToId })
++        .eq("created_by_id", targetUserId);
++
++      if (formsError) {
++        console.error("Error reassigning user forms:", formsError);
++        throw new Error("Failed to reassign user forms: " + formsError.message);
++      }
++    } else {
++      // If "Unassigned", the column must be nullable. Assuming it's nullable or we just leave it alone?
++      // "forms" may have created_by_id as nullable or not. Let's make it explicitly null if requested unassigned.
++      const { error: formsError } = await supabaseAdmin
++        .from("forms")
++        .update({ created_by_id: null })
++        .eq("created_by_id", targetUserId);
++
++      if (formsError) {
++          // Fallback if not nullable, we can't do much, leave as is or throw
++          console.error("Error setting forms to unassigned:", formsError);
++      }
++    }
++
++    // 2. Handle reassignment of leads
++    // Leads can have `assigned_to` and potentially `post_sales_owner_id` (used by realtime leads)
++    const { error: leadAssignError } = await supabaseAdmin
++        .from("leads")
++        .update({ assigned_to: reassignToId })
++        .eq("assigned_to", targetUserId);
++    
++    if (leadAssignError) {
++        console.error("Error reassigning leads:", leadAssignError);
++    }
++    
++    const { error: leadPostSalesAssignError } = await supabaseAdmin
++        .from("leads")
++        .update({ post_sales_owner_id: reassignToId })
++        .eq("post_sales_owner_id", targetUserId);
++    
++    if (leadPostSalesAssignError) {
++        console.error("Error reassigning post-sales leads:", leadPostSalesAssignError);
++    }
++
++    // 3. Handle reassignment of users reporting to the deleted manager
++    const { error: profilesManagerError } = await supabaseAdmin
++        .from("profiles")
++        .update({ manager_id: reassignToId })
++        .eq("manager_id", targetUserId);
++        
++    if (profilesManagerError) {
++        console.error("Error reassigning direct reports:", profilesManagerError);
+     }
+ 
+-    // Delete user from auth (this will cascade to profiles due to FK)
++    // 4. Delete user from auth (this will cascade to profiles due to FK)
+     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+ 
+     if (deleteError) {
+
+commit f69679174a2e34adfa2a62cc2b187170a3b54707
+Author: Prashant Prakash Dubey™ <ppdubey98@gmail.com>
+Date:   Thu Feb 26 04:49:34 2026 +0530
+
+    V 5.1
+
+diff --git a/supabase/functions/delete-team-member/index.ts b/supabase/functions/delete-team-member/index.ts
+index ea2f9d9..c6fc015 100644
+--- a/supabase/functions/delete-team-member/index.ts
++++ b/supabase/functions/delete-team-member/index.ts
+@@ -1,10 +1,9 @@
+ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
++import { corsHeaders } from "../_shared/cors.ts";
++
++
+ 
+-const corsHeaders = {
+-  "Access-Control-Allow-Origin": "*",
+-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+-};
+ 
+ serve(async (req) => {
+   if (req.method === "OPTIONS") {
+
+commit 2c4ee4507a7a36e0e8213fb490d35f700f2b2717
+Author: Prashant Prakash Dubey™ <ppdubey98@gmail.com>
+Date:   Sat Feb 7 11:38:43 2026 +0530
+
+    Introduce AppLayout, hierarchy hook & report
+    
+    Add a new AppLayout component and wire it into routing (wraps dashboard routes and adds /dashboard/report). Introduce useHierarchy hook to compute accessible user IDs and canViewAll for permission-aware owner filters, and integrate it into real-estate leads UI. Switch real-estate leads fetching to a DB RPC (get_real_estate_leads) in useRealEstateLeads and add Report icon to side/mobile navs. Enhance useLeads to support fetchAll by chunked pagination. Remove direct DashboardLayout imports across many pages (replace with fragments) to use the new layout, update MobileBottomNav and DashboardLayout to include report entry, and tweak small UI/whitespace fixes. Also update index.html canonical URL, add schema dump and new Supabase migrations/functions for lead/index optimizations and RPC support.
+
+diff --git a/supabase/functions/delete-team-member/index.ts b/supabase/functions/delete-team-member/index.ts
+index 9eb05b8..ea2f9d9 100644
+--- a/supabase/functions/delete-team-member/index.ts
++++ b/supabase/functions/delete-team-member/index.ts
+@@ -67,14 +67,14 @@ serve(async (req) => {
+ 
+     // Simple permission: Only company admins can delete, or managers can delete their direct/indirect reports
+     const requesterLevel = ROLE_LEVELS[requesterRole || ''] ?? 99;
+-    
++
+     // Get target's role
+     const { data: targetRoleData } = await supabaseAdmin
+       .from("user_roles")
+       .select("role")
+       .eq("user_id", targetUserId)
+       .maybeSingle();
+-    
++
+     const targetLevel = ROLE_LEVELS[targetRoleData?.role || ''] ?? 99;
+ 
+     // Only allow deletion if requester has higher authority
+@@ -82,9 +82,22 @@ serve(async (req) => {
+       throw new Error("You can only delete team members below your level");
+     }
+ 
++    // 1. Delete all forms created by this user
++    const { error: formsError } = await supabaseAdmin
++      .from("forms")
++      .delete()
++      .eq("created_by_id", targetUserId);
++
++    if (formsError) {
++      console.error("Error deleting user forms:", formsError);
++      // We continue even if this fails? Or fail? 
++      // Safest is to fail so we don't leave partial state or fail at the next step anyway.
++      throw new Error("Failed to delete user forms: " + formsError.message);
++    }
++
+     // Delete user from auth (this will cascade to profiles due to FK)
+     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+-    
++
+     if (deleteError) {
+       console.error("Delete error:", deleteError);
+       throw new Error("Failed to delete user: " + deleteError.message);
+
+commit 85ce643e902395083453206c1438f862ae16f9f3
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Jan 17 12:03:56 2026 +0000
+
+    Changes
+
+diff --git a/supabase/functions/delete-team-member/index.ts b/supabase/functions/delete-team-member/index.ts
+new file mode 100644
+index 0000000..9eb05b8
+--- /dev/null
++++ b/supabase/functions/delete-team-member/index.ts
+@@ -0,0 +1,109 @@
++import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
++import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
++
++const corsHeaders = {
++  "Access-Control-Allow-Origin": "*",
++  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
++};
++
++serve(async (req) => {
++  if (req.method === "OPTIONS") {
++    return new Response(null, { headers: corsHeaders });
++  }
++
++  try {
++    const authHeader = req.headers.get("Authorization");
++    if (!authHeader) {
++      throw new Error("Missing authorization header");
++    }
++
++    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
++    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
++    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
++
++    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
++      global: { headers: { Authorization: authHeader } }
++    });
++
++    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
++
++    // Get requesting user
++    const { data: { user: requester }, error: userError } = await supabaseAuth.auth.getUser();
++    if (userError || !requester) {
++      throw new Error("Unauthorized");
++    }
++
++    const { targetUserId } = await req.json();
++    if (!targetUserId) {
++      throw new Error("Missing targetUserId");
++    }
++
++    // Prevent self-deletion
++    if (targetUserId === requester.id) {
++      throw new Error("You cannot delete yourself");
++    }
++
++    // Fetch requester info and target info in parallel
++    const [requesterRoleResult, targetProfileResult] = await Promise.all([
++      supabaseAdmin.from("user_roles").select("role").eq("user_id", requester.id).maybeSingle(),
++      supabaseAdmin.from("profiles").select("id, company_id, manager_id").eq("id", targetUserId).maybeSingle()
++    ]);
++
++    const requesterRole = requesterRoleResult.data?.role;
++    const targetProfile = targetProfileResult.data;
++
++    if (!targetProfile) {
++      throw new Error("Target user not found");
++    }
++
++    // Check if requester is company admin or in hierarchy above target
++    const ROLE_LEVELS: Record<string, number> = {
++      company: 1, company_subadmin: 2, level_3: 3, level_4: 4, level_5: 5,
++      level_6: 6, level_7: 7, level_8: 8, level_9: 9, level_10: 10,
++      level_11: 11, level_12: 12, level_13: 13, level_14: 14, level_15: 15,
++      level_16: 16, level_17: 17, level_18: 18, level_19: 19, level_20: 20,
++      cbo: 3, vp: 4, avp: 5, dgm: 6, agm: 7, sm: 8, tl: 9, bde: 10, intern: 11, ca: 12
++    };
++
++    // Simple permission: Only company admins can delete, or managers can delete their direct/indirect reports
++    const requesterLevel = ROLE_LEVELS[requesterRole || ''] ?? 99;
++    
++    // Get target's role
++    const { data: targetRoleData } = await supabaseAdmin
++      .from("user_roles")
++      .select("role")
++      .eq("user_id", targetUserId)
++      .maybeSingle();
++    
++    const targetLevel = ROLE_LEVELS[targetRoleData?.role || ''] ?? 99;
++
++    // Only allow deletion if requester has higher authority
++    if (requesterLevel >= targetLevel) {
++      throw new Error("You can only delete team members below your level");
++    }
++
++    // Delete user from auth (this will cascade to profiles due to FK)
++    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
++    
++    if (deleteError) {
++      console.error("Delete error:", deleteError);
++      throw new Error("Failed to delete user: " + deleteError.message);
++    }
++
++    // Also clean up user_roles (might not cascade automatically)
++    await supabaseAdmin.from("user_roles").delete().eq("user_id", targetUserId);
++
++    console.log(`User ${targetUserId} deleted by ${requester.id}`);
++
++    return new Response(
++      JSON.stringify({ success: true }),
++      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
++    );
++  } catch (error: any) {
++    console.error("Delete member error:", error);
++    return new Response(
++      JSON.stringify({ error: error.message || "Internal server error" }),
++      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
++    );
++  }
++});
+
+commit 18e970a93e86a3b7702396d157bdca28f2ecadc0
+Author: Prashant Prakash Dubey™ <ppdubey98@gmail.com>
+Date:   Fri Jan 16 18:45:29 2026 +0530
+
+    4.17
+
+diff --git a/supabase/functions/delete-team-member/index.ts b/supabase/functions/delete-team-member/index.ts
+deleted file mode 100644
+index 3fbfeb4..0000000
+--- a/supabase/functions/delete-team-member/index.ts
++++ /dev/null
+@@ -1,123 +0,0 @@
+-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+-
+-const corsHeaders = {
+-    "Access-Control-Allow-Origin": "*",
+-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+-};
+-
+-const ROLE_LEVELS: Record<string, number> = {
+-    company: 1, company_subadmin: 2, cbo: 3, vp: 4, avp: 5,
+-    dgm: 6, agm: 7, sm: 8, tl: 9, bde: 10, intern: 11, ca: 12
+-};
+-
+-serve(async (req) => {
+-    if (req.method === "OPTIONS") {
+-        return new Response(null, { headers: corsHeaders });
+-    }
+-
+-    try {
+-        const authHeader = req.headers.get("Authorization");
+-        if (!authHeader) {
+-            throw new Error("Missing authorization header");
+-        }
+-
+-        const { targetUserId } = await req.json();
+-
+-        if (!targetUserId) {
+-            return new Response(
+-                JSON.stringify({ error: "Missing targetUserId" }),
+-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+-            );
+-        }
+-
+-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+-        const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+-        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+-
+-        const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+-            global: { headers: { Authorization: authHeader } }
+-        });
+-
+-        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+-
+-        // 1. Get Requester User
+-        const { data: { user: requester }, error: userError } = await supabaseAuth.auth.getUser();
+-        if (userError || !requester) throw new Error("Unauthorized");
+-
+-        // 2. Get Requester Role
+-        const { data: requesterRoleData, error: reqRoleError } = await supabaseAdmin
+-            .from("user_roles")
+-            .select("role")
+-            .eq("user_id", requester.id)
+-            .single();
+-
+-        if (reqRoleError || !requesterRoleData) throw new Error("Could not verify your role");
+-
+-        // 3. Get Target User Role
+-        const { data: targetRoleData, error: targetRoleError } = await supabaseAdmin
+-            .from("user_roles")
+-            .select("role")
+-            .eq("user_id", targetUserId)
+-            .maybeSingle();
+-
+-        // If target has no role, we might still want to allow deletion if they are just a profile?
+-        // But for now let's assume valid users have roles.
+-        if (targetRoleError) throw new Error("Could not verify target user role");
+-
+-        const requesterLevel = ROLE_LEVELS[requesterRoleData.role] || 99;
+-        const targetLevel = targetRoleData ? (ROLE_LEVELS[targetRoleData.role] || 99) : 99;
+-
+-        // 4. Permission Check: Requester < Target (lower number = higher permission)
+-        if (requesterLevel >= targetLevel) {
+-            return new Response(
+-                JSON.stringify({ error: "You can only delete members below your level." }),
+-                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+-            );
+-        }
+-
+-        // 5. Hierarchy Check (Optional but recommended): Ensure target is actually in requester's downstream
+-        // For now, the Level check + Company check (implicit via RLS if we queried directly, but here we are admin)
+-        // We should verify they are in the same company.
+-
+-        const { data: requesterProfile } = await supabaseAdmin
+-            .from("profiles")
+-            .select("company_id")
+-            .eq("id", requester.id)
+-            .single();
+-
+-        const { data: targetProfile } = await supabaseAdmin
+-            .from("profiles")
+-            .select("company_id")
+-            .eq("id", targetUserId)
+-            .single();
+-
+-        if (requesterProfile?.company_id !== targetProfile?.company_id) {
+-            return new Response(
+-                JSON.stringify({ error: "Target user is not in your organization." }),
+-                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+-            );
+-        }
+-
+-        // 6. Delete User
+-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+-
+-        if (deleteError) throw deleteError;
+-
+-        // Cleanup related data?
+-        // Supabase Auth delete usually cascades if configure correctly, but we might want to ensure Profiles/UserRoles are gone.
+-        // Usually ON DELETE CASCADE on foreign keys handles this in Postgres.
+-        // Assuming DB schema handles cascades for profiles/user_roles linked to auth.users.
+-
+-        return new Response(
+-            JSON.stringify({ success: true, message: "User deleted successfully" }),
+-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+-        );
+-
+-    } catch (error: any) {
+-        return new Response(
+-            JSON.stringify({ error: error.message }),
+-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+-        );
+-    }
+-});
+
+commit 59cd218ded9490b1551ef784d91beea3a4dba150
+Author: Prashant Prakash Dubey™ <ppdubey98@gmail.com>
+Date:   Fri Jan 9 22:52:55 2026 +0530
+
+    4.3
+
+diff --git a/supabase/functions/delete-team-member/index.ts b/supabase/functions/delete-team-member/index.ts
+new file mode 100644
+index 0000000..3fbfeb4
+--- /dev/null
++++ b/supabase/functions/delete-team-member/index.ts
+@@ -0,0 +1,123 @@
++import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
++import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
++
++const corsHeaders = {
++    "Access-Control-Allow-Origin": "*",
++    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
++};
++
++const ROLE_LEVELS: Record<string, number> = {
++    company: 1, company_subadmin: 2, cbo: 3, vp: 4, avp: 5,
++    dgm: 6, agm: 7, sm: 8, tl: 9, bde: 10, intern: 11, ca: 12
++};
++
++serve(async (req) => {
++    if (req.method === "OPTIONS") {
++        return new Response(null, { headers: corsHeaders });
++    }
++
++    try {
++        const authHeader = req.headers.get("Authorization");
++        if (!authHeader) {
++            throw new Error("Missing authorization header");
++        }
++
++        const { targetUserId } = await req.json();
++
++        if (!targetUserId) {
++            return new Response(
++                JSON.stringify({ error: "Missing targetUserId" }),
++                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
++            );
++        }
++
++        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
++        const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
++        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
++
++        const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
++            global: { headers: { Authorization: authHeader } }
++        });
++
++        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
++
++        // 1. Get Requester User
++        const { data: { user: requester }, error: userError } = await supabaseAuth.auth.getUser();
++        if (userError || !requester) throw new Error("Unauthorized");
++
++        // 2. Get Requester Role
++        const { data: requesterRoleData, error: reqRoleError } = await supabaseAdmin
++            .from("user_roles")
++            .select("role")
++            .eq("user_id", requester.id)
++            .single();
++
++        if (reqRoleError || !requesterRoleData) throw new Error("Could not verify your role");
++
++        // 3. Get Target User Role
++        const { data: targetRoleData, error: targetRoleError } = await supabaseAdmin
++            .from("user_roles")
++            .select("role")
++            .eq("user_id", targetUserId)
++            .maybeSingle();
++
++        // If target has no role, we might still want to allow deletion if they are just a profile?
++        // But for now let's assume valid users have roles.
++        if (targetRoleError) throw new Error("Could not verify target user role");
++
++        const requesterLevel = ROLE_LEVELS[requesterRoleData.role] || 99;
++        const targetLevel = targetRoleData ? (ROLE_LEVELS[targetRoleData.role] || 99) : 99;
++
++        // 4. Permission Check: Requester < Target (lower number = higher permission)
++        if (requesterLevel >= targetLevel) {
++            return new Response(
++                JSON.stringify({ error: "You can only delete members below your level." }),
++                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
++            );
++        }
++
++        // 5. Hierarchy Check (Optional but recommended): Ensure target is actually in requester's downstream
++        // For now, the Level check + Company check (implicit via RLS if we queried directly, but here we are admin)
++        // We should verify they are in the same company.
++
++        const { data: requesterProfile } = await supabaseAdmin
++            .from("profiles")
++            .select("company_id")
++            .eq("id", requester.id)
++            .single();
++
++        const { data: targetProfile } = await supabaseAdmin
++            .from("profiles")
++            .select("company_id")
++            .eq("id", targetUserId)
++            .single();
++
++        if (requesterProfile?.company_id !== targetProfile?.company_id) {
++            return new Response(
++                JSON.stringify({ error: "Target user is not in your organization." }),
++                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
++            );
++        }
++
++        // 6. Delete User
++        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
++
++        if (deleteError) throw deleteError;
++
++        // Cleanup related data?
++        // Supabase Auth delete usually cascades if configure correctly, but we might want to ensure Profiles/UserRoles are gone.
++        // Usually ON DELETE CASCADE on foreign keys handles this in Postgres.
++        // Assuming DB schema handles cascades for profiles/user_roles linked to auth.users.
++
++        return new Response(
++            JSON.stringify({ success: true, message: "User deleted successfully" }),
++            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
++        );
++
++    } catch (error: any) {
++        return new Response(
++            JSON.stringify({ error: error.message }),
++            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
++        );
++    }
++});
