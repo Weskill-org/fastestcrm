@@ -13,12 +13,160 @@
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/storage/:path*"
         },
         {
+            "source": "/functions/v1/admin-manage-company",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/admin-manage-company"
+        },
+        {
+            "source": "/functions/v1/calendar-oauth",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/calendar-oauth"
+        },
+        {
+            "source": "/functions/v1/change-industry",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/change-industry"
+        },
+        {
+            "source": "/functions/v1/create-booking",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/create-booking"
+        },
+        {
+            "source": "/functions/v1/create-payment-link",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/create-payment-link"
+        },
+        {
+            "source": "/functions/v1/delete-team-member",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/delete-team-member"
+        },
+        {
+            "source": "/functions/v1/echo",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/echo"
+        },
+        {
+            "source": "/functions/v1/email-proxy",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/email-proxy"
+        },
+        {
+            "source": "/functions/v1/get-public-form",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/get-public-form"
+        },
+        {
+            "source": "/functions/v1/google-lead-webhook",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/google-lead-webhook"
+        },
+        {
+            "source": "/functions/v1/google-link-webhook",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/google-link-webhook"
+        },
+        {
+            "source": "/functions/v1/google-list-accounts",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/google-list-accounts"
+        },
+        {
+            "source": "/functions/v1/google-oauth-callback",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/google-oauth-callback"
+        },
+        {
+            "source": "/functions/v1/handle-license-webhook",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/handle-license-webhook"
+        },
+        {
+            "source": "/functions/v1/handle-razorpay-webhook",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/handle-razorpay-webhook"
+        },
+        {
+            "source": "/functions/v1/initiate-wallet-recharge",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/initiate-wallet-recharge"
+        },
+        {
+            "source": "/functions/v1/invite-team-member",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/invite-team-member"
+        },
+        {
+            "source": "/functions/v1/linkedin-lead-webhook",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/linkedin-lead-webhook"
+        },
+        {
+            "source": "/functions/v1/manage-email-aliases",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/manage-email-aliases"
+        },
+        {
+            "source": "/functions/v1/manage-subscription",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/manage-subscription"
+        },
+        {
+            "source": "/functions/v1/meta-lead-webhook",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-lead-webhook"
+        },
+        {
+            "source": "/functions/v1/meta-oauth-callback",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-oauth-callback"
+        },
+        {
+            "source": "/functions/v1/meta-select-page",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/meta-select-page"
+        },
+        {
+            "source": "/functions/v1/outlook-oauth",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/outlook-oauth"
+        },
+        {
+            "source": "/functions/v1/process-auto-debit",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/process-auto-debit"
+        },
+        {
+            "source": "/functions/v1/process-reminders",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/process-reminders"
+        },
+        {
+            "source": "/functions/v1/purchase-addon",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/purchase-addon"
+        },
+        {
+            "source": "/functions/v1/purchase-licenses",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/purchase-licenses"
+        },
+        {
+            "source": "/functions/v1/query-bigdata-sql",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/query-bigdata-sql"
+        },
+        {
+            "source": "/functions/v1/redeem-gift-card",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/redeem-gift-card"
+        },
+        {
+            "source": "/functions/v1/register-company",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/register-company"
+        },
+        {
+            "source": "/functions/v1/send-web-push",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/send-web-push"
+        },
+        {
             "source": "/functions/v1/submit-external-lead",
             "destination": "/api/submit-external-lead"
         },
         {
-            "source": "/functions/v1/:path*",
-            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/:path*"
+            "source": "/functions/v1/submit-public-form",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/submit-public-form"
+        },
+        {
+            "source": "/functions/v1/unlock-feature",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/unlock-feature"
+        },
+        {
+            "source": "/functions/v1/unlock-lead-attributes",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/unlock-lead-attributes"
+        },
+        {
+            "source": "/functions/v1/validate-discount",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/validate-discount"
+        },
+        {
+            "source": "/functions/v1/verify-domain",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/verify-domain"
+        },
+        {
+            "source": "/functions/v1/verify-wallet-recharge",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/verify-wallet-recharge"
         },
         {
             "source": "/((?!api/).*)",
