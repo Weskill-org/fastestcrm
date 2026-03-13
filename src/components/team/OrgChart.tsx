@@ -169,11 +169,12 @@ export function OrgChart({ members, currentUserRole, onManage, currentUserId, ge
 }
 
 function TreeItem({ node, onManage, currentUserId, getRoleLabel }: { node: TreeNode, onManage?: any, currentUserId?: string, getRoleLabel: any }) {
+    const isDeactivated = node.member.is_deactivated;
     return (
         <li>
-            <div className="relative z-10 bg-card border rounded-lg p-3 min-w-[200px] shadow-sm hover:shadow-md transition-all flex flex-col items-center gap-2 group inline-flex mx-2">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border-2 border-transparent group-hover:border-primary/20 transition-colors">
-                    <span className="font-bold text-lg text-primary">
+            <div className={`relative z-10 bg-card border rounded-lg p-3 min-w-[200px] shadow-sm hover:shadow-md transition-all flex flex-col items-center gap-2 group inline-flex mx-2 ${isDeactivated ? 'opacity-50 border-destructive/30' : ''}`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${isDeactivated ? 'bg-destructive/10 border-destructive/20' : 'bg-primary/10 border-transparent group-hover:border-primary/20'}`}>
+                    <span className={`font-bold text-lg ${isDeactivated ? 'text-destructive' : 'text-primary'}`}>
                         {node.member.full_name?.[0] || node.member.email?.[0] || '?'}
                     </span>
                 </div>
@@ -182,9 +183,16 @@ function TreeItem({ node, onManage, currentUserId, getRoleLabel }: { node: TreeN
                     <h4 className="font-semibold text-sm truncate max-w-[160px]" title={node.member.full_name}>
                         {node.member.full_name || 'Unnamed'}
                     </h4>
-                    <Badge variant="outline" className="mt-1 text-xs font-normal">
-                        {getRoleLabel(node.member.role)}
-                    </Badge>
+                    <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
+                        <Badge variant="outline" className="text-xs font-normal">
+                            {getRoleLabel(node.member.role)}
+                        </Badge>
+                        {isDeactivated && (
+                            <Badge variant="destructive" className="text-xs font-normal">
+                                Deactivated
+                            </Badge>
+                        )}
+                    </div>
                 </div>
 
                 {onManage && currentUserId !== node.member.id && (

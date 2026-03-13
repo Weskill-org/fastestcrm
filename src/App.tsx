@@ -1,9 +1,11 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { SubdomainProvider, useSubdomainContext } from "@/contexts/SubdomainContext";
 import { SubdomainGate } from "@/components/SubdomainGate";
 import { CompanyBrandingProvider } from "@/contexts/CompanyBrandingContext";
@@ -98,13 +100,46 @@ function AuthRoute() {
   return <Auth />;
 }
 
-/** Basic protected route guard */
+/** Basic protected route guard — also blocks deactivated users */
 function Protected({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const location = useLocation();
+  const { toast } = useToast();
+  const [checking, setChecking] = useState(true);
+  const [deactivated, setDeactivated] = useState(false);
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
+  useEffect(() => {
+    let cancelled = false;
+    async function checkDeactivation() {
+      if (!user) {
+        setChecking(false);
+        return;
+      }
+      const { data } = await (await import('@/integrations/supabase/client')).supabase
+        .from('profiles')
+        .select('is_deactivated')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (data?.is_deactivated) {
+        setDeactivated(true);
+        toast({
+          title: 'Account Deactivated',
+          description: 'Your account has been deactivated. Please contact your administrator.',
+          variant: 'destructive',
+        });
+        await signOut();
+      }
+      setChecking(false);
+    }
+    checkDeactivation();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  if (authLoading || checking) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!user || deactivated) return <Navigate to="/auth" state={{ from: location }} replace />;
 
   return <>{children}</>;
 }

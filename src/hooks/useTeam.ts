@@ -14,6 +14,7 @@ export interface TeamMember {
   manager_id: string | null;
   created_at: string;
   role: AppRole;
+  is_deactivated?: boolean;
   /** UI-only flag used for optimistic invitations */
   is_pending?: boolean;
   manager?: {
@@ -171,7 +172,7 @@ export function useTeam() {
       // 2. Fetch profiles for THIS company
       let profilesQuery = supabase
         .from('profiles')
-        .select('id, full_name, email, phone, avatar_url, manager_id, created_at')
+        .select('id, full_name, email, phone, avatar_url, manager_id, created_at, is_deactivated')
         .order('created_at', { ascending: true });
 
       if (myCompanyId) {
@@ -214,6 +215,7 @@ export function useTeam() {
         manager_id: profile.manager_id,
         created_at: profile.created_at,
         role: roleMap.get(profile.id) || 'bde',
+        is_deactivated: profile.is_deactivated ?? false,
       }));
 
       // Populate valid manager objects
@@ -368,6 +370,28 @@ export function useTeam() {
     return { error: null };
   };
 
+  const toggleMemberStatus = async (targetUserId: string, deactivate: boolean) => {
+    if (!user) return { error: new Error('Not authenticated') };
+
+    // Optimistic update
+    const previousMembers = members;
+    setMembers(prev => prev.map(m =>
+      m.id === targetUserId ? { ...m, is_deactivated: deactivate } : m
+    ));
+
+    const { data, error: funcError } = await supabase.functions.invoke('toggle-user-status', {
+      body: { targetUserId, deactivate }
+    });
+
+    if (funcError || data?.error) {
+      // Rollback
+      setMembers(previousMembers);
+      return { error: funcError || new Error(data?.error) };
+    }
+
+    return { error: null };
+  };
+
   const addMemberOptimistic = (newMember: TeamMember) => {
     setMembers(prev => [...prev, newMember]);
   };
@@ -386,6 +410,7 @@ export function useTeam() {
     currentUserRole,
     promoteUser,
     deleteMember,
+    toggleMemberStatus,
     setManager,
     getRoleLabel,
     getAssignableRoles,

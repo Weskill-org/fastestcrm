@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2, Lock, Pencil } from 'lucide-react';
+import { Users, UserPlus, ChevronRight, Shield, Loader2, ArrowUp, Mail, Trash2, Lock, Pencil, UserX, UserCheck } from 'lucide-react';
 import { useTeam, AppRole } from '@/hooks/useTeam';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
@@ -62,6 +62,7 @@ export default function Team() {
         promoteUser,
         setManager,
         deleteMember,
+        toggleMemberStatus,
         getRoleLabel,
         getAssignableRoles,
         refetch,
@@ -94,6 +95,10 @@ export default function Team() {
     const [editHierarchyOpen, setEditHierarchyOpen] = useState(false);
     const [hierarchyForm, setHierarchyForm] = useState<Record<string, string>>({});
     const [isSavingHierarchy, setIsSavingHierarchy] = useState(false);
+
+    // Deactivation State
+    const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+    const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
     const openEditHierarchy = () => {
         // Initialize form with current labels
@@ -332,6 +337,33 @@ export default function Team() {
             setMemberToDelete(null);
             setSelectedMember(null); // Close the manage dialog too if needed, though state is separate
             setReassignToId('');
+        }
+    };
+
+    const handleToggleStatus = async () => {
+        if (!selectedMember) return;
+        const member = members.find(m => m.id === selectedMember);
+        if (!member) return;
+
+        const shouldDeactivate = !member.is_deactivated;
+        setIsTogglingStatus(true);
+        const { error } = await toggleMemberStatus(selectedMember, shouldDeactivate);
+        setIsTogglingStatus(false);
+
+        if (error) {
+            toast({
+                title: "Error",
+                description: error.message,
+                variant: "destructive"
+            });
+        } else {
+            toast({
+                title: "Success",
+                description: shouldDeactivate
+                    ? `${member.full_name || member.email} has been deactivated. They can no longer access the CRM.`
+                    : `${member.full_name || member.email} has been reactivated. They can now log in again.`,
+            });
+            setDeactivateDialogOpen(false);
         }
     };
 
@@ -670,8 +702,37 @@ export default function Team() {
                                     Danger Zone
                                 </label>
                                 <div className="space-y-3">
+                                    {/* Deactivate / Reactivate */}
+                                    {(() => {
+                                        const member = members.find(m => m.id === selectedMember);
+                                        const isDeactivated = member?.is_deactivated;
+                                        return (
+                                            <>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {isDeactivated
+                                                        ? "This user is currently deactivated and cannot access the CRM. Reactivate to restore access."
+                                                        : "Deactivating a user will prevent them from logging in. Their data (leads, forms) will be preserved."}
+                                                </p>
+                                                <Button
+                                                    variant={isDeactivated ? "default" : "outline"}
+                                                    className={`w-full ${isDeactivated ? '' : 'border-warning text-warning hover:bg-warning/10'}`}
+                                                    onClick={() => setDeactivateDialogOpen(true)}
+                                                >
+                                                    {isDeactivated ? (
+                                                        <><UserCheck className="h-4 w-4 mr-2" /> Reactivate User</>
+                                                    ) : (
+                                                        <><UserX className="h-4 w-4 mr-2" /> Deactivate User</>
+                                                    )}
+                                                </Button>
+                                            </>
+                                        );
+                                    })()}
+
+                                    {/* Separator */}
+                                    <div className="border-t" />
+
                                     <p className="text-xs text-muted-foreground">
-                                        When removing a member, you must choose what to do with their assigned leads and forms.
+                                        When removing a member permanently, you must choose what to do with their assigned leads and forms.
                                     </p>
                                     <Select
                                         value={reassignToId}
@@ -732,6 +793,42 @@ export default function Team() {
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete user & transfer data"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Deactivate / Reactivate Confirmation */}
+            <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {members.find(m => m.id === selectedMember)?.is_deactivated
+                                ? 'Reactivate this user?'
+                                : 'Deactivate this user?'}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {members.find(m => m.id === selectedMember)?.is_deactivated
+                                ? 'This will restore their access to the CRM. They will be able to log in and use the system again.'
+                                : 'This will immediately block the user from accessing the CRM. Their existing sessions will be terminated. All their data (leads, forms, hierarchy position) will be preserved.'}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleToggleStatus();
+                            }}
+                            className={members.find(m => m.id === selectedMember)?.is_deactivated
+                                ? ''
+                                : 'bg-warning text-warning-foreground hover:bg-warning/90'}
+                        >
+                            {isTogglingStatus
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : members.find(m => m.id === selectedMember)?.is_deactivated
+                                    ? 'Yes, reactivate user'
+                                    : 'Yes, deactivate user'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
