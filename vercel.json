@@ -141,6 +141,10 @@
             "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/send-web-push"
         },
         {
+            "source": "/functions/v1/toggle-user-status",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/functions/v1/toggle-user-status"
+        },
+        {
             "source": "/functions/v1/submit-external-lead",
             "destination": "/api/submit-external-lead"
         },
