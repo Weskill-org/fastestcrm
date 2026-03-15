@@ -19,110 +19,103 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString()
 
-    // 1. Process Standard Leads
-    const { data: standardLeads, error: leadsError } = await supabaseClient
-      .from('leads')
-      .select('id, name, sales_owner_id, reminder_at, last_notification_sent_at, send_web_push')
-      .lte('reminder_at', now)
-      .is('last_notification_sent_at', null)
-
-    if (leadsError) throw leadsError
-
     const notifications: any[] = []
-    const processedLeadIds: string[] = []
     // Track users who should receive a push notification
     const pushTargets: Map<string, { title: string; body: string }> = new Map()
 
-    if (standardLeads && standardLeads.length > 0) {
-      console.log(`Found ${standardLeads.length} standard leads to remind`)
-      for (const lead of standardLeads) {
-        if (!lead.sales_owner_id) continue
+    // Helper: process leads from any table
+    async function processTable(tableName: string) {
+      const { data: leadData, error } = await supabaseClient
+        .from(tableName as any)
+        .select('id, name, sales_owner_id, reminder_at, last_notification_sent_at, send_web_push')
+        .lte('reminder_at', now)
+        .is('last_notification_sent_at', null)
+        .not('reminder_at', 'is', null)
 
-        notifications.push({
-          user_id: lead.sales_owner_id,
-          lead_id: lead.id,
-          title: 'Lead Reminder',
-          message: `Reminder for lead: ${lead.name}`,
-          type: 'reminder',
-          created_at: now
-        })
-        processedLeadIds.push(lead.id)
-
-        // Only queue push if the user opted in
-        if (lead.send_web_push) {
-          pushTargets.set(lead.sales_owner_id, {
-            title: 'Lead Reminder',
-            body: `Reminder for lead: ${lead.name}`,
-          })
-        }
+      if (error) {
+        console.error(`Error querying ${tableName}:`, error.message)
+        return []
       }
-    }
 
-    // 2. Process Real Estate Leads
-    const { data: realEstateLeads, error: reError } = await supabaseClient
-      .from('leads_real_estate')
-      .select('id, name, sales_owner_id, pre_sales_owner_id, post_sales_owner_id, reminder_at, last_notification_sent_at, send_web_push')
-      .lte('reminder_at', now)
-      .is('last_notification_sent_at', null)
+      const processedIds: string[] = []
+      if (leadData && leadData.length > 0) {
+        console.log(`Found ${leadData.length} leads to remind in ${tableName}`)
+        for (const lead of leadData) {
+          if (!lead.sales_owner_id) continue
 
-    if (reError) throw reError
-
-    const processedReLeadIds: string[] = []
-
-    if (realEstateLeads && realEstateLeads.length > 0) {
-      console.log(`Found ${realEstateLeads.length} RE leads to remind`)
-      for (const lead of realEstateLeads) {
-        const ownersToNotify = new Set([lead.sales_owner_id, lead.pre_sales_owner_id, lead.post_sales_owner_id].filter(Boolean))
-
-        ownersToNotify.forEach(ownerId => {
           notifications.push({
-            user_id: ownerId,
+            user_id: lead.sales_owner_id,
             lead_id: lead.id,
             title: 'Lead Reminder',
             message: `Reminder for lead: ${lead.name}`,
             type: 'reminder',
             created_at: now
           })
+          processedIds.push(lead.id)
 
-          // Only queue push if user opted in
+          // Only queue push if the user opted in
           if (lead.send_web_push) {
-            pushTargets.set(ownerId!, {
+            pushTargets.set(lead.sales_owner_id, {
               title: 'Lead Reminder',
-              body: `Reminder for lead: ${lead.name}`,
+              body: `Time to follow up with ${lead.name}`,
             })
           }
-        })
-        if (ownersToNotify.size > 0) {
-          processedReLeadIds.push(lead.id)
+        }
+
+        // Mark as sent immediately
+        if (processedIds.length > 0) {
+          const { error: updateError } = await supabaseClient
+            .from(tableName as any)
+            .update({ last_notification_sent_at: now })
+            .in('id', processedIds)
+          if (updateError) {
+            console.error(`Error updating ${tableName}:`, updateError.message)
+          }
+        }
+      }
+      return processedIds
+    }
+
+    // Discover all lead tables by querying the companies table for custom tables
+    const standardTables = ['leads', 'leads_real_estate', 'leads_saas', 'leads_healthcare', 'leads_insurance', 'leads_travel']
+
+    // Get all company-specific custom tables
+    const { data: companies } = await supabaseClient
+      .from('companies')
+      .select('custom_leads_table')
+      .not('custom_leads_table', 'is', null)
+
+    const customTables: string[] = []
+    if (companies) {
+      for (const co of companies) {
+        if (co.custom_leads_table && !standardTables.includes(co.custom_leads_table)) {
+          customTables.push(co.custom_leads_table)
         }
       }
     }
 
-    // 3. Insert Notifications
+    const allTables = [...standardTables, ...customTables]
+    console.log('Processing tables:', allTables.join(', '))
+
+    // Process all tables
+    for (const table of allTables) {
+      await processTable(table)
+    }
+
+    // Insert all notifications
     if (notifications.length > 0) {
       const { error: insertError } = await supabaseClient
         .from('notifications')
         .insert(notifications)
 
-      if (insertError) throw insertError
-      console.log(`Inserted ${notifications.length} notifications`)
-
-      // 4. Update Leads to mark as sent
-      if (processedLeadIds.length > 0) {
-        await supabaseClient
-          .from('leads')
-          .update({ last_notification_sent_at: now })
-          .in('id', processedLeadIds)
-      }
-      if (processedReLeadIds.length > 0) {
-        await supabaseClient
-          .from('leads_real_estate')
-          .update({ last_notification_sent_at: now })
-          .in('id', processedReLeadIds)
+      if (insertError) {
+        console.error('Failed to insert notifications:', insertError.message)
+      } else {
+        console.log(`Inserted ${notifications.length} notifications`)
       }
     }
 
-    // 5. Send Web Push notifications for opted-in users
+    // Send Web Push notifications for opted-in users
     let pushSent = 0
     for (const [userId, payload] of pushTargets) {
       try {
@@ -139,10 +132,13 @@ Deno.serve(async (req) => {
           }),
         })
 
+        const pushResult = await pushResponse.text()
+        console.log(`Push result for ${userId}: ${pushResponse.status} ${pushResult}`)
+
         if (pushResponse.ok) {
           pushSent++
         } else {
-          console.error(`Push failed for user ${userId}: ${pushResponse.status}`)
+          console.error(`Push failed for user ${userId}: ${pushResponse.status} ${pushResult}`)
         }
       } catch (pushError) {
         console.error(`Error sending push to user ${userId}:`, pushError)
@@ -151,15 +147,17 @@ Deno.serve(async (req) => {
 
     console.log(`Push notifications sent: ${pushSent}/${pushTargets.size}`)
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       notifications_created: notifications.length,
       pushes_sent: pushSent,
+      tables_processed: allTables,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
+    console.error('process-reminders error:', error)
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

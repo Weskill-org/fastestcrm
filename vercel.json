@@ -1,4 +1,10 @@
 {
+    "crons": [
+        {
+            "path": "/api/cron-process-reminders",
+            "schedule": "* * * * *"
+        }
+    ],
     "rewrites": [
         {
             "source": "/rest/:path*",
@@ -175,6 +181,10 @@
         {
             "source": "/((?!api/).*)",
             "destination": "/index.html"
+        },
+        {
+            "source": "/rest/:path*",
+            "destination": "https://uykdyqdeyilpulaqlqip.supabase.co/rest/:path*"
         }
     ]
 }
