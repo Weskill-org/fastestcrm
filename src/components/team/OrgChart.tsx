@@ -70,10 +70,10 @@ export function OrgChart({ members, currentUserRole, onManage, currentUserId, ge
     // Let's use a standard robust CSS structure
 
     return (
-        <div className="overflow-x-auto py-8 custom-scrollbar">
+        <div className="overflow-x-auto py-4 custom-scrollbar">
             {/* Main Hierarchy */}
             {treeData.mainRoots.length > 0 && (
-                <div className="min-w-max flex justify-center mb-12">
+                <div className="min-w-max flex justify-center mb-6">
                     <ul className="org-tree flex justify-center m-0 p-0 list-none">
                         {treeData.mainRoots.map(root => (
                             <TreeItem key={root.member.id} node={root} onManage={onManage} currentUserId={currentUserId} getRoleLabel={getRoleLabel} />
@@ -105,7 +105,7 @@ export function OrgChart({ members, currentUserRole, onManage, currentUserId, ge
 
             <style>{`
                 .org-tree ul {
-                    padding-top: 20px;
+                    padding-top: 14px;
                     position: relative;
                     display: flex;
                     justify-content: center;
@@ -115,7 +115,7 @@ export function OrgChart({ members, currentUserRole, onManage, currentUserId, ge
                     float: left; text-align: center;
                     list-style-type: none;
                     position: relative;
-                    padding: 20px 10px 0 10px;
+                    padding: 14px 6px 0 6px;
                 }
                 
                 /* Vertical line down from parent */
@@ -123,7 +123,7 @@ export function OrgChart({ members, currentUserRole, onManage, currentUserId, ge
                     content: '';
                     position: absolute; top: 0; right: 50%;
                     border-top: 2px solid hsl(var(--border));
-                    width: 50%; height: 20px;
+                    width: 50%; height: 14px;
                 }
                 .org-tree li::after {
                     right: auto; left: 50%;
@@ -140,19 +140,14 @@ export function OrgChart({ members, currentUserRole, onManage, currentUserId, ge
                     border: 0 none;
                 }
                 .org-tree li:last-child::before, .org-tree li:first-child::after {
-                    border-radius: 5px 0 0 0;
+                    border-radius: 4px 0 0 0;
                     border-top: 2px solid hsl(var(--border));
-                    /* height: 20px; */
                 }
                 .org-tree li:first-child::after {
-                    border-radius: 5px 0 0 0;
+                    border-radius: 4px 0 0 0;
                 }
                 .org-tree li:last-child::before {
-                    border-radius: 0 5px 0 0;
-                    border-right: 2px solid hsl(var(--border)); /* Needed for the right curve? No, standard is often simplier */
-                     border-right: 2px solid hsl(var(--border));
-                }
-                .org-tree li:last-child::before {
+                    border-radius: 0 4px 0 0;
                     border-right: 2px solid hsl(var(--border));
                 }
                 
@@ -161,7 +156,7 @@ export function OrgChart({ members, currentUserRole, onManage, currentUserId, ge
                     content: '';
                     position: absolute; top: 0; left: 50%;
                     border-left: 2px solid hsl(var(--border));
-                    width: 0; height: 20px;
+                    width: 0; height: 14px;
                 }
             `}</style>
         </div>
@@ -172,23 +167,23 @@ function TreeItem({ node, onManage, currentUserId, getRoleLabel }: { node: TreeN
     const isDeactivated = node.member.is_deactivated;
     return (
         <li>
-            <div className={`relative z-10 bg-card border rounded-lg p-3 min-w-[200px] shadow-sm hover:shadow-md transition-all flex flex-col items-center gap-2 group inline-flex mx-2 ${isDeactivated ? 'opacity-50 border-destructive/30' : ''}`}>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${isDeactivated ? 'bg-destructive/10 border-destructive/20' : 'bg-primary/10 border-transparent group-hover:border-primary/20'}`}>
-                    <span className={`font-bold text-lg ${isDeactivated ? 'text-destructive' : 'text-primary'}`}>
+            <div className={`relative z-10 bg-card border rounded-lg p-2.5 min-w-[130px] max-w-[160px] shadow-sm hover:shadow-md transition-all flex flex-col items-center gap-1.5 group inline-flex mx-1 ${isDeactivated ? 'opacity-50 border-destructive/30' : ''}`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${isDeactivated ? 'bg-destructive/10 border-destructive/20' : 'bg-primary/10 border-transparent group-hover:border-primary/20'}`}>
+                    <span className={`font-bold text-sm ${isDeactivated ? 'text-destructive' : 'text-primary'}`}>
                         {node.member.full_name?.[0] || node.member.email?.[0] || '?'}
                     </span>
                 </div>
 
                 <div className="text-center">
-                    <h4 className="font-semibold text-sm truncate max-w-[160px]" title={node.member.full_name}>
+                    <h4 className="font-semibold text-xs truncate max-w-[130px]" title={node.member.full_name}>
                         {node.member.full_name || 'Unnamed'}
                     </h4>
-                    <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs font-normal">
+                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
                             {getRoleLabel(node.member.role)}
                         </Badge>
                         {isDeactivated && (
-                            <Badge variant="destructive" className="text-xs font-normal">
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-normal">
                                 Deactivated
                             </Badge>
                         )}
@@ -199,7 +194,7 @@ function TreeItem({ node, onManage, currentUserId, getRoleLabel }: { node: TreeN
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs w-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 text-[10px] w-full opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => onManage(node.member)}
                     >
                         Manage

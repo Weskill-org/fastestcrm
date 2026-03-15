@@ -196,15 +196,19 @@ export default function Report() {
                                         Total number of leads assigned to each team member.
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="pl-2">
-                                    <ResponsiveContainer width="100%" height={350}>
-                                        <BarChart data={leadsPerEmployee}>
+                                <CardContent className="pl-2" style={{ overflow: 'visible' }}>
+                                    <ResponsiveContainer width="100%" height={450}>
+                                        <BarChart data={leadsPerEmployee} margin={{ top: 5, right: 20, left: 10, bottom: 60 }}>
                                             <XAxis
                                                 dataKey="name"
                                                 stroke="#888888"
-                                                fontSize={12}
+                                                fontSize={11}
                                                 tickLine={false}
                                                 axisLine={false}
+                                                angle={-45}
+                                                textAnchor="end"
+                                                interval={0}
+                                                height={80}
                                             />
                                             <YAxis
                                                 stroke="#888888"
@@ -214,10 +218,18 @@ export default function Report() {
                                                 tickFormatter={(value) => `${value}`}
                                             />
                                             <Tooltip
-                                                cursor={{ fill: 'transparent' }}
-                                                contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                                contentStyle={{
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #334155',
+                                                    backgroundColor: '#1e293b',
+                                                    color: '#f1f5f9',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                                }}
+                                                labelStyle={{ color: '#f1f5f9', fontWeight: 600 }}
+                                                itemStyle={{ color: '#22d3ee' }}
                                             />
-                                            <Bar dataKey="leads" fill="#adfa1d" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="leads" fill="#22d3ee" radius={[4, 4, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </CardContent>

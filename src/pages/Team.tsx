@@ -544,7 +544,7 @@ export default function Team() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-3 overflow-hidden">
+                                <div className="space-y-3 overflow-auto">
                                     {members.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground">
                                             No team members yet.
@@ -569,14 +569,14 @@ export default function Team() {
 
                         {/* Role Info */}
                         <Card className="glass h-fit">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Shield className="h-5 w-5 text-primary" />
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <Shield className="h-4 w-4 text-primary" />
                                     Role Hierarchy
                                 </CardTitle>
-                                <CardDescription>12-level access control</CardDescription>
+                                <CardDescription className="text-xs">12-level access control</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-3">
+                            <CardContent className="space-y-1.5 pt-0">
                                 {Array.from({ length: 20 }, (_, i) => i + 1)
                                     .filter((level) => {
                                         let roleKey: AppRole | null = null;
@@ -598,8 +598,8 @@ export default function Team() {
                                         const label = getRoleLabel(roleKey);
 
                                         return (
-                                            <div key={originalLevel} className="flex items-center gap-2 text-sm">
-                                                <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                                            <div key={originalLevel} className="flex items-center gap-2 text-xs">
+                                                <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                                                     {displayIndex}
                                                 </span>
                                                 <span className="font-medium truncate">{label}</span>
@@ -607,7 +607,7 @@ export default function Team() {
                                         );
                                     })
                                 }
-                                <div className="pt-4 border-t border-border text-xs text-muted-foreground">
+                                <div className="pt-3 border-t border-border text-[11px] text-muted-foreground">
                                     <p>• New users start at lowest level (CA)</p>
                                     <p>• Only users above can promote others</p>
                                     <p>• Users see leads from their hierarchy</p>
