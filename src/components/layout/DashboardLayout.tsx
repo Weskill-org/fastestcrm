@@ -7,12 +7,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useReminderPolling } from '@/hooks/useReminderPolling';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, CheckSquare, AlertTriangle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, LogOut, Phone, Workflow, Link2, BarChart3, Brain, Calendar, FileText, Building2, Shield, Package, PieChart, CheckSquare, AlertTriangle, Clock, ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import MobileBottomNav from './MobileBottomNav';
 import { NotificationsBell } from './NotificationsBell';
 import { useTaskLeads } from '@/hooks/useTaskLeads';
 import { AnnouncementBanner } from './AnnouncementBanner';
-
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const navItems = [{
   icon: LayoutDashboard,
@@ -31,12 +31,6 @@ const navItems = [{
   label: 'Report',
   path: '/dashboard/report'
 },
-// {
-//   icon: Building2,
-//   label: 'Real Estate Leads',
-//   path: '/dashboard/real-estate-leads',
-//   industryOnly: 'real_estate'
-// }, 
 {
   icon: UserCheck,
   label: 'Interested',
@@ -101,9 +95,11 @@ const navItems = [{
   label: 'Settings',
   path: '/dashboard/settings'
 }];
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
+
 export default function DashboardLayout({
   children
 }: DashboardLayoutProps) {
@@ -124,6 +120,20 @@ export default function DashboardLayout({
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [tasksExpanded, setTasksExpanded] = useState(location.pathname.startsWith('/dashboard/tasks'));
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const stored = localStorage.getItem('sidebar-collapsed');
+    return stored ? JSON.parse(stored) : false;
+  });
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev: boolean) => {
+        const newState = !prev;
+        localStorage.setItem('sidebar-collapsed', JSON.stringify(newState));
+        if (newState) setTasksExpanded(false);
+        return newState;
+    });
+  };
+
   useReminderPolling(); // Start polling for reminders
   useEffect(() => {
     if (!loading && !user) {
@@ -166,6 +176,7 @@ export default function DashboardLayout({
     }
     return true;
   });
+
   if (loading) {
     return <div className="min-h-screen bg-background dark flex">
       {!isMobile && <div className="w-64 bg-sidebar border-r border-sidebar-border p-4">
@@ -181,164 +192,245 @@ export default function DashboardLayout({
     </div>;
   }
   if (!user) return null;
-  return <div className="h-screen overflow-hidden bg-background dark flex">
-    {/* Desktop Sidebar */}
-    {!isMobile && <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
-      <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          {company?.logo_url ? (
-            <img
-              src={company.logo_url}
-              alt={company.name}
-              className="w-10 h-10 rounded-lg object-cover bg-white"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-              <span className="text-lg font-bold text-primary-foreground">
-                {company?.name?.[0] || 'Up'}
-              </span>
-            </div>
-          )}
-          <div>
-            <h1 className="font-semibold text-sidebar-foreground">
-              {company?.name || 'Fastest CRM'}
-            </h1>
-            <p className="text-xs text-muted-foreground">Fastest CRM by Upmarking.com</p>
-          </div>
-          <div className="ml-auto">
-            <NotificationsBell />
-          </div>
-        </div>
-      </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {/* Regular nav items — Dashboard + LG Dashboard first */}
-        {filteredNavItems.slice(0, 2).map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path && !isTasksActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
-          <item.icon className="h-4 w-4" />
-          {item.label}
-        </button>)}
-
-        {/* ── Tasks section (right after Dashboard) ── */}
-        <div>
-          <button
-            onClick={() => {
-              setTasksExpanded(prev => !prev);
-              if (!isTasksActive) navigate(`/dashboard/tasks?tab=${activeTaskTab}`);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${isTasksActive
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-              }`}
-          >
-            <CheckSquare className="h-4 w-4" />
-            <span className="flex-1 text-left">Tasks</span>
-            {!tasksLoading && totalTaskCount > 0 && (
-              <span className="text-xs font-bold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                {totalTaskCount}
-              </span>
+  return <TooltipProvider delayDuration={0}>
+    <div className="h-screen overflow-hidden bg-background dark flex">
+      {/* Desktop Sidebar */}
+      {!isMobile && <aside className={`${isCollapsed ? 'w-20' : 'w-64'} transition-all duration-300 ease-in-out bg-sidebar border-r border-sidebar-border flex flex-col shrink-0`}>
+        <div className={`p-4 border-b border-sidebar-border flex items-center ${isCollapsed ? 'justify-center flex-col gap-2' : 'justify-between'}`}>
+          <div className="flex items-center gap-3 w-full">
+            {company?.logo_url ? (
+              <img
+                src={company.logo_url}
+                alt={company.name}
+                className="w-10 h-10 rounded-lg object-cover bg-white shrink-0 mx-auto"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center shrink-0 mx-auto">
+                <span className="text-lg font-bold text-primary-foreground">
+                  {company?.name?.[0] || 'Up'}
+                </span>
+              </div>
             )}
-            {tasksExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
-          </button>
-
-          {/* Sub-items */}
-          {tasksExpanded && (
-            <div className="mt-0.5 ml-3 border-l border-sidebar-border pl-3 space-y-0.5">
-              {/** Urgent */}
-              <button
-                onClick={() => navigate('/dashboard/tasks?tab=urgent')}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'urgent'
-                  ? 'bg-red-500/20 text-red-400'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                  }`}
-              >
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <span className="flex-1 text-left">Urgent</span>
-                {!tasksLoading && taskCounts.urgent > 0 && (
-                  <span className="text-xs font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                    {taskCounts.urgent}
-                  </span>
-                )}
-              </button>
-
-              {/** Today */}
-              <button
-                onClick={() => navigate('/dashboard/tasks?tab=today')}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'today'
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                  }`}
-              >
-                <Clock className="h-3.5 w-3.5" />
-                <span className="flex-1 text-left">Today</span>
-                {!tasksLoading && taskCounts.today > 0 && (
-                  <span className="text-xs font-bold bg-amber-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                    {taskCounts.today}
-                  </span>
-                )}
-              </button>
-
-              {/** Upcoming */}
-              <button
-                onClick={() => navigate('/dashboard/tasks?tab=upcoming')}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'upcoming'
-                  ? 'bg-blue-500/20 text-blue-400'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                  }`}
-              >
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="flex-1 text-left">Upcoming</span>
-                {!tasksLoading && taskCounts.upcoming > 0 && (
-                  <span className="text-xs font-bold bg-blue-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                    {taskCounts.upcoming}
-                  </span>
-                )}
-              </button>
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1">
+                <h1 className="font-semibold text-sidebar-foreground truncate" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  {company?.name || 'Fastest CRM'}
+                </h1>
+                <p className="text-[10px] text-muted-foreground truncate">Fastest CRM by Upmarking.com</p>
+              </div>
+            )}
+            {!isCollapsed && (
+              <div className="ml-auto shrink-0 flex items-center gap-2">
+                <NotificationsBell />
+                <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground bg-sidebar-accent/50">
+                    <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+          {isCollapsed && (
+            <div className="mt-2 text-center w-full flex flex-col items-center justify-center gap-2">
+              <NotificationsBell />
+              <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground bg-sidebar-accent/50">
+                  <PanelLeftOpen className="h-4 w-4" />
+              </Button>
             </div>
           )}
         </div>
 
-        {/* Remaining nav items (index 2+) */}
-        {filteredNavItems.slice(2).map(item => <button key={item.label} onClick={() => navigate(item.path)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${location.pathname === item.path ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}>
-          <item.icon className="h-4 w-4" />
-          {item.label}
-        </button>)}
-      </nav>
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
+          {/* Regular nav items — Dashboard + LG Dashboard first */}
+          {filteredNavItems.slice(0, 2).map(item => (
+            <Tooltip key={item.label}>
+                <TooltipTrigger asChild>
+                    <button
+                        onClick={() => navigate(item.path)}
+                        className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === item.path && !isTasksActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent'
+                        }`}
+                    >
+                        <item.icon className={`h-4 w-4 shrink-0 transition-colors ${location.pathname === item.path && !isTasksActive ? 'text-primary' : ''}`} />
+                        {!isCollapsed && <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
+                    </button>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right" sideOffset={10}>{item.label}</TooltipContent>}
+            </Tooltip>
+          ))}
 
-      <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-            <span className="text-sm font-medium text-primary">
-              {user.email?.[0].toUpperCase()}
-            </span>
+          {/* ── Tasks section (right after Dashboard) ── */}
+          <div>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        onClick={() => {
+                            if (isCollapsed) {
+                                toggleSidebar();
+                                setTasksExpanded(true);
+                            } else {
+                                setTasksExpanded(prev => !prev);
+                            }
+                            if (!isTasksActive) navigate(`/dashboard/tasks?tab=${activeTaskTab}`);
+                        }}
+                        className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 flex-col py-1.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-sm transition-colors cursor-pointer relative ${isTasksActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                        }`}
+                    >
+                        <div className="flex items-center justify-center shrink-0">
+                            <CheckSquare className="h-4 w-4" />
+                            {isCollapsed && !tasksLoading && totalTaskCount > 0 && (
+                                <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-primary" />
+                            )}
+                        </div>
+                        {!isCollapsed && <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">Tasks</span>}
+                        {!isCollapsed && !tasksLoading && totalTaskCount > 0 && (
+                            <span className="text-xs font-bold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center shrink-0">
+                                {totalTaskCount}
+                            </span>
+                        )}
+                        {!isCollapsed && (tasksExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 ml-1 shrink-0" />)}
+                    </button>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right" sideOffset={10}>
+                    <div className="flex items-center gap-2">
+                        Tasks {!tasksLoading && totalTaskCount > 0 && `(${totalTaskCount})`}
+                    </div>
+                </TooltipContent>}
+            </Tooltip>
+
+            {/* Sub-items */}
+            {!isCollapsed && tasksExpanded && (
+              <div className="mt-0.5 ml-3 border-l border-sidebar-border pl-3 space-y-0.5 overflow-hidden">
+                {/** Urgent */}
+                <button
+                  onClick={() => navigate('/dashboard/tasks?tab=urgent')}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'urgent'
+                    ? 'bg-red-500/20 text-red-400'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                    }`}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">Urgent</span>
+                  {!tasksLoading && taskCounts.urgent > 0 && (
+                    <span className="text-xs font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center shrink-0">
+                      {taskCounts.urgent}
+                    </span>
+                  )}
+                </button>
+
+                {/** Today */}
+                <button
+                  onClick={() => navigate('/dashboard/tasks?tab=today')}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'today'
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                    }`}
+                >
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">Today</span>
+                  {!tasksLoading && taskCounts.today > 0 && (
+                    <span className="text-xs font-bold bg-amber-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center shrink-0">
+                      {taskCounts.today}
+                    </span>
+                  )}
+                </button>
+
+                {/** Upcoming */}
+                <button
+                  onClick={() => navigate('/dashboard/tasks?tab=upcoming')}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${isTasksActive && activeTaskTab === 'upcoming'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                    }`}
+                >
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">Upcoming</span>
+                  {!tasksLoading && taskCounts.upcoming > 0 && (
+                    <span className="text-xs font-bold bg-blue-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center shrink-0">
+                      {taskCounts.upcoming}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate text-sidebar-foreground">
-              {user.user_metadata?.full_name || user.email}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+
+          {/* Remaining nav items (index 2+) */}
+          {filteredNavItems.slice(2).map(item => (
+            <Tooltip key={item.label}>
+                <TooltipTrigger asChild>
+                    <button
+                        onClick={() => navigate(item.path)}
+                        className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer ${location.pathname === item.path
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent'
+                        }`}
+                    >
+                        <item.icon className={`h-4 w-4 shrink-0 transition-colors ${location.pathname === item.path ? 'text-primary' : ''}`} />
+                        {!isCollapsed && <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
+                    </button>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right" sideOffset={10}>{item.label}</TooltipContent>}
+            </Tooltip>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-sidebar-border">
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 mb-4'} `}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 cursor-default">
+                            <span className="text-sm font-medium text-primary">
+                                {user.email?.[0].toUpperCase()}
+                            </span>
+                        </div>
+                    </TooltipTrigger>
+                    {isCollapsed && <TooltipContent side="right" sideOffset={10}>{user.email}</TooltipContent>}
+                </Tooltip>
+                {!isCollapsed && (
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate text-sidebar-foreground">
+                            {user.user_metadata?.full_name || user.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                )}
+            </div>
+            {isCollapsed ? (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-full mt-4 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" onClick={signOut}>
+                            <LogOut className="h-4 w-4" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={10} className="text-red-500">Sign Out</TooltipContent>
+                </Tooltip>
+            ) : (
+                <Button variant="outline" size="sm" className="w-full text-muted-foreground hover:text-red-500 hover:border-red-500/50 hover:bg-red-500/10 transition-colors" onClick={signOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                </Button>
+            )}
+        </div>
+      </aside>}
+
+      {/* Main Content */}
+      <main className={`flex-1 overflow-auto ${isMobile ? 'pb-20' : ''}`}>
+        <AnnouncementBanner />
+        <div className="p-4 md:p-8 min-h-[calc(100vh-2rem)] flex flex-col">
+          <div className="flex-1 max-w-full">
+            {children}
           </div>
+          <footer className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
+            © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
+          </footer>
         </div>
-        <Button variant="outline" size="sm" className="w-full" onClick={signOut}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
-        </Button>
-      </div>
-    </aside>}
+      </main>
 
-    {/* Main Content */}
-    <main className={`flex-1 overflow-auto ${isMobile ? 'pb-20' : ''}`}>
-      <AnnouncementBanner />
-      <div className="p-4 md:p-8 min-h-[calc(100vh-2rem)] flex flex-col">
-        <div className="flex-1">
-          {children}
-        </div>
-        <footer className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
-          © 2025-∞ Fastest CRM by Upmarking.com. Built for Fastest Sales Teams.
-        </footer>
-      </div>
-    </main>
-
-    {/* Mobile Bottom Navigation */}
-    {isMobile && <MobileBottomNav />}
-  </div>;
+      {/* Mobile Bottom Navigation */}
+      {isMobile && <MobileBottomNav />}
+    </div>
+  </TooltipProvider>;
 }
