@@ -121,7 +121,8 @@ export const BreadcrumbSchema = ({ items }: { items: { name: string; item: strin
 /**
  * FAQ Schema
  */
-export const FAQSchema = ({ faqs }: { faqs: { question: string; answer: string }[] }) => {
+export const FAQSchema = ({ faqs = [] }: { faqs?: { question: string; answer: string }[] }) => {
+  if (!faqs || faqs.length === 0) return null;
   const schema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",

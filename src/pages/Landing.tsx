@@ -1,62 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Users, Phone, CreditCard, Workflow,
-  Brain, ArrowRight, Zap, Target, TrendingUp, Menu, X, ChevronDown
+  Brain, ArrowRight, Zap, Target, TrendingUp, Menu, X,
+  Star, CheckCircle2, MessageSquare, Quote, Newspaper, Shield, Sparkles, PhoneCall,
+  Clock, Award, ChevronRight, Check, Bot
 } from 'lucide-react';
 import SEO from '@/components/SEO';
-import { FAQSchema, SoftwareAppSchema, OrganizationSchema, LocalBusinessBengaluruSchema, LocalBusinessSFSchema } from '@/components/SchemaMarkup';
+import { SoftwareAppSchema, OrganizationSchema, LocalBusinessBengaluruSchema, LocalBusinessSFSchema } from '@/components/SchemaMarkup';
 import FAQSection from '@/components/features/FAQSection';
-import BreadcrumbSection from '@/components/layout/BreadcrumbSection';
 import AuthorityFooter from '@/components/layout/AuthorityFooter';
-import { Star, CheckCircle2, MessageSquare, Quote, Newspaper } from 'lucide-react';
+import { isAndroidWebView } from '@/lib/platform';
+
+// ─── 3D & Interactive Components ──────────────────────────────────────────────
+import ThreeHeroScene from '@/components/landing/ThreeHeroScene';
+import Card3D from '@/components/landing/Card3D';
+import InteractiveProductConsole from '@/components/landing/InteractiveProductConsole';
+import LiveDealTicker from '@/components/landing/LiveDealTicker';
+import ROICalculator from '@/components/landing/ROICalculator';
+import SpeedComparisonSection from '@/components/landing/SpeedComparisonSection';
+import ScrollProgressBar from '@/components/landing/ScrollProgressBar';
+import ScrollFloatingCTA from '@/components/landing/ScrollFloatingCTA';
+import { ScrollReveal, ScrollRevealItem } from '@/components/landing/ScrollReveal';
+import AIAgentHUD from '@/components/landing/AIAgentHUD';
+import AICommandPrompt from '@/components/landing/AICommandPrompt';
 
 const features = [
   {
-    icon: Users,
-    title: 'Lead Management',
-    description: 'Track every lead from generation to conversion with smart status tracking and ownership assignment.'
+    icon: Zap,
+    badge: '300ms Routing',
+    title: 'Autonomous Lead Ingestion',
+    description: 'Auto-capture leads from Meta Ads, Google, WhatsApp, & webhooks. Sub-second routing with FastAI intelligence.'
   },
   {
     icon: Brain,
-    title: 'AI Analytics (FastAI)',
-    description: 'Get intelligent insights, conversion predictions, and AI-powered recommendations for every lead.'
+    badge: 'FastAI Neural',
+    title: 'AI Predictive Lead Scoring',
+    description: 'Real-time buying intent calculation, predicted deal close time, and automated objection-handling guidance.'
   },
   {
-    icon: Phone,
-    title: 'Auto Dialer',
-    description: 'Sequential calling with one click. Update status instantly after each call.'
+    icon: PhoneCall,
+    badge: 'Voice AI',
+    title: 'Autonomous Auto-Dialer',
+    description: 'Sequential telecalling with live speech-to-text transcription and instant AI call summary notes.'
   },
   {
-    icon: Users,
-    title: 'Team Hierarchy',
-    description: '12-level hierarchy from CA to Company. Role-based access ensures data security.'
+    icon: Shield,
+    badge: 'India-First',
+    title: '12-Level Hierarchy & CA Governance',
+    description: 'Granular role-based security from Chartered Accountant to Telecaller. Customer numbers masked & protected.'
   },
   {
     icon: CreditCard,
-    title: 'Payment Links',
-    description: 'Razorpay integration for instant payment collection. Auto-update lead status on payment.'
+    badge: 'Razorpay Native',
+    title: 'WhatsApp Payment Links',
+    description: 'Generate dynamic payment links in 1 click. Instant webhook verification automatically marks deals WON.'
   },
   {
     icon: Workflow,
-    title: 'Workflow Automation',
-    description: 'Rule-based triggers and actions. Automate follow-ups, notifications, and lead assignments.'
+    badge: 'Smart Triggers',
+    title: 'Multi-Channel AI Automation',
+    description: 'Trigger automated WhatsApp nurture drips, escalation SMS, and SLA alerts when inquiries need immediate touch.'
   }
 ];
 
-const benefits = [
-  { icon: Zap, label: 'Faster Closures', text: 'Close deals faster with AI-prioritized leads' },
-  { icon: Target, label: 'Zero Missed Leads', text: 'Automate follow-ups, never miss an opportunity' },
-  { icon: TrendingUp, label: 'Real-time Revenue', text: 'Track revenue in real-time from lead to payment' }
-];
-
-const faqs = [
-  { q: 'Is there a free trial?', a: 'Yes! You can start with a free trial to explore all features. No credit card required.' },
-  { q: 'Can I import my existing leads?', a: 'Absolutely. We support CSV imports and integrations with major platforms like Meta, Google Ads, and more.' },
-  { q: 'Is my data secure?', a: 'Security is our top priority. We use enterprise-grade encryption and role-based access control to keep your data safe.' },
-  { q: 'Do you offer support?', a: 'Yes, we provide email and chat support to help you get the most out of Fastest CRM.' },
-  { q: 'What industries do you support?', a: 'We support Real Estate, EdTech, Training Institutes, Finance, Healthcare, SaaS, and many more. Each industry gets tailored lead fields.' }
+const testimonials = [
+  {
+    quote: "FastestCRM reduced our lead response latency from 35 minutes down to 8 seconds. Our conversion rate increased by 42% in month one.",
+    author: "Arjun Sharma",
+    role: "Head of Sales, PropTech Realty (Bengaluru)",
+    metric: "+42% Conversion Rate"
+  },
+  {
+    quote: "The built-in auto-dialer and speech transcription saved our 25 counselors over 3 hours every day. The UI is lightning-fast.",
+    author: "Sneha Patil",
+    role: "Admissions Director, EdTech Academy (Mumbai)",
+    metric: "3+ Hours Saved Daily"
+  },
+  {
+    quote: "The 12-tier hierarchy with CA commission governance gave our leadership complete audit peace of mind across 6 state branches.",
+    author: "Vikram Singhania",
+    role: "Managing Director, Apex Capital (Delhi NCR)",
+    metric: "6 Branches Unified"
+  }
 ];
 
 const industries = [
@@ -70,15 +98,40 @@ const industries = [
   { name: 'Consultancy', icon: '🤝', path: '/solutions/hyderabad' }
 ];
 
-import { isAndroidWebView } from '@/lib/platform';
+const faqs = [
+  { q: 'Is there a free trial or free tier?', a: 'Yes! FastestCRM provides a completely free 1-seat starter account so you can test all features with zero risk. Team plans start at just ₹999/month/rep.' },
+  { q: 'Can I import my existing leads and customer history?', a: 'Absolutely. We support 1-click CSV imports and seamless webhook integrations with Meta Ads, Google Ads, Zapier, Make, and custom REST APIs.' },
+  { q: 'How does the Auto-Dialer work?', a: 'Our auto-dialer queues leads sequentially. With a single click, your sales reps dial prospects directly, while FastAI transcribes call notes and auto-updates lead status with zero manual typing.' },
+  { q: 'How does FastestCRM compare to Salesforce or HubSpot?', a: 'FastestCRM is engineered specifically for speed and high-velocity conversion. Where legacy CRMs take 6 weeks to set up and cost ₹8,000+/rep with add-ons, FastestCRM is live in 3 minutes, has native calling and WhatsApp, and costs ₹999/rep.' },
+  { q: 'What is the 12-Level Hierarchy & CA Governance?', a: 'FastestCRM includes multi-tier organizational control designed for Indian enterprises and global sales networks. It enables Chartered Accountants, Company Admins, Regional Directors, Branch Managers, and Telecallers to have isolated permissions, commission payouts, and masked contact numbers.' }
+];
 
 export default function Landing() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [scrolled, setScrolled] = useState(false);
   const isWebView = isAndroidWebView();
 
+  const { scrollY } = useScroll();
+  const heroConsoleRotateX = useTransform(scrollY, [0, 600], [0, 8]);
+  const heroConsoleScale = useTransform(scrollY, [0, 600], [1, 0.97]);
+  const heroConsoleOpacity = useTransform(scrollY, [0, 800], [1, 0.9]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 30);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 selection:text-foreground relative">
+      {/* ── Scroll Progress Bar ── */}
+      <ScrollProgressBar />
+
+      {/* ── Floating Sticky Conversion Pill ── */}
+      <ScrollFloatingCTA />
+
       <SEO 
         title="Global First Fully AI CRM for Sales Teams | Fast CRM for Startups"
         description="Ranked #1 Fully AI CRM. Transform your sales with the most advanced AI CRM. Automated lead tracking, fast calling, and payments. Built for high-growth sales teams."
@@ -89,43 +142,62 @@ export default function Landing() {
       <LocalBusinessBengaluruSchema />
       <LocalBusinessSFSchema />
 
-      {/* ── Navigation ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
-        <div className="container mx-auto px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <img src="/fastestcrmlogo.png" alt="Fastest CRM logo" className="w-9 h-9 object-contain" />
-            <span className="text-lg font-bold tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
-              Fastest CRM
-            </span>
-          </div>
+      {/* ── Fixed Floating Navigation ── */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? 'py-3 bg-background/80 backdrop-blur-xl border-b border-white/[0.08] shadow-2xl' : 'py-5 bg-transparent'
+      }`}>
+        <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
+          {/* Brand Logo */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="relative">
+              <img src="/fastestcrmlogo.png" alt="Fastest CRM logo" className="w-8 h-8 md:w-9 md:h-9 object-contain group-hover:scale-105 transition-transform" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-background animate-pulse" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg md:text-xl font-extrabold tracking-tight text-foreground">
+                Fastest CRM
+              </span>
+              <span className="hidden sm:inline text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">
+                AI FIRST
+              </span>
+            </div>
+          </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Desktop Nav Items */}
+          <div className="hidden md:flex items-center gap-1 bg-white/[0.03] backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/[0.08]">
             <Link to="/tools">
-              <Button variant="ghost" size="sm" className="hover:bg-primary/8 hover:text-primary transition-colors text-sm font-medium">
-                Tools
+              <Button variant="ghost" size="sm" className="rounded-full text-xs font-semibold hover:text-primary hover:bg-white/[0.05] transition-colors">
+                Sales Tools
               </Button>
             </Link>
             <Link to="/glossary">
-              <Button variant="ghost" size="sm" className="hover:bg-primary/8 hover:text-primary transition-colors text-sm font-medium">
+              <Button variant="ghost" size="sm" className="rounded-full text-xs font-semibold hover:text-primary hover:bg-white/[0.05] transition-colors">
                 Glossary
               </Button>
             </Link>
             <Link to="/blog">
-              <Button variant="ghost" size="sm" className="hover:bg-primary/8 hover:text-primary transition-colors text-sm font-medium">
+              <Button variant="ghost" size="sm" className="rounded-full text-xs font-semibold hover:text-primary hover:bg-white/[0.05] transition-colors">
                 Blog
               </Button>
             </Link>
+            <Link to="/crm-for-real-estate">
+              <Button variant="ghost" size="sm" className="rounded-full text-xs font-semibold hover:text-primary hover:bg-white/[0.05] transition-colors">
+                Industries
+              </Button>
+            </Link>
+          </div>
+
+          {/* Action CTAs */}
+          <div className="hidden md:flex items-center gap-3">
             <Link to="/auth">
-              <Button variant="ghost" size="sm" className="hover:bg-primary/8 hover:text-primary transition-colors text-sm font-medium ml-2">
-                Login
+              <Button variant="ghost" size="sm" className="rounded-full text-xs font-bold hover:text-primary hover:bg-white/[0.05] transition-colors">
+                Sign In
               </Button>
             </Link>
             <Link to="/register-company">
               <Button
                 size="sm"
-                className="gradient-primary shimmer-overlay font-semibold px-5 shadow-lg hover:opacity-90 transition-opacity text-xs"
-                style={{ color: 'hsl(222 28% 5%)' }}
+                className="gradient-primary shimmer-overlay font-bold text-slate-950 px-5 rounded-full shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs"
               >
                 Register Company
                 <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -133,297 +205,392 @@ export default function Landing() {
             </Link>
           </div>
 
-          {/* Mobile menu toggle */}
+          {/* Mobile menu button */}
           <div className="md:hidden">
-            <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
+            <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle navigation">
               {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile dropdown */}
         {isMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 bg-background/97 backdrop-blur-md border-b border-border/50 p-6 flex flex-col gap-3 animate-in slide-in-from-top-4 duration-300 shadow-2xl">
+          <div className="md:hidden absolute top-full left-0 right-0 bg-background/95 backdrop-blur-2xl border-b border-white/[0.08] p-6 flex flex-col gap-3 shadow-2xl animate-in slide-in-from-top-4 duration-200">
             <Link to="/tools" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start text-base font-medium">Sales Tools</Button>
+              <Button variant="ghost" className="w-full justify-start text-sm font-semibold">Sales Tools</Button>
             </Link>
             <Link to="/glossary" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start text-base font-medium">CRM Glossary</Button>
+              <Button variant="ghost" className="w-full justify-start text-sm font-semibold">CRM Glossary</Button>
             </Link>
             <Link to="/blog" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start text-base font-medium">Blog</Button>
+              <Button variant="ghost" className="w-full justify-start text-sm font-semibold">Blog & Guides</Button>
             </Link>
+            <Link to="/crm-for-real-estate" onClick={() => setIsMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start text-sm font-semibold">Industry Solutions</Button>
+            </Link>
+            <div className="h-px bg-white/[0.08] my-1" />
             <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start text-base font-medium">Login</Button>
+              <Button variant="outline" className="w-full justify-center text-sm font-semibold">Login</Button>
             </Link>
             <Link to="/register-company" onClick={() => setIsMenuOpen(false)}>
-              <Button className="w-full gradient-primary font-semibold text-base h-12" style={{ color: 'hsl(222 28% 5%)' }}>
-                Register Company
+              <Button className="w-full gradient-primary font-bold text-slate-950 text-sm h-11">
+                Register Company Free
               </Button>
             </Link>
           </div>
         )}
       </nav>
 
-      {/* ── Hero ── */}
-      <section className="relative pt-36 pb-24 px-6 overflow-hidden" aria-labelledby="hero-heading">
-        {/* Dot-grid background */}
-        <div className="absolute inset-0 -z-10 dot-grid-bg opacity-60" />
+      {/* ── 3D Hero Section with AI-First Architecture ── */}
+      <section className="relative pt-36 md:pt-44 pb-20 px-4 md:px-6 overflow-hidden" aria-labelledby="hero-heading">
+        {/* Three.js Interactive 3D WebGL Canvas */}
+        <ThreeHeroScene />
 
-        {/* Floating gradient orbs */}
-        <div className="absolute top-20 left-[10%] -z-10 w-80 h-80 rounded-full bg-primary/20 blur-[80px] animate-float" />
-        <div className="absolute top-40 right-[8%] -z-10 w-64 h-64 rounded-full bg-teal-400/10 blur-[70px] animate-float-slow" />
-        <div className="absolute bottom-10 left-[40%] -z-10 w-56 h-56 rounded-full bg-primary/10 blur-[60px] animate-float" style={{ animationDelay: '2s' }} />
+        {/* Ambient Glow Orbs */}
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 -z-10 w-[700px] h-[400px] bg-primary/15 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-80 right-10 -z-10 w-96 h-96 bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="container mx-auto text-center max-w-5xl">
-          {/* Badge */}
-          {!isWebView && (
-            <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-10 border-primary/30"
-              style={{ animationDelay: '0ms' }}
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-              </span>
-              <span className="text-xs font-semibold tracking-wide text-foreground/80 uppercase">
-                Global's First Fully AI-Powered CRM
-              </span>
-              <div className="h-4 w-px bg-border/50 mx-1" />
-              <a 
-                href="https://www.producthunt.com/products/fastest-crm" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 hover:text-primary transition-colors"
+        <div className="container mx-auto text-center max-w-5xl relative z-10">
+          <ScrollReveal staggerDelay={0.12}>
+            {/* Live Deal Ticker */}
+            <ScrollRevealItem className="mb-6 flex justify-center">
+              <LiveDealTicker />
+            </ScrollRevealItem>
+
+            {/* AI First Badge */}
+            <ScrollRevealItem className="mb-4 flex justify-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass border border-emerald-500/30 shadow-lg shadow-emerald-500/10 bg-emerald-500/[0.08]">
+                <Bot className="h-4 w-4 text-emerald-400 animate-pulse" />
+                <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-300 font-mono">
+                  Autonomous FastAI Engine v2.4 · Self-Driving Sales CRM
+                </span>
+              </div>
+            </ScrollRevealItem>
+
+            {/* Main Headline */}
+            <ScrollRevealItem>
+              <h1
+                id="hero-heading"
+                className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black mb-6 tracking-tight leading-[1.08] text-foreground"
               >
-                <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=fastest-crm&theme=light" alt="Fastest CRM on Product Hunt" className="h-5" />
-              </a>
-            </div>
-          )}
+                The World's First <br className="hidden sm:inline" />
+                <span className="gradient-text">Autonomous AI CRM</span>
+                <span className="block mt-2 text-foreground">
+                  That Ingests, Dials & Closes 24/7
+                </span>
+              </h1>
+            </ScrollRevealItem>
 
-          {/* Headline */}
-          <h1
-            id="hero-heading"
-            className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-700"
-            style={{ fontFamily: "'Syne', sans-serif", letterSpacing: '-0.03em' }}
-          >
-            Global First <span className="gradient-text">Fully AI CRM</span> for{' '}
-            <span className="block mt-2">
-              Leads • Calls • Payments
-            </span>
-          </h1>
+            {/* Subtitle */}
+            <ScrollRevealItem>
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed font-normal">
+                Deploy self-driving AI agents that ingest leads in 300ms, predict high-intent buyers, auto-dial prospects with live speech transcription, and settle Razorpay WhatsApp payments instantly.
+              </p>
+            </ScrollRevealItem>
 
-          <p className="text-lg md:text-xl text-muted-foreground mb-5 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
-            Automate your entire sales pipeline with the smartest CRM built for high-growth sales teams.
-          </p>
+            {/* Live Floating AI Agent Telemetry HUD */}
+            <ScrollRevealItem>
+              <AIAgentHUD />
+            </ScrollRevealItem>
 
-          {/* Pricing pill */}
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary/10 border border-primary/20 mb-12 animate-in fade-in duration-700 delay-150">
-            <span className="text-primary font-semibold text-sm">
-              Free 1 seat · Startup plans at ₹999/month/employee ☕
-            </span>
-          </div>
+            {/* Pricing & Value Pill */}
+            <ScrollRevealItem>
+              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full glass border border-primary/25 mb-8 shadow-md">
+                <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                <span className="text-xs md:text-sm font-semibold text-foreground/90">
+                  Free 1-Seat Starter · Startup plans at <span className="text-primary font-bold">₹999/month/rep</span> ☕
+                </span>
+              </div>
+            </ScrollRevealItem>
 
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
-            <Link to="/register-company">
-              <Button
-                size="lg"
-                className="h-14 px-10 text-base rounded-full gradient-primary shimmer-overlay font-semibold shadow-xl hover:shadow-2xl transition-all animate-pulse-glow"
-                style={{ color: 'hsl(222 28% 5%)' }}
+            {/* CTAs */}
+            <ScrollRevealItem>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+                <Link to="/register-company" className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto h-14 px-10 text-base rounded-full gradient-primary shimmer-overlay font-bold text-slate-950 shadow-2xl hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+                  >
+                    Deploy Your AI CRM Free
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link to="/auth" className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full sm:w-auto h-14 px-10 text-base rounded-full border-primary/40 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all font-semibold"
+                  >
+                    Launch Live Sandbox
+                  </Button>
+                </Link>
+              </div>
+            </ScrollRevealItem>
+
+            {/* AI Command Prompt Tester */}
+            <ScrollRevealItem>
+              <AICommandPrompt />
+            </ScrollRevealItem>
+
+            {/* Interactive 3D Product Simulator Centerpiece with 3D Parallax Scroll */}
+            <ScrollRevealItem>
+              <motion.div
+                style={{
+                  rotateX: heroConsoleRotateX,
+                  scale: heroConsoleScale,
+                  opacity: heroConsoleOpacity,
+                  transformPerspective: 1200
+                }}
+                className="relative mt-8"
               >
-                Register Your Company
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/auth">
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-14 px-10 text-base rounded-full border-primary/30 hover:bg-primary/8 hover:text-primary hover:border-primary/50 transition-all font-medium"
-              >
-                Live Demo
-              </Button>
-            </Link>
-          </div>
+                <InteractiveProductConsole />
+              </motion.div>
+            </ScrollRevealItem>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* ── Social Proof / Press Section ── */}
-      <section className="py-20 px-6 border-y border-border/30 bg-secondary/5">
-        <div className="container mx-auto">
-          <p className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground mb-12">Building India's Sales Future - As Seen On</p>
-          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-50 grayscale hover:grayscale-0 transition-all duration-700">
-             <a href="https://www.producthunt.com/products/fastest-crm" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 font-bold text-2xl hover:text-primary transition-colors">
-               <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=fastest-crm&theme=light" alt="Product Hunt" className="h-8" />
-             </a>
-             <div className="flex items-center gap-2 font-bold text-2xl"><Newspaper className="h-6 w-6" /> YourStory</div>
-             <div className="flex items-center gap-2 font-bold text-2xl">Inc42</div>
-             <div className="flex items-center gap-2 font-bold text-2xl">TechCrunch</div>
-          </div>
+      <section className="py-12 md:py-14 px-4 sm:px-6 border-y border-white/[0.08] bg-black/30 overflow-hidden">
+        <div className="container mx-auto max-w-5xl">
+          <ScrollReveal staggerDelay={0.1}>
+            <ScrollRevealItem>
+              <p className="text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-8 font-mono">
+                Trusted by Forward-Thinking Sales Teams & Featured On
+              </p>
+            </ScrollRevealItem>
+
+            <ScrollRevealItem>
+              <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8 md:gap-20 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+                <a
+                  href="https://www.producthunt.com/products/fastest-crm"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=fastest-crm&theme=light" alt="Product Hunt" className="h-8" />
+                </a>
+                <div className="flex items-center gap-2 font-bold text-xl text-foreground/80">
+                  <Newspaper className="h-5 w-5 text-primary" /> YourStory
+                </div>
+                <div className="flex items-center gap-1 font-bold text-xl text-foreground/80">
+                  Inc42 Media
+                </div>
+                <div className="flex items-center gap-1 font-bold text-xl text-foreground/80">
+                  TechCrunch
+                </div>
+              </div>
+            </ScrollRevealItem>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section className="py-24 px-6 relative" aria-labelledby="features-heading">
-        <div className="absolute top-0 right-0 -z-10 w-1/3 h-1/3 bg-primary/5 blur-3xl rounded-full" />
-        <div className="container mx-auto">
-          <div className="text-center mb-20">
-            <span className="text-xs font-bold text-primary uppercase tracking-widest mb-3 block">What We Offer</span>
-            <h2
-              id="features-heading"
-              className="text-3xl md:text-5xl font-bold mb-6"
-              style={{ fontFamily: "'Syne', sans-serif" }}
-            >
-              Why we are the <span className="gradient-text">Fastest CRM</span>
-            </h2>
-            <p className="text-base text-muted-foreground max-w-xl mx-auto">
-              Our AI CRM is optimized for speed—from split-second lead delivery to automated one-click dialers.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={feature.title}
-                className="group relative p-8 rounded-2xl bg-card border border-border/50 hover:border-primary/40 card-hover overflow-hidden"
+      {/* ── 3D Bento Feature Grid with Staggered Scroll Reveal ── */}
+      <section className="py-20 md:py-24 px-4 sm:px-6 relative overflow-hidden" aria-labelledby="features-heading">
+        <div className="container mx-auto max-w-6xl">
+          <ScrollReveal staggerDelay={0.12}>
+            <ScrollRevealItem className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary uppercase tracking-wider mb-3 font-mono">
+                <Sparkles className="h-3.5 w-3.5" /> High-Velocity Capabilities
+              </div>
+              <h2
+                id="features-heading"
+                className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight"
               >
-                {/* Hover gradient reveal */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/6 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                Why We Are the <span className="gradient-text">Fastest CRM</span>
+              </h2>
+              <p className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto">
+                Every millisecond counts. Built with zero bloat to turn every incoming lead into immediate revenue.
+              </p>
+            </ScrollRevealItem>
 
-                {/* Number */}
-                <span className="absolute top-5 right-6 text-4xl font-black text-border/60 group-hover:text-primary/20 transition-colors duration-500" style={{ fontFamily: "'Syne', sans-serif" }}>
-                  {String(index + 1).padStart(2, '0')}
-                </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {features.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <ScrollRevealItem key={feature.title}>
+                    <Card3D maxTilt={8} className="h-full">
+                      <div className="h-full p-6 sm:p-7 rounded-2xl glass-panel-3d border border-white/10 hover:border-primary/40 transition-colors flex flex-col justify-between group bg-gradient-to-b from-card/90 to-background/90">
+                        <div>
+                          <div className="flex items-center justify-between mb-5">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-slate-950 transition-all duration-300">
+                              <Icon className="h-6 w-6" />
+                            </div>
+                            <span className="text-[11px] font-bold font-mono px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                              {feature.badge}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-bold text-foreground mb-2 tracking-tight">
+                            {feature.title}
+                          </h3>
+                          <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+                            {feature.description}
+                          </p>
+                        </div>
 
-                <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-xl border border-primary/30 bg-primary/8 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:border-primary/60 transition-all duration-400">
-                    <feature.icon className="h-6 w-6 text-primary" />
+                        <div className="pt-6 border-t border-white/[0.06] mt-6 flex items-center justify-between text-xs text-primary font-semibold group-hover:translate-x-1 transition-transform">
+                          <span>Explore workflow</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </Card3D>
+                  </ScrollRevealItem>
+                );
+              })}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ── Speed Comparison Benchmark Section ── */}
+      <ScrollReveal>
+        <ScrollRevealItem>
+          <SpeedComparisonSection />
+        </ScrollRevealItem>
+      </ScrollReveal>
+
+      {/* ── Interactive ROI Calculator ── */}
+      <ScrollReveal>
+        <ScrollRevealItem>
+          <ROICalculator />
+        </ScrollRevealItem>
+      </ScrollReveal>
+
+      {/* ── Industry Verticals (Cascading Stagger) ── */}
+      <section className="py-16 md:py-20 px-4 sm:px-6 bg-black/20 border-y border-white/[0.08] overflow-hidden" aria-labelledby="industries-heading">
+        <div className="container mx-auto max-w-6xl">
+          <ScrollReveal staggerDelay={0.08}>
+            <ScrollRevealItem className="text-center mb-14">
+              <span className="text-xs font-bold text-primary uppercase tracking-widest mb-3 block font-mono">Tailored Vertical Workflows</span>
+              <h2
+                id="industries-heading"
+                className="text-3xl md:text-4xl font-extrabold tracking-tight"
+              >
+                Built for <span className="gradient-text">High-Velocity Sectors</span>
+              </h2>
+            </ScrollRevealItem>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {industries.map((ind) => (
+                <ScrollRevealItem key={ind.name}>
+                  <Link
+                    to={ind.path}
+                    className="p-4 sm:p-5 rounded-2xl glass border border-white/[0.08] hover:border-primary/50 hover:bg-primary/5 transition-all text-center group card-hover flex flex-col items-center justify-center h-full"
+                  >
+                    <span className="text-3xl mb-2.5 group-hover:scale-125 transition-transform duration-300 block" role="img" aria-label={ind.name}>
+                      {ind.icon}
+                    </span>
+                    <span className="text-xs md:text-sm font-bold text-foreground/90 group-hover:text-primary transition-colors">
+                      {ind.name}
+                    </span>
+                  </Link>
+                </ScrollRevealItem>
+              ))}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ── Customer Stories & Testimonials (Cascading Stagger) ── */}
+      <section className="py-20 md:py-24 px-4 sm:px-6 relative overflow-hidden" aria-labelledby="testimonials-heading">
+        <div className="container mx-auto max-w-5xl">
+          <ScrollReveal staggerDelay={0.12}>
+            <ScrollRevealItem className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary uppercase tracking-wider mb-3 font-mono">
+                <Sparkles className="h-3.5 w-3.5" /> Customer Testimonials
+              </div>
+              <h2
+                id="testimonials-heading"
+                className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight"
+              >
+                Loved by <span className="gradient-text">India's Top Revenue Teams</span>
+              </h2>
+            </ScrollRevealItem>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {testimonials.map((t) => (
+                <ScrollRevealItem key={t.author} className="h-full">
+                  <Card3D maxTilt={6} className="h-full">
+                    <div className="p-6 sm:p-7 rounded-2xl glass-panel-3d border border-white/10 h-full flex flex-col justify-between bg-gradient-to-b from-card/90 to-background/90">
+                      <div>
+                        <div className="flex items-center gap-1 text-amber-400 mb-4">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 fill-amber-400" />
+                          ))}
+                        </div>
+                        <p className="text-xs md:text-sm text-foreground/90 leading-relaxed mb-6 italic">
+                          "{t.quote}"
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-primary font-mono block mb-1">
+                          {t.metric}
+                        </span>
+                        <p className="text-xs font-bold text-foreground">{t.author}</p>
+                        <p className="text-[11px] text-muted-foreground">{t.role}</p>
+                      </div>
+                    </div>
+                  </Card3D>
+                </ScrollRevealItem>
+              ))}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ── FAQ Section ── */}
+      <ScrollReveal>
+        <ScrollRevealItem>
+          <FAQSection items={faqs.map(f => ({ question: f.q, answer: f.a }))} />
+        </ScrollRevealItem>
+      </ScrollReveal>
+
+      {/* ── Final 3D Call to Action ── */}
+      <section className="py-20 md:py-24 px-4 sm:px-6 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10 w-[600px] h-[300px] bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="container mx-auto max-w-4xl">
+          <ScrollReveal>
+            <ScrollRevealItem>
+              <Card3D maxTilt={5}>
+                <div className="glass-panel-3d rounded-3xl p-8 md:p-16 text-center border border-primary/30 shadow-2xl relative overflow-hidden bg-gradient-to-b from-card/95 via-card/85 to-background/95">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/20 rounded-full blur-2xl pointer-events-none" />
+                  
+                  <h2
+                    className="text-3xl md:text-5xl font-black mb-5 text-foreground tracking-tight"
+                  >
+                    Ready to Experience the <br />
+                    <span className="gradient-text">Fastest Sales Pipeline</span> on Earth?
+                  </h2>
+                  <p className="text-sm md:text-base text-muted-foreground mb-8 max-w-xl mx-auto">
+                    Join forward-thinking sales teams closing deals 10x faster. Create your company account in 3 minutes.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <Link to="/register-company" className="w-full sm:w-auto">
+                      <Button
+                        size="lg"
+                        className="w-full sm:w-auto h-14 px-12 text-base rounded-full gradient-primary font-bold text-slate-950 shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                      >
+                        Get Started Free (1 Seat Included)
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </Link>
                   </div>
-                  <h3 className="text-xl font-bold mb-3" style={{ fontFamily: "'Syne', sans-serif" }}>{feature.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed text-sm">{feature.description}</p>
+
+                  <div className="mt-6 flex flex-wrap justify-center items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-primary" /> No credit card required</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-primary" /> Free starter tier</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-primary" /> Instant 3-minute setup</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              </Card3D>
+            </ScrollRevealItem>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* ── Industries ── */}
-      <section className="py-20 px-6 bg-secondary/20 border-y border-border/40" aria-labelledby="industries-heading">
-        <div className="container mx-auto">
-          <div className="text-center mb-14">
-            <span className="text-xs font-bold text-primary uppercase tracking-widest mb-3 block">Industries We Serve</span>
-            <h2
-              id="industries-heading"
-              className="text-3xl md:text-4xl font-bold"
-              style={{ fontFamily: "'Syne', sans-serif" }}
-            >
-              Built for <span className="gradient-text">Fastest Teams</span> Everywhere
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {industries.map((industry) => (
-              industry.path ? (
-                <Link
-                  key={industry.name}
-                  to={industry.path}
-                  className="flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-border/50 hover:border-primary/50 hover:bg-primary/4 transition-all duration-300 group cursor-pointer card-hover"
-                >
-                  <span className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-300" role="img" aria-label={industry.name}>
-                    {industry.icon}
-                  </span>
-                  <span className="font-semibold text-foreground/80 group-hover:text-primary transition-colors text-sm text-center">
-                    {industry.name}
-                  </span>
-                </Link>
-              ) : (
-                <div
-                  key={industry.name}
-                  className="flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-border/50 hover:border-primary/40 opacity-70 transition-all duration-300 group cursor-default"
-                >
-                  <span className="text-3xl mb-3" role="img" aria-label={industry.name}>
-                    {industry.icon}
-                  </span>
-                  <span className="font-semibold text-foreground/80 text-sm text-center">
-                    {industry.name}
-                  </span>
-                </div>
-              )
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Benefits ── */}
-      <section className="py-24 px-6 relative overflow-hidden" aria-labelledby="benefits-heading">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom_left,_hsl(175_80%_48%_/_0.07)_0%,_transparent_60%)]" />
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary uppercase tracking-widest mb-3 block">Why Teams Love Us</span>
-            <h2
-              id="benefits-heading"
-              className="text-3xl md:text-5xl font-bold"
-              style={{ fontFamily: "'Syne', sans-serif" }}
-            >
-              Why Teams Love <span className="gradient-text">Fastest CRM</span>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {benefits.map((benefit) => (
-              <div
-                key={benefit.text}
-                className="flex flex-col items-center text-center p-8 rounded-2xl bg-card/60 border border-border/50 hover:border-primary/40 card-hover group"
-              >
-                <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300 animate-pulse-glow">
-                  <benefit.icon className="h-7 w-7" style={{ color: 'hsl(222 28% 5%)' }} />
-                </div>
-                <p className="font-bold text-base mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>{benefit.label}</p>
-                <p className="text-muted-foreground text-sm leading-relaxed">{benefit.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FAQ ── */}
-      <FAQSection items={faqs.map(f => ({ question: f.q, answer: f.a }))} />
-
-      {/* ── CTA ── */}
-      <section className="py-24 px-4 md:px-6 relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 dot-grid-bg opacity-30" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10 w-[600px] h-[300px] bg-primary/15 blur-[100px] rounded-full" />
-
-        <div className="container mx-auto">
-          <div className="glass rounded-3xl p-8 md:p-16 text-center max-w-4xl mx-auto border-primary/20 hover:border-primary/40 transition-all duration-500 shadow-2xl shimmer-overlay">
-            <h2
-              className="text-3xl md:text-5xl font-bold mb-5"
-              style={{ fontFamily: "'Syne', sans-serif" }}
-            >
-              Ready to Transform Your Sales?
-            </h2>
-            <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-              Join forward-thinking sales teams closing more deals with Fastest CRM's AI-powered pipeline.
-            </p>
-            <Link to="/register-company">
-              <Button
-                size="lg"
-                className="h-14 px-12 text-base rounded-full gradient-primary font-bold shadow-xl hover:shadow-2xl transition-all animate-pulse-glow"
-                style={{ color: 'hsl(222 28% 5%)' }}
-              >
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <p className="mt-5 text-xs text-muted-foreground">
-              No credit card required · Free starter plan · Cancel anytime
-            </p>
-          </div>
-        </div>
-      </section>
-
+      {/* ── Footer ── */}
       <AuthorityFooter />
     </div>
   );

@@ -104,14 +104,15 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'DM Sans', 'Inter', system-ui, sans-serif;
+    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-foreground;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    letter-spacing: -0.015em;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Syne', 'DM Sans', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.035em;
   }
 
   html {
@@ -334,5 +335,83 @@
 
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+/* ── 3D Perspective & Holographic Utilities ── */
+.perspective-800 {
+  perspective: 800px;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-2000 {
+  perspective: 2000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.translate-z-10 {
+  transform: translateZ(10px);
+}
+
+.translate-z-20 {
+  transform: translateZ(20px);
+}
+
+.translate-z-30 {
+  transform: translateZ(30px);
+}
+
+.translate-z-40 {
+  transform: translateZ(40px);
+}
+
+.translate-z-50 {
+  transform: translateZ(50px);
+}
+
+/* ── 3D Floating Glass & Glow ── */
+.glass-panel-3d {
+  background: linear-gradient(135deg, hsl(222 25% 10% / 0.75) 0%, hsl(222 25% 6% / 0.85) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsl(175 80% 48% / 0.2);
+  box-shadow: 
+    0 20px 50px -10px hsl(222 28% 5% / 0.9),
+    0 0 30px -5px hsl(175 80% 48% / 0.15),
+    inset 0 1px 1px 0 hsl(175 80% 60% / 0.25);
+}
+
+.glass-card-glow {
+  position: relative;
+}
+
+.glass-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, hsl(175 80% 50% / 0.4), transparent 50%, hsl(195 80% 55% / 0.2));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── Cybernetic Grid Background ── */
+.cyber-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, hsl(175 80% 48% / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(175 80% 48% / 0.05) 1px, transparent 1px);
 }
 

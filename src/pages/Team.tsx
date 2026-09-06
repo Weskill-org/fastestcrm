@@ -276,11 +276,8 @@ export default function Team() {
 
     const assignableRoles = getAssignableRoles();
 
-    // Users who can be managers (above the lowest level)
-    const potentialManagers = members.filter(m => {
-        const roleLevel = getRoleLevelNum(m.role);
-        return roleLevel < 10; // Above BDE level
-    });
+    // Users who can be managers (active members)
+    const potentialManagers = members.filter(m => !m.is_deactivated);
 
     function getRoleLevelNum(role: AppRole): number {
         const fixedLevels: Partial<Record<AppRole, number>> = {
@@ -765,7 +762,7 @@ export default function Team() {
                         <div className="space-y-4 pt-4">
                             <div>
                                 <label className="text-sm font-medium mb-2 block">
-                                    Promote to Role
+                                    Promote / Change Role
                                 </label>
                                 <Select
                                     value={selectedRole}
@@ -778,11 +775,10 @@ export default function Team() {
                                         {selectedMember && assignableRoles
                                             .filter(role => {
                                                 const member = members.find(m => m.id === selectedMember);
-                                                return member && getRoleLevelNum(role) < getRoleLevelNum(member.role);
+                                                return member && role !== member.role && !!getRoleLabel(role);
                                             })
                                             .map(role => {
                                                 const label = getRoleLabel(role);
-                                                if (!label) return null;
                                                 return (
                                                     <SelectItem key={role} value={role}>
                                                         {label}
@@ -798,7 +794,7 @@ export default function Team() {
                                     onClick={handlePromote}
                                 >
                                     {isPromoting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                    Promote
+                                    Update Role
                                 </Button>
                             </div>
                             <div>
